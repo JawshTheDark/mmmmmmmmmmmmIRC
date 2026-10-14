@@ -6,31 +6,28 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 30 | 235 | 12.8% | 23 |
+| Commands | 33 | 235 | 14.0% | 23 |
 | Identifiers | 62 | 406 | 15.3% | 15 |
 | Events | 6 | 84 | 7.1% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **108** | **1129** | **9.6%** | |
+| **Total** | **111** | **1129** | **9.8%** | |
 
 ## Commands
 
-### planned (193)
+### planned (190)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `/window` | 188 |  | custom_windows.html |  |  |
 | `/color` | 169 |  | mirc_commands.html |  |  |
 | `/scid` | 149 |  | multimserver.html |  |  |
 | `/nickserv` | 136 |  | servers.html |  |  |
 | `/splay` | 126 |  | mirc_commands.html |  |  |
 | `/close` | 115 |  | mirc_commands.html |  |  |
 | `/cline` | 104 |  | custom_windows.html |  |  |
-| `/aline` | 96 |  | custom_windows.html |  |  |
 | `/sockwrite` | 95 |  | sockets.html |  |  |
 | `/run` | 93 |  | mirc_commands.html |  | substitute: xdg-open / direct exec; Windows programs via Wine when configured |
 | `/notify` | 86 |  | notify_list.html |  |  |
-| `/clear` | 64 |  | mirc_commands.html |  |  |
 | `/drawtext` | 55 |  | picture_windows.html |  |  |
 | `/beep` | 50 |  | mirc_commands.html |  |  |
 | `/ignore` | 44 |  | control.html |  |  |
@@ -230,11 +227,13 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (30)
+### done (33)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `/alias` | 0 |  | mirc_commands.html | test_msl |  |
+| `/aline` | 96 |  | custom_windows.html | test_msl |  |
+| `/clear` | 64 |  | mirc_commands.html | test_msl |  |
 | `/dec` | 121 |  | variables.html | test_msl |  |
 | `/describe` | 3 |  | mirc_commands.html | test_msl |  |
 | `/dialog` | 0 |  | dialogs.html | demo_dialog.mrc |  |
@@ -262,6 +261,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/timer` | 351 |  | mirc_commands.html | test_msl |  |
 | `/unset` | 943 |  | variables.html | test_msl |  |
 | `/var` | 0 |  | variables.html | test_msl |  |
+| `/window` | 188 |  | custom_windows.html | test_msl |  |
 | `/write` | 225 |  | mirc_commands.html | test_msl |  |
 | `/writeini` | 1854 |  | mirc_commands.html | test_msl |  |
 

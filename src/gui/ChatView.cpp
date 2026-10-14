@@ -198,6 +198,8 @@ void ChatView::addSystemLine(const QByteArray& utf8Text) {
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
+void ChatView::clearMessages() { m_messages->clear(); }
+
 void ChatView::setTopic(const QByteArray& utf8Topic) {
     if (!m_topicBar) return;
     const QString topic = QString::fromUtf8(utf8Topic);

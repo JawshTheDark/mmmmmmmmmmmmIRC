@@ -35,6 +35,7 @@ public:
                     bool action = false, bool selfEcho = false, bool highlight = false);
     void addSystemLine(const QByteArray& utf8Text);
 
+    void clearMessages();
     void setTopic(const QByteArray& utf8Topic);
     // Members as display strings already sorted by rank then name; `sigils`
     // holds the leading prefix glyph ("@", "+", "") parallel to `nicks`.

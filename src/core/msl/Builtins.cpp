@@ -848,6 +848,33 @@ void registerBuiltins(Interpreter& in) {
         auto toks = splitTokens(i.evaluate(a, s), ' ');
         if (toks.size() >= 3) i.host().fileWrite(toks[0], writeIniValue(i.host().fileRead(toks[0]), toks[1], toks[2], ""));
     });
+    // Custom windows.
+    in.registerCommand("window", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        auto toks = splitTokens(args, ' ');
+        std::size_t idx = 0;
+        std::string sw;
+        if (!toks.empty() && !toks[0].empty() && toks[0][0] == '-') sw = toks[idx++].substr(1);
+        if (idx >= toks.size()) return;
+        const std::string name = toks[idx];
+        if (sw.find('c') != std::string::npos) i.host().clearWindow(name);
+        else i.host().openWindow(name, sw);
+    });
+    auto alineCmd = [](Interpreter& i, S& s, const std::string& a) {
+        // /aline [-flags|color] @window text  → append a line to a custom window
+        std::string args = i.evaluate(a, s);
+        auto toks = splitTokens(args, ' ');
+        std::size_t idx = 0;
+        while (idx < toks.size() && !toks[idx].empty() && (toks[idx][0] == '-' || std::isdigit((unsigned char)toks[idx][0])))
+            ++idx;
+        if (idx >= toks.size()) return;
+        const std::string win = toks[idx++];
+        std::string text;
+        for (std::size_t k = idx; k < toks.size(); ++k) text += (k > idx ? " " : "") + toks[k];
+        i.host().echo({i.host().activeTarget().networkId, win}, text);
+    };
+    in.registerCommand("aline", alineCmd);
+
     in.registerCommand("mkdir", [](Interpreter& i, S& s, const std::string& a) { i.host().makeDir(i.evaluate(a, s)); });
     in.registerCommand("remove", [](Interpreter& i, S& s, const std::string& a) {
         i.host().removePath(i.evaluate(a, s));

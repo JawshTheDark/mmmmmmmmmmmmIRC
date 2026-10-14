@@ -33,6 +33,8 @@ public:
     std::function<QString(const QString&, int, const QString&)> didQueryFn;
     std::function<QString(const QString&, int, double, const QString&)> startTimerFn;
     std::function<void(const QString&)> stopTimerFn;
+    std::function<void(const QString&, const QString&)> openWindowFn;
+    std::function<void(const QString&)> clearWindowFn;
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -58,6 +60,12 @@ public:
     }
     void stopTimer(const std::string& name) override {
         if (stopTimerFn) stopTimerFn(QString::fromStdString(name));
+    }
+    void openWindow(const std::string& name, const std::string& sw) override {
+        if (openWindowFn) openWindowFn(QString::fromStdString(name), QString::fromStdString(sw));
+    }
+    void clearWindow(const std::string& name) override {
+        if (clearWindowFn) clearWindowFn(QString::fromStdString(name));
     }
     void scriptError(const std::string& text) override {
         if (errorFn) errorFn(QString::fromStdString(text));

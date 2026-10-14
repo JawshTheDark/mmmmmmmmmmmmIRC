@@ -177,6 +177,13 @@ void MainWindow::setupScripting() {
     m_scriptHost.stopTimerFn = [this](const QString& name) {
         if (QTimer* t = m_scriptTimers.take(name)) t->deleteLater();
     };
+    m_scriptHost.openWindowFn = [this](const QString& name, const QString&) {
+        Buffer& b = ensureBuffer(-1, ChatView::Kind::Status, name, keyFor(-1, name));
+        if (b.sub && b.sub->isMinimized()) b.sub->showNormal();
+    };
+    m_scriptHost.clearWindowFn = [this](const QString& name) {
+        if (Buffer* b = findBuffer(keyFor(-1, name))) b->view->clearMessages();
+    };
     m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
 }
 
@@ -191,9 +198,16 @@ MainWindow::Buffer* MainWindow::activeBuffer() {
 
 void MainWindow::echoToWindow(int net, const QString& window, const QString& text) {
     Buffer* buf = nullptr;
-    if (window.isEmpty()) buf = activeBuffer();
-    else if (window == QStringLiteral("@status") || window == QStringLiteral("-s")) buf = findBuffer(statusKey());
-    else buf = findBuffer(keyFor(net, window));
+    if (window.isEmpty()) {
+        buf = activeBuffer();
+    } else if (window == QStringLiteral("@status") || window == QStringLiteral("-s")) {
+        buf = findBuffer(statusKey());
+    } else if (window.startsWith(QLatin1Char('@'))) {
+        // Custom windows are global and created on first use.
+        buf = &ensureBuffer(-1, ChatView::Kind::Status, window, keyFor(-1, window));
+    } else {
+        buf = findBuffer(keyFor(net, window));
+    }
     if (!buf) buf = activeBuffer();
     if (buf) buf->view->addMessage(QString(), QString(), text.toUtf8());
 }

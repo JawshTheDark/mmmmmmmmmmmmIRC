@@ -108,6 +108,13 @@ public:
         (void)wildcard;
         return {};
     }
+
+    // Custom windows (/window @name, /clear). Default no-ops.
+    virtual void openWindow(const std::string& name, const std::string& switches) {
+        (void)name;
+        (void)switches;
+    }
+    virtual void clearWindow(const std::string& name) { (void)name; }
 };
 
 }  // namespace lurker::msl

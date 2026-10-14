@@ -2,7 +2,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /abook	planned		address_book.html	0		
 /ajinvite	planned		mirc_commands.html	0		
 /alias	done		mirc_commands.html	0	test_msl	
-/aline	planned		custom_windows.html	96		
+/aline	done		custom_windows.html	96	test_msl	
 /ame	planned		mirc_commands.html	3		
 /amsg	planned		mirc_commands.html	16		
 /anick	planned		mirc_commands.html	3		
@@ -25,7 +25,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /bunset	planned		binary_files.html	0		
 /bwrite	planned		binary_files.html	3		
 /channel	planned		mirc_commands.html	23		
-/clear	planned		mirc_commands.html	64		
+/clear	done		mirc_commands.html	64	test_msl	
 /clearall	planned		mirc_commands.html	1		
 /cline	planned		custom_windows.html	104		
 /clipboard	planned		mirc_commands.html	3		
@@ -253,7 +253,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /vol	planned		playing_sounds.html	3		
 /while	planned		aliases.html	0		
 /whois	partial		basic_irc_commands.html	15	test_msl	
-/window	planned		custom_windows.html	188		
+/window	done		custom_windows.html	188	test_msl	
 /winhelp	planned		mirc_commands.html	0		
 /write	done		mirc_commands.html	225	test_msl	
 /writeini	done		mirc_commands.html	1854	test_msl	
