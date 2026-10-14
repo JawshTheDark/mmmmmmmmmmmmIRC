@@ -10,8 +10,8 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Identifiers | 93 | 406 | 22.9% | 15 |
 | Events | 14 | 84 | 16.7% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
-| Features, options and UI | 25 | 390 | 6.4% | 0 |
-| **Total** | **201** | **1129** | **17.8%** | |
+| Features, options and UI | 26 | 390 | 6.7% | 0 |
+| **Total** | **202** | **1129** | **17.9%** | |
 
 ## Commands
 
@@ -862,7 +862,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Features, options and UI
 
-### planned (361)
+### planned (360)
 
 | Item | Group | Since | Test | Notes |
 |---|---|---|---|---|
@@ -1131,7 +1131,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Ping Pong | irc_options |  |  |  |
 | Playing Files | playing_files |  |  |  |
 | Playing Sounds | playing_sounds |  |  |  |
-| Popup Menus | popups |  |  |  |
 | Port Range | connect_options |  |  |  |
 | Position | system_menu |  |  |  |
 | Prefixes | access_levels |  |  |  |
@@ -1237,7 +1236,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Remote Commands | remote_commands |  | test_msl |  |
 | Remote Identifiers | remote_identifiers |  | test_msl |  |
 
-### done (25)
+### done (26)
 
 | Item | Group | Since | Test | Notes |
 |---|---|---|---|---|
@@ -1260,6 +1259,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Timestamp events | messages |  | manual |  |
 | Commands | mirc_commands |  | test_msl |  |
 | Nick Colors | nick_colors |  | manual |  |
+| Popup Menus | popups |  | test_msl |  |
 | Scripts | remote |  |  |  |
 | Background | system_menu |  | manual |  |
 | Changing Fonts | system_menu |  | manual |  |

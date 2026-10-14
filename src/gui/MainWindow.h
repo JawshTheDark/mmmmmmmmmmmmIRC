@@ -106,6 +106,10 @@ private:
     void logLine(const Buffer* buffer, const QString& plainLine);  // append to the log file if enabled
     QString themeScope(int net, const QString& target) const;     // per-channel settings prefix
     void showChannelTheme(const QString& key);                    // per-channel theme override dialog
+    // Script popup (menu nicklist) support: evaluate a caption and run a command
+    // with $1 = the clicked nick and the channel as context.
+    QString evalScriptText(const QString& text, const QString& nick, int net, const QString& chan);
+    void runPopupCommand(const QString& command, const QString& nick, int net, const QString& chan);
     bool highlightMatch(int net, const QString& plainText) const;  // Options ▸ Highlight word/nick match
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view

@@ -56,6 +56,12 @@ public:
     // Supplies nick candidates (no sigils) for tab-completion; set by the owner.
     void setNickProvider(std::function<QStringList()> provider) { m_nickProvider = std::move(provider); }
 
+    // Lets the owner append script-defined (menu nicklist) items to the nicklist
+    // right-click menu; called with the menu and the clicked nick.
+    void setNickPopupProvider(std::function<void(class QMenu*, const QString&)> provider) {
+        m_nickPopupProvider = std::move(provider);
+    }
+
 signals:
     void lineEntered(const QString& text);
     void nickActivated(const QString& nick);  // double-click in the nicklist
@@ -79,6 +85,7 @@ private:
     QLineEdit* m_input = nullptr;
 
     std::function<QStringList()> m_nickProvider;
+    std::function<void(class QMenu*, const QString&)> m_nickPopupProvider;
 
     QStringList m_history;          // sent lines, oldest first
     int m_historyIndex = -1;       // -1 = not recalling; else index into m_history

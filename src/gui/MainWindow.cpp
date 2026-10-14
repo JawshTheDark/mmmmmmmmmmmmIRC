@@ -759,6 +759,33 @@ void MainWindow::runScript(const QString& line) {
     m_msl->execute(line.toStdString(), scope);
 }
 
+QString MainWindow::evalScriptText(const QString& text, const QString& nick, int net, const QString& chan) {
+    if (!m_msl) return text;
+    lurker::msl::Scope scope;
+    scope.params.push_back(nick.toStdString());  // $1 = clicked nick
+    scope.chan = chan.toStdString();
+    scope.target = chan.toStdString();
+    scope.nick = nick.toStdString();
+    m_eventContext = {net, chan.toStdString()};
+    m_inEvent = true;
+    const QString out = QString::fromStdString(m_msl->evaluate(text.toStdString(), scope));
+    m_inEvent = false;
+    return out;
+}
+
+void MainWindow::runPopupCommand(const QString& command, const QString& nick, int net, const QString& chan) {
+    if (!m_msl || command.isEmpty()) return;
+    lurker::msl::Scope scope;
+    scope.params.push_back(nick.toStdString());  // $1 = clicked nick
+    scope.chan = chan.toStdString();
+    scope.target = chan.toStdString();
+    scope.nick = nick.toStdString();
+    m_eventContext = {net, chan.toStdString()};
+    m_inEvent = true;
+    m_msl->execute(command.toStdString(), scope);
+    m_inEvent = false;
+}
+
 void MainWindow::loadScriptFile(const QString& path) {
     if (!m_msl) return;
     QFileInfo info(path);
@@ -917,6 +944,31 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
         b.view->setNickProvider([this, key_]() -> QStringList {
             Buffer* buf = findBuffer(key_);
             return buf ? buf->memberNicks : QStringList();
+        });
+        const QString chan_ = display;
+        b.view->setNickPopupProvider([this, net, chan_](QMenu* menu, const QString& nick) {
+            if (!m_msl) return;
+            const auto* items = m_msl->popupMenu("nicklist");
+            if (!items || items->empty()) return;
+            std::function<void(QMenu*, const std::vector<lurker::msl::MenuItem>&)> build =
+                [&](QMenu* m, const std::vector<lurker::msl::MenuItem>& list) {
+                    for (const auto& it : list) {
+                        if (it.separator) {
+                            m->addSeparator();
+                            continue;
+                        }
+                        const QString caption =
+                            evalScriptText(QString::fromStdString(it.caption), nick, net, chan_);
+                        if (!it.children.empty()) {
+                            build(m->addMenu(caption), it.children);
+                        } else {
+                            const QString cmd = QString::fromStdString(it.command);
+                            m->addAction(caption, this,
+                                         [this, cmd, nick, net, chan_] { runPopupCommand(cmd, nick, net, chan_); });
+                        }
+                    }
+                };
+            build(menu, *items);
         });
     }
 

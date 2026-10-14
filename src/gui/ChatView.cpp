@@ -125,6 +125,11 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
             act(ctcp, tr("Ping"), QStringLiteral("ctcp-ping"));
             act(ctcp, tr("Time"), QStringLiteral("ctcp-time"));
             act(ctcp, tr("Client Info"), QStringLiteral("ctcp-clientinfo"));
+            // Script-defined (menu nicklist) items, appended after the built-ins.
+            if (m_nickPopupProvider) {
+                menu.addSeparator();
+                m_nickPopupProvider(&menu, nick);
+            }
             menu.exec(m_nicklist->mapToGlobal(pos));
         });
     } else {
