@@ -437,6 +437,17 @@ void registerBuiltins(Interpreter& in) {
     });
     in.registerCommand("halt", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
     in.registerCommand("haltdef", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
+    in.registerCommand("alias", [](Interpreter& i, S&, const std::string& args) {
+        // /alias [-l] <name> <command...>  (the -l local flag is accepted, no-op here)
+        std::string a = args;
+        if (a.rfind("-", 0) == 0) {
+            std::size_t sp = a.find(' ');
+            a = sp == std::string::npos ? std::string() : a.substr(sp + 1);
+        }
+        std::size_t sp = a.find(' ');
+        if (sp == std::string::npos) return;
+        i.defineAlias(a.substr(0, sp), a.substr(sp + 1));
+    });
     in.registerCommand("timer", [](Interpreter& i, S&, const std::string& args) {
         // /timer[name] <repeat> <interval> <command>
         auto toks = splitTokens(args, ' ');

@@ -66,6 +66,7 @@ void Interpreter::defineAlias(const std::string& name, const std::string& body) 
 bool Interpreter::hasCommand(const std::string& name) const {
     return m_commands.count(name) || m_aliases.count(name);
 }
+bool Interpreter::hasAlias(const std::string& name) const { return m_aliases.count(name) != 0; }
 
 std::string Interpreter::getVariable(const std::string& name, const Scope& scope) const {
     const auto local = scope.locals.find(name);
@@ -150,8 +151,28 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
         }
         if (c == '$') {
             std::size_t j = i + 1;
-            // $+ concatenation: drop surrounding whitespace.
+            // $+ concatenation. "$+(a,b,c)" joins its args; bare "$+" drops the
+            // surrounding whitespace between two tokens.
             if (j < n && text[j] == '+') {
+                if (j + 1 < n && text[j + 1] == '(') {
+                    int depth = 1;
+                    std::size_t a = j + 2, argStart = a;
+                    std::string joined;
+                    for (; a < n && depth; ++a) {
+                        const char ac = text[a];
+                        if (ac == '(') ++depth;
+                        else if (ac == ')') {
+                            if (--depth == 0) break;
+                        } else if (ac == ',' && depth == 1) {
+                            joined += evaluate(text.substr(argStart, a - argStart), scope);
+                            argStart = a + 1;
+                        }
+                    }
+                    joined += evaluate(text.substr(argStart, a - argStart), scope);
+                    out += joined;
+                    i = (a < n) ? a + 1 : n;
+                    continue;
+                }
                 rtrim(out);
                 i = j + 1;
                 while (i < n && text[i] == ' ') ++i;

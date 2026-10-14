@@ -95,7 +95,57 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
 
     ensureBuffer(-1, ChatView::Kind::Status, tr("Status"), statusKey());
+    setupScripting();
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
+}
+
+void MainWindow::setupScripting() {
+    m_scriptHost.echoFn = [this](const lurker::msl::ScriptTarget& where, const QString& text) {
+        echoToWindow(where.networkId, QString::fromStdString(where.window), text);
+    };
+    m_scriptHost.messageFn = [this](int net, const QString& target, const QString& text) {
+        if (m_backend && m_backend->isReady()) m_backend->sendMessage(net, target, text);
+    };
+    m_scriptHost.actionFn = [this](int net, const QString& target, const QString& text) {
+        if (m_backend && m_backend->isReady()) m_backend->sendAction(net, target, text);
+    };
+    m_scriptHost.rawFn = [this](int net, const QString& line) {
+        if (m_backend && m_backend->isReady()) m_backend->sendRaw(net, line);
+    };
+    m_scriptHost.activeFn = [this]() -> lurker::msl::ScriptTarget {
+        Buffer* b = activeBuffer();
+        if (!b) return {};
+        return {b->networkId, b->display.toStdString()};
+    };
+    m_scriptHost.meFn = [](int) { return QString(); };  // filled once backends expose our nick per net
+    m_scriptHost.errorFn = [this](const QString& text) {
+        if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
+    };
+    m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
+}
+
+MainWindow::Buffer* MainWindow::activeBuffer() {
+    if (QMdiSubWindow* w = m_mdi->activeSubWindow()) {
+        for (auto& b : m_buffers) {
+            if (b.sub == w) return &b;
+        }
+    }
+    return findBuffer(statusKey());
+}
+
+void MainWindow::echoToWindow(int net, const QString& window, const QString& text) {
+    Buffer* buf = nullptr;
+    if (window.isEmpty()) buf = activeBuffer();
+    else if (window == QStringLiteral("@status") || window == QStringLiteral("-s")) buf = findBuffer(statusKey());
+    else buf = findBuffer(keyFor(net, window));
+    if (!buf) buf = activeBuffer();
+    if (buf) buf->view->addMessage(QString(), QString(), text.toUtf8());
+}
+
+void MainWindow::runScript(const QString& line) {
+    if (!m_msl) return;
+    lurker::msl::Scope scope;
+    m_msl->execute(line.toStdString(), scope);
 }
 
 MainWindow::~MainWindow() {
@@ -424,6 +474,19 @@ void MainWindow::onReadStateChanged(int net, const QString& rawTarget, int unrea
 
 void MainWindow::onInput(Buffer* buffer, const QString& text) {
     if (!buffer) return;
+    // MSL entry points: "//" forces evaluation; a bare "/alias" invokes a
+    // user-defined alias. Everything else goes through the IRC command parser.
+    if (text.startsWith(QStringLiteral("//"))) {
+        runScript(text);
+        return;
+    }
+    if (text.startsWith(QLatin1Char('/')) && m_msl) {
+        const QString word = text.mid(1).section(QLatin1Char(' '), 0, 0).toLower();
+        if (m_msl->hasAlias(word.toStdString())) {
+            runScript(text.mid(1));
+            return;
+        }
+    }
     lurker::ParseContext ctx;
     ctx.kind = buffer->kind == ChatView::Kind::Channel  ? lurker::BufferKind::Channel
                : buffer->kind == ChatView::Kind::Query  ? lurker::BufferKind::Dm

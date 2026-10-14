@@ -10,6 +10,7 @@ qt_add_executable(lurker-desktop
     ConnectDialog.h
     FormattedText.cpp
     FormattedText.h
+    GuiScriptHost.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core

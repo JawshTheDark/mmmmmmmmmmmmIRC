@@ -5,10 +5,13 @@
 
 #include <QHash>
 #include <QMainWindow>
+#include <memory>
 
 #include "backend/ChatBackend.h"
 #include "core/IrcEvent.h"
+#include "core/msl/Interpreter.h"
 #include "gui/ChatView.h"
+#include "gui/GuiScriptHost.h"
 
 class QAction;
 class QActionGroup;
@@ -34,6 +37,8 @@ public:
     void useBackend(lurker::backend::ChatBackend* backend);
     // Open (creating if needed) and focus a conversation; also used by dev flags.
     void openConversation(int net, const QString& target);
+    // Run an MSL line in the active (or status) window — used by // input and --msl.
+    void runScript(const QString& line);
 
 private:
     struct Buffer {
@@ -69,6 +74,9 @@ private:
     void updateBufferLabel(Buffer* buffer);
     bool bufferIsActive(const Buffer& buffer) const;
     void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
+    void setupScripting();
+    Buffer* activeBuffer();
+    void echoToWindow(int net, const QString& window, const QString& text);
     void onInput(Buffer* buffer, const QString& text);
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
@@ -89,6 +97,9 @@ private:
     QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
     QHash<int, QString> m_networkNames;            // networkId -> display name
     bool m_closing = false;
+
+    GuiScriptHost m_scriptHost;
+    std::unique_ptr<lurker::msl::Interpreter> m_msl;
 };
 
 }  // namespace lurker::gui

@@ -50,6 +50,7 @@ public:
     void registerCommand(const std::string& name, CommandFn fn);
     void defineAlias(const std::string& name, const std::string& body);
     bool hasCommand(const std::string& name) const;
+    bool hasAlias(const std::string& name) const;
 
     // Resolve all $identifiers and %variables in `text` (one pass, like mIRC).
     std::string evaluate(std::string_view text, Scope& scope);

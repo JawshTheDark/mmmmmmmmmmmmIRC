@@ -73,6 +73,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // --msl=<script>: run an MSL script in the status window (demo/dev). Repeatable.
+    for (const QString& arg : args) {
+        if (arg.startsWith(QStringLiteral("--msl="))) {
+            const QString script = arg.section(QLatin1Char('='), 1);
+            QTimer::singleShot(300, &window, [&window, script] { window.runScript(script); });
+        }
+    }
+
     if (args.contains(QStringLiteral("--smoke-test"))) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
     }

@@ -88,6 +88,8 @@ int main() {
     CHECK_EQ(eval(in, "hello $+ world"), std::string("helloworld"));
     CHECK_EQ(eval(in, "$str(a,2) $+ b"), std::string("aab"));
     CHECK_EQ(eval(in, "x$+y"), std::string("xy"));
+    CHECK_EQ(eval(in, "$+(abc,def,ghi)"), std::string("abcdefghi"));
+    CHECK_EQ(eval(in, "$+($str(a,2),b)"), std::string("aab"));
 
     // Nested identifiers and brackets.
     CHECK_EQ(eval(in, "$len($str(a,4))"), std::string("4"));
