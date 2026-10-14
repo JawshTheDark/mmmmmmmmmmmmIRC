@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <ctime>
 #include <random>
@@ -447,6 +448,86 @@ void registerBuiltins(Interpreter& in) {
         return out;
     });
 
+    in.registerIdent("deltok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = sepChar(a, 2);
+        auto toks = splitTokens(arg(a, 0), sep);
+        int n = argInt(a, 1);
+        if (n < 0) n = static_cast<int>(toks.size()) + n + 1;
+        if (n >= 1 && n <= static_cast<int>(toks.size())) toks.erase(toks.begin() + (n - 1));
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
+    in.registerIdent("sorttok", [](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = static_cast<char>(argInt(a, 1, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string sw = a.size() >= 3 ? toLowerAscii(a[2]) : std::string();
+        std::sort(toks.begin(), toks.end(), [&](const std::string& x, const std::string& y) {
+            if (sw.find('n') != std::string::npos) { try { return std::stod(x) < std::stod(y); } catch (...) {} }
+            return toLowerAscii(x) < toLowerAscii(y);
+        });
+        if (sw.find('r') != std::string::npos) std::reverse(toks.begin(), toks.end());
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
+    in.registerIdent("strip", [](Interpreter&, S&, const A& a, const std::string&) {
+        std::string out;
+        const std::string& s = arg(a, 0);
+        for (std::size_t i = 0; i < s.size(); ++i) {
+            unsigned char c = s[i];
+            if (c == 0x02 || c == 0x1D || c == 0x1F || c == 0x1E || c == 0x11 || c == 0x16 || c == 0x0F) continue;
+            if (c == 0x03) {  // colour code + up to 2+2 digits
+                if (i + 1 < s.size() && std::isdigit((unsigned char)s[i + 1])) {
+                    ++i; if (i + 1 < s.size() && std::isdigit((unsigned char)s[i + 1])) ++i;
+                    if (i + 1 < s.size() && s[i + 1] == ',' && i + 2 < s.size() && std::isdigit((unsigned char)s[i + 2])) {
+                        i += 2; if (i + 1 < s.size() && std::isdigit((unsigned char)s[i + 1])) ++i;
+                    }
+                }
+                continue;
+            }
+            out.push_back(static_cast<char>(c));
+        }
+        return out;
+    });
+
+    // Path identifiers.
+    auto lastSlash = [](const std::string& p) {
+        std::size_t s = p.find_last_of("/\\");
+        return s;
+    };
+    in.registerIdent("nopath", [lastSlash](Interpreter&, S&, const A& a, const std::string&) {
+        const std::string& p = arg(a, 0);
+        std::size_t s = lastSlash(p);
+        return s == std::string::npos ? p : p.substr(s + 1);
+    });
+    in.registerIdent("nofile", [lastSlash](Interpreter&, S&, const A& a, const std::string&) {
+        const std::string& p = arg(a, 0);
+        std::size_t s = lastSlash(p);
+        return s == std::string::npos ? std::string() : p.substr(0, s + 1);
+    });
+    in.registerIdent("longfn", [](Interpreter&, S&, const A& a, const std::string&) { return arg(a, 0); });
+    in.registerIdent("shortfn", [](Interpreter&, S&, const A& a, const std::string&) { return arg(a, 0); });
+
+    // $mask(nick!user@host, type): common ban-mask forms.
+    in.registerIdent("mask", [](Interpreter&, S&, const A& a, const std::string&) {
+        const std::string addr = arg(a, 0);
+        const std::size_t bang = addr.find('!'), at = addr.find('@');
+        std::string nick = bang == std::string::npos ? addr : addr.substr(0, bang);
+        std::string user = (bang != std::string::npos && at != std::string::npos) ? addr.substr(bang + 1, at - bang - 1)
+                                                                                  : std::string("*");
+        std::string host = at == std::string::npos ? std::string("*") : addr.substr(at + 1);
+        switch (argInt(a, 1, 2)) {
+            case 0: return nick + "!" + user + "@" + host;
+            case 1: return "*!" + user + "@" + host;
+            case 2: return "*!*@" + host;
+            case 3: return "*!*" + user + "@" + host;
+            case 5: return nick + "!*@" + host;
+            case 7: return "*!" + user + "@" + host;
+            default: return "*!*@" + host;
+        }
+    });
+
     // $qt / $noqt quoting.
     in.registerIdent("qt", [](Interpreter&, S&, const A& a, const std::string&) {
         std::string s = arg(a, 0);
@@ -566,6 +647,52 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("r", randFn);
     in.registerIdent("iif", [](Interpreter& interp, S& s, const A& a, const std::string&) {
         return interp.evalCondition(arg(a, 0), s) ? arg(a, 1) : arg(a, 2);
+    });
+    in.registerIdent("ceil", [](Interpreter&, S&, const A& a, const std::string&) {
+        try { return fmtNum(std::ceil(std::stod(arg(a, 0)))); } catch (...) { return std::string(); }
+    });
+    in.registerIdent("floor", [](Interpreter&, S&, const A& a, const std::string&) {
+        try { return fmtNum(std::floor(std::stod(arg(a, 0)))); } catch (...) { return std::string(); }
+    });
+    in.registerIdent("sqrt", [](Interpreter&, S&, const A& a, const std::string&) {
+        try { return fmtNum(std::sqrt(std::stod(arg(a, 0)))); } catch (...) { return std::string(); }
+    });
+    in.registerIdent("base", [](Interpreter&, S&, const A& a, const std::string&) {
+        // $base(value, fromBase, toBase, [zeropad])
+        try {
+            long long v = std::stoll(arg(a, 0), nullptr, argInt(a, 1, 10));
+            int to = argInt(a, 2, 10);
+            if (v == 0) return std::string("0");
+            const char* digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+            bool neg = v < 0;
+            unsigned long long u = neg ? -v : v;
+            std::string out;
+            while (u) { out = std::string(1, digits[u % to]) + out; u /= to; }
+            int pad = argInt(a, 3, 0);
+            while (static_cast<int>(out.size()) < pad) out = "0" + out;
+            return neg ? "-" + out : out;
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("ticks", [](Interpreter&, S&, const A&, const std::string&) {
+        static const auto start = std::chrono::steady_clock::now();
+        return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::steady_clock::now() - start)
+                                  .count());
+    });
+    in.registerIdent("duration", [](Interpreter&, S&, const A& a, const std::string&) {
+        long long s = 0;
+        try { s = std::stoll(arg(a, 0)); } catch (...) { return std::string(); }
+        if (a.size() >= 2 && argInt(a, 1) == 2) return std::to_string(s);  // numeric form
+        long long d = s / 86400; s %= 86400;
+        long long h = s / 3600; s %= 3600;
+        long long m = s / 60; s %= 60;
+        std::string out;
+        auto add = [&](long long n, const char* u) {
+            if (n > 0) { if (!out.empty()) out += ' '; out += std::to_string(n) + u; }
+        };
+        add(d, "d"); add(h, "h"); add(m, "m");
+        if (out.empty() || s > 0) add(s, "s");
+        return out;
     });
 
     // --- time ---

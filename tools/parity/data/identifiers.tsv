@@ -28,7 +28,7 @@ $away	planned		other_identifiers.html	35
 $awaymsg	planned		other_identifiers.html	2		
 $awaytime	planned		other_identifiers.html	2		
 $banmask	planned		on_banounban.html	40		
-$base	planned		text_number_identifiers.html	12		
+$base	done		text_number_identifiers.html	12	test_msl	
 $bfind	planned		binary_files.html	4		
 $bigfloat	planned		variables.html	0		
 $bindip	planned		sockets.html	0		
@@ -42,7 +42,7 @@ $caller	planned		other_identifiers.html	0
 $cb	planned		other_identifiers.html	0		
 $cbrt	planned		text_number_identifiers.html	0		
 $cd	planned		on_chatoserv.html	0		
-$ceil	planned		text_number_identifiers.html	0		
+$ceil	done		text_number_identifiers.html	0	test_msl	
 $chan	done		remote_identifiers.html	1300	test_msl	
 $chanmodes	planned		other_identifiers.html	0		
 $chantypes	planned		other_identifiers.html	0		
@@ -88,7 +88,7 @@ $ddename	not-possible		dde.html	0		Windows DDE
 $debug	planned		mirc_commands.html	0		
 $decode	planned		text_number_identifiers.html	13		
 $decompress	planned		text_number_identifiers.html	0		
-$deltok	planned		token_identifiers.html	24		
+$deltok	done		token_identifiers.html	24	test_msl	
 $devent	done		dialogs.html	60	demo_dialog.mrc	
 $dialog	done		dialogs.html	323	demo_dialog.mrc	
 $did	done		dialogs.html	2799	demo_dialog.mrc	
@@ -103,7 +103,7 @@ $dname	done		dialogs.html	1512	demo_dialog.mrc
 $dns	planned		on_dns.html	4		
 $donotdisturb	planned		mirc_commands.html	0		
 $dqwindow	planned		window_identifiers.html	0		
-$duration	planned		time_date_identifiers.html	138		
+$duration	done		time_date_identifiers.html	138	test_msl	
 $ebeeps	planned		other_identifiers.html	0		
 $editbox	planned		other_identifiers.html	0		
 $emailaddr	planned		other_identifiers.html	0		
@@ -129,7 +129,7 @@ $findfilen	planned		file_directory_identifiers.html	0
 $findtok	done		token_identifiers.html	7	test_msl	
 $fline	planned		custom_windows.html	1		
 $flinen	planned		custom_windows.html	0		
-$floor	planned		text_number_identifiers.html	0		
+$floor	done		text_number_identifiers.html	0	test_msl	
 $font	planned		other_identifiers.html	0		
 $fopen	planned		file_handling.html	0		
 $fread	planned		file_handling.html	0		
@@ -221,12 +221,12 @@ $log2	planned		text_number_identifiers.html	0
 $logdir	planned		file_directory_identifiers.html	2		
 $logstamp	planned		time_date_identifiers.html	0		
 $logstampfmt	planned		time_date_identifiers.html	0		
-$longfn	planned		file_directory_identifiers.html	4		substitute: returns the path unchanged
+$longfn	done		file_directory_identifiers.html	4	test_msl	substitute: returns the path unchanged
 $longip	planned		text_number_identifiers.html	0		
 $lower	done		text_number_identifiers.html	4	test_msl	
 $ltimer	planned		mirc_commands.html	0		
 $maddress	planned		remote_identifiers.html	0		
-$mask	planned		nick_address_identifiers.html	22		
+$mask	done		nick_address_identifiers.html	22	test_msl	
 $matchkey	planned		remote_identifiers.html	0		
 $matchtok	planned		token_identifiers.html	0		
 $max	planned		text_number_identifiers.html	21		
@@ -263,8 +263,8 @@ $network	planned		other_identifiers.html	40
 $newnick	planned		on_nick.html	41		
 $nick	done		remote_identifiers.html	2968	test_msl	
 $nickmode	planned		nick_address_identifiers.html	0		
-$nofile	planned		file_directory_identifiers.html	10		
-$nopath	planned		file_directory_identifiers.html	46		
+$nofile	done		file_directory_identifiers.html	10	test_msl	
+$nopath	done		file_directory_identifiers.html	46	test_msl	
 $noqt	done		text_number_identifiers.html	0	test_msl	
 $not	planned		text_number_identifiers.html	0		
 $notags	planned		agents_scripting.html	0		
@@ -341,7 +341,7 @@ $sha1	planned		other_identifiers.html	0
 $sha256	planned		other_identifiers.html	0		
 $sha384	planned		other_identifiers.html	0		
 $sha512	planned		other_identifiers.html	0		
-$shortfn	planned		file_directory_identifiers.html	66		substitute: no 8.3 names on Linux; returns the long name
+$shortfn	done		file_directory_identifiers.html	66	test_msl	substitute: no 8.3 names on Linux; returns the long name
 $show	planned		other_identifiers.html	3		
 $signal	planned		signals.html	0		
 $sin	planned		text_number_identifiers.html	0		
@@ -354,10 +354,10 @@ $sock	planned		sockets.html	74
 $sockbr	planned		sockets.html	12		
 $sockerr	planned		sockets.html	55		
 $sockname	planned		sockets.html	34		
-$sorttok	planned		token_identifiers.html	1		
+$sorttok	done		token_identifiers.html	1	test_msl	
 $sound	planned		playing_sounds.html	0		
 $speak	planned		speech.html	0		substitute: speech-dispatcher instead of SAPI
-$sqrt	planned		text_number_identifiers.html	0		
+$sqrt	done		text_number_identifiers.html	0	test_msl	
 $sreq	planned		other_identifiers.html	0		
 $ssl	planned		other_identifiers.html	0		
 $sslcertvalid	planned		other_identifiers.html	0		
@@ -369,7 +369,7 @@ $sslversion	planned		other_identifiers.html	0
 $starting	planned		other_identifiers.html	0		
 $status	planned		other_identifiers.html	0		
 $str	done		text_number_identifiers.html	49	test_msl	
-$strip	planned		text_number_identifiers.html	74		
+$strip	done		text_number_identifiers.html	74	test_msl	
 $stripped	planned		text_number_identifiers.html	0		
 $style	planned		popups.html	60		
 $submenu	planned		popups.html	0		
@@ -379,7 +379,7 @@ $tan	planned		text_number_identifiers.html	0
 $tanh	planned		text_number_identifiers.html	0		
 $target	done		remote_identifiers.html	2	test_msl	
 $tempfn	planned		file_directory_identifiers.html	0		
-$ticks	planned		time_date_identifiers.html	17		
+$ticks	done		time_date_identifiers.html	17	test_msl	
 $ticksqpc	planned		time_date_identifiers.html	0		
 $time	done		time_date_identifiers.html	72	test_msl	
 $timer	done		time_date_identifiers.html	32	test_msl	

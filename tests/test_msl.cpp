@@ -311,6 +311,22 @@ int main() {
         CHECK_EQ(eval(in, "$regsub(a1b2c3,/\\d/g,#)"), std::string("a#b#c#"));
     }
 
+    // Math/token/path extras drawn from real scripts (jirc/NeonScript).
+    CHECK_EQ(eval(in, "$ceil(3.2)"), std::string("4"));
+    CHECK_EQ(eval(in, "$floor(3.8)"), std::string("3"));
+    CHECK_EQ(eval(in, "$sqrt(144)"), std::string("12"));
+    CHECK_EQ(eval(in, "$base(255,10,16)"), std::string("ff"));
+    CHECK_EQ(eval(in, "$base(ff,16,10)"), std::string("255"));
+    CHECK_EQ(eval(in, "$duration(3661)"), std::string("1h 1m 1s"));
+    CHECK_EQ(eval(in, "$duration(90,2)"), std::string("90"));
+    CHECK_EQ(eval(in, "$deltok(a.b.c.d,2,46)"), std::string("a.c.d"));
+    CHECK_EQ(eval(in, "$sorttok(c.a.b,46)"), std::string("a.b.c"));
+    CHECK_EQ(eval(in, "$sorttok(3.1.2,46,n)"), std::string("1.2.3"));
+    CHECK_EQ(eval(in, "$nopath(/home/jawsh/file.mrc)"), std::string("file.mrc"));
+    CHECK_EQ(eval(in, "$nofile(/home/jawsh/file.mrc)"), std::string("/home/jawsh/"));
+    CHECK_EQ(eval(in, "$mask(nick!user@host.com,2)"), std::string("*!*@host.com"));
+    CHECK_EQ(eval(in, "$strip(" "\x02" "bold" "\x03" "4red" "\x0F" ")"), std::string("boldred"));
+
     // $isalias.
     CHECK_EQ(eval(in, "$isalias(square)"), std::string("$true"));
     CHECK_EQ(eval(in, "$isalias(nosuch)"), std::string("$false"));
