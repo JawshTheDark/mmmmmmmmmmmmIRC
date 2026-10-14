@@ -524,6 +524,31 @@ int main() {
         CHECK_EQ(host.echoed.back(), std::string("5 3"));
     }
 
+    // Scriptable popup menus: `menu nicklist { ... }` parses into items/submenus.
+    {
+        in.loadScript(
+            "menu nicklist {\n"
+            "  Whois:whois $1\n"
+            "  -\n"
+            "  Kick:kick $chan $1\n"
+            "  Ops {\n"
+            "    Op:mode $chan +o $1\n"
+            "    Deop:mode $chan -o $1\n"
+            "  }\n"
+            "}\n");
+        const auto* m = in.popupMenu("nicklist");
+        CHECK(m != nullptr);
+        if (m) {
+            CHECK_EQ(m->size(), 4u);
+            CHECK_EQ((*m)[0].caption, std::string("Whois"));
+            CHECK_EQ((*m)[0].command, std::string("whois $1"));
+            CHECK((*m)[1].separator);
+            CHECK_EQ((*m)[3].caption, std::string("Ops"));
+            CHECK_EQ((*m)[3].children.size(), 2u);
+            CHECK_EQ((*m)[3].children[1].caption, std::string("Deop"));
+        }
+    }
+
     // on NICK fires with $nick (old) and $newnick (new).
     {
         host.echoed.clear();

@@ -797,6 +797,8 @@ bool matchWild(std::string_view pat, std::string_view str) {
 void Interpreter::clearScripts() {
     m_aliases.clear();
     m_events.clear();
+    m_menus.clear();
+    m_dialogs.clear();
 }
 
 bool Interpreter::hasEvent(const std::string& event) const { return m_events.count(toLowerAscii(event)) != 0; }
@@ -805,6 +807,55 @@ std::size_t Interpreter::eventHandlerCount() const {
     std::size_t n = 0;
     for (const auto& [_, v] : m_events) n += v.size();
     return n;
+}
+
+namespace {
+// Parse the body of a `menu <type> { ... }` block into items. Lines are
+// `caption:command`, `caption { submenu }`, or `-` (separator). Captions and
+// commands are kept raw ($N is evaluated when the menu is shown).
+std::vector<MenuItem> parseMenuItems(std::string_view body) {
+    std::vector<MenuItem> items;
+    std::size_t i = 0;
+    const std::size_t n = body.size();
+    while (i < n) {
+        while (i < n && std::isspace(static_cast<unsigned char>(body[i]))) ++i;
+        if (i >= n) break;
+        if (body[i] == ';') {
+            while (i < n && body[i] != '\n') ++i;
+            continue;
+        }
+        const std::size_t start = i;
+        while (i < n && body[i] != '\n' && body[i] != '{' && body[i] != ':') ++i;
+        std::string caption = trimmed(std::string(body.substr(start, i - start)));
+        MenuItem item;
+        if (i < n && body[i] == '{') {
+            std::size_t pos = i;
+            const std::string inner = parseBrace(body, pos);
+            i = pos;
+            item.caption = caption;
+            item.children = parseMenuItems(inner);
+        } else if (i < n && body[i] == ':') {
+            ++i;
+            const std::size_t cstart = i;
+            while (i < n && body[i] != '\n') ++i;
+            item.caption = caption;
+            item.command = trimmed(std::string(body.substr(cstart, i - cstart)));
+        } else {
+            item.caption = caption;
+        }
+        if (item.caption == "-") {
+            item.separator = true;
+            item.caption.clear();
+        }
+        if (item.separator || !item.caption.empty()) items.push_back(std::move(item));
+    }
+    return items;
+}
+}  // namespace
+
+const std::vector<MenuItem>* Interpreter::popupMenu(const std::string& type) const {
+    const auto it = m_menus.find(type);
+    return it == m_menus.end() ? nullptr : &it->second;
 }
 
 void Interpreter::loadScript(std::string_view text) {
@@ -848,6 +899,16 @@ void Interpreter::loadScript(std::string_view text) {
             std::string rest = trimmed(header.substr(6));
             const std::string name = firstWord(rest);
             if (!name.empty()) m_dialogs[name] = parseDialogTable(name, body);
+        } else if (kw == "menu") {
+            // menu <type>[,<type>...] { items }. Accumulate per type.
+            const std::string typesStr = trimmed(header.substr(4));
+            const std::vector<MenuItem> items = parseMenuItems(body);
+            for (const std::string& rawType : splitTokens(typesStr, ',')) {
+                const std::string type = toLowerAscii(trimmed(rawType));
+                if (type.empty()) continue;
+                auto& dst = m_menus[type];
+                dst.insert(dst.end(), items.begin(), items.end());
+            }
         } else if (kw == "on") {
             // on <level>:<EVENT>:<p1>:<p2>: { body }
             std::vector<std::string> fields = splitTokens(header.substr(0, header.size()), ':');

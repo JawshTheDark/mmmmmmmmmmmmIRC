@@ -49,6 +49,15 @@ struct Scope {
     int depth = 0;                                // recursion guard
 };
 
+// A script-defined popup menu item (from a `menu <type> { ... }` remote block).
+// A separator has `separator`; a submenu has `children`; a leaf has `command`.
+struct MenuItem {
+    std::string caption;
+    std::string command;
+    std::vector<MenuItem> children;
+    bool separator = false;
+};
+
 // One `on <level>:<EVENT>:<match>:<target>:{ body }` remote definition.
 struct EventHandler {
     std::string level = "*";
@@ -85,6 +94,9 @@ public:
     void raiseDialogEvent(const std::string& dialogName, const std::string& devent, int id);
     bool hasEvent(const std::string& event) const;
     const DialogTable* dialogTable(const std::string& name) const;
+    // Script-defined popup menu for a type ("nicklist", "channel", "query",
+    // "menubar", "status", "@name"); nullptr if the script defined none.
+    const std::vector<MenuItem>* popupMenu(const std::string& type) const;
     std::size_t aliasCount() const { return m_aliases.size(); }
     std::size_t eventKindCount() const { return m_events.size(); }
     std::size_t eventHandlerCount() const;
@@ -161,6 +173,7 @@ private:
     std::map<std::string, HashTable, CiLess> m_hash;
     std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
+    std::map<std::string, std::vector<MenuItem>, CiLess> m_menus;     // popup menus by type
     std::map<std::string, std::vector<unsigned char>, CiLess> m_binvars;  // &binary variables
     int m_callDepth = 0;  // guards alias/identifier recursion across scopes
 };
