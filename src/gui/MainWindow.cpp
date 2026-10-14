@@ -8,6 +8,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QDateTime>
+#include <QDir>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileInfo>
@@ -152,13 +153,33 @@ void MainWindow::runScript(const QString& line) {
 }
 
 void MainWindow::loadScriptFile(const QString& path) {
+    if (!m_msl) return;
+    QFileInfo info(path);
+    if (info.isDir()) {
+        int files = 0;
+        for (const QFileInfo& fi : QDir(path).entryInfoList({QStringLiteral("*.mrc")}, QDir::Files, QDir::Name)) {
+            QFile f(fi.absoluteFilePath());
+            if (f.open(QIODevice::ReadOnly)) {
+                m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+                ++files;
+            }
+        }
+        onStatusText(tr("Loaded %1 script file(s): %2 aliases, %3 event handlers")
+                         .arg(files)
+                         .arg(m_msl->aliasCount())
+                         .arg(m_msl->eventHandlerCount()));
+        return;
+    }
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         onStatusText(tr("Could not load script: %1").arg(path));
         return;
     }
-    if (m_msl) m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
-    onStatusText(tr("Loaded script %1").arg(QFileInfo(path).fileName()));
+    m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+    onStatusText(tr("Loaded %1: %2 aliases, %3 event handlers")
+                     .arg(info.fileName())
+                     .arg(m_msl->aliasCount())
+                     .arg(m_msl->eventHandlerCount()));
 }
 
 void MainWindow::simulateMessage(int net, const QString& nick, const QString& target, const QString& text) {

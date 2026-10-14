@@ -139,6 +139,7 @@ void registerBuiltins(Interpreter& in) {
         return i.host().activeTarget().window;
     });
     in.registerIdent("event", [](Interpreter&, S& s, const A&, const std::string&) { return s.event; });
+    in.registerIdent("prop", [](Interpreter&, S& s, const A&, const std::string&) { return s.prop; });
     // Event context: set while an on-handler runs.
     in.registerIdent("nick", [](Interpreter&, S& s, const A&, const std::string&) { return s.nick; });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
@@ -268,6 +269,80 @@ void registerBuiltins(Interpreter& in) {
             if (toLowerAscii(t) == toLowerAscii(find)) return std::string("$true");
         }
         return std::string("$false");
+    });
+    in.registerIdent("findtok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        auto toks = splitTokens(arg(a, 0), sepChar(a, 3));
+        const std::string find = arg(a, 1);
+        int which = argInt(a, 2, 1);
+        if (which == 0) which = 1;
+        int seen = 0;
+        for (std::size_t k = 0; k < toks.size(); ++k) {
+            if (toLowerAscii(toks[k]) == toLowerAscii(find) && ++seen == which) return std::to_string(k + 1);
+        }
+        return std::string("0");
+    });
+    in.registerIdent("remtok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = sepChar(a, 3);
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string rem = arg(a, 1);
+        std::string out;
+        bool removed = false;
+        for (const auto& t : toks) {
+            if (!removed && toLowerAscii(t) == toLowerAscii(rem)) {
+                removed = true;
+                continue;
+            }
+            if (!out.empty()) out += sep;
+            out += t;
+        }
+        return out;
+    });
+    in.registerIdent("puttok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = sepChar(a, 3);
+        auto toks = splitTokens(arg(a, 0), sep);
+        int pos = argInt(a, 2);
+        if (pos >= 1 && pos <= static_cast<int>(toks.size())) toks[pos - 1] = arg(a, 1);
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
+    in.registerIdent("instok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = sepChar(a, 3);
+        auto toks = splitTokens(arg(a, 0), sep);
+        int pos = argInt(a, 2, 1);
+        if (pos < 1) pos = 1;
+        toks.insert(toks.begin() + std::min<std::size_t>(pos - 1, toks.size()), arg(a, 1));
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
+
+    // $qt / $noqt quoting.
+    in.registerIdent("qt", [](Interpreter&, S&, const A& a, const std::string&) {
+        std::string s = arg(a, 0);
+        if (s.find(' ') != std::string::npos && !(s.size() >= 2 && s.front() == '"' && s.back() == '"'))
+            return "\"" + s + "\"";
+        return s;
+    });
+    in.registerIdent("noqt", [](Interpreter&, S&, const A& a, const std::string&) {
+        std::string s = arg(a, 0);
+        if (s.size() >= 2 && s.front() == '"' && s.back() == '"') return s.substr(1, s.size() - 2);
+        return s;
+    });
+    in.registerIdent("isalias", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return i.aliasDefined(arg(a, 0)) ? std::string("$true") : std::string("$false");
+    });
+
+    // Hash tables.
+    in.registerIdent("hget", [](Interpreter& i, S&, const A& a, const std::string& prop) {
+        const std::string table = arg(a, 0);
+        if (a.size() < 2) return i.hashExists(table) ? std::string("1") : std::string("0");
+        // $hget(table, N).item / .data  — numeric item index when prop is item/data
+        if ((prop == "item" || prop == "data")) {
+            int n = argInt(a, 1);
+            return prop == "item" ? i.hashItemByIndex(table, n) : i.hashDataByIndex(table, n);
+        }
+        return i.hashGet(table, arg(a, 1));
     });
 
     // --- math ---
@@ -447,6 +522,52 @@ void registerBuiltins(Interpreter& in) {
     });
     in.registerCommand("halt", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
     in.registerCommand("haltdef", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
+    // Hash table commands.
+    in.registerCommand("hmake", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        std::string name = args.substr(0, args.find(' '));
+        if (!name.empty()) i.hashMake(name);
+    });
+    in.registerCommand("hfree", [](Interpreter& i, S& s, const std::string& a) {
+        i.hashFree(i.evaluate(a, s).substr(0, i.evaluate(a, s).find(' ')));
+    });
+    in.registerCommand("hadd", [](Interpreter& i, S& s, const std::string& a) {
+        // /hadd [-switches] <table> <item> <data>
+        std::string args = i.evaluate(a, s);
+        if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        std::size_t s1 = args.find(' ');
+        if (s1 == std::string::npos) return;
+        std::size_t s2 = args.find(' ', s1 + 1);
+        std::string table = args.substr(0, s1);
+        std::string item = args.substr(s1 + 1, s2 == std::string::npos ? std::string::npos : s2 - s1 - 1);
+        std::string data = s2 == std::string::npos ? std::string() : args.substr(s2 + 1);
+        if (!i.hashExists(table)) i.hashMake(table);
+        i.hashSet(table, item, data);
+    });
+    in.registerCommand("hdel", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        std::size_t sp = args.find(' ');
+        if (sp == std::string::npos) return;
+        i.hashDelete(args.substr(0, sp), args.substr(sp + 1));
+    });
+    auto hincdec = [](bool inc) {
+        return [inc](Interpreter& i, S& s, const std::string& a) {
+            std::string args = i.evaluate(a, s);
+            auto toks = splitTokens(args, ' ');
+            if (toks.size() < 2) return;
+            double by = toks.size() >= 3 ? [&] { try { return std::stod(toks[2]); } catch (...) { return 1.0; } }() : 1.0;
+            double cur = 0;
+            try {
+                cur = std::stod(i.hashGet(toks[0], toks[1]));
+            } catch (...) {
+            }
+            if (!i.hashExists(toks[0])) i.hashMake(toks[0]);
+            i.hashSet(toks[0], toks[1], fmtNum(inc ? cur + by : cur - by));
+        };
+    };
+    in.registerCommand("hinc", hincdec(true));
+    in.registerCommand("hdec", hincdec(false));
+
     in.registerCommand("alias", [](Interpreter& i, S&, const std::string& args) {
         // /alias [-l] <name> <command...>  (the -l local flag is accepted, no-op here)
         std::string a = args;

@@ -151,6 +151,17 @@ int main() {
         CHECK_EQ(host.echoed[0], std::string("medium"));
     }
 
+    // Braceless if (mIRC allows `if (x) command`).
+    {
+        host.echoed.clear();
+        Scope s;
+        in.execute("set %x 7", s);
+        in.execute("if (%x > 5) echo braceless-yes", s);
+        in.execute("if (%x < 5) echo should-not-run", s);
+        CHECK_EQ(host.echoed.size(), 1u);
+        CHECK_EQ(host.echoed[0], std::string("braceless-yes"));
+    }
+
     // while loop with a counter.
     {
         host.echoed.clear();
@@ -225,6 +236,44 @@ int main() {
         CHECK_EQ(host.echoed.size(), 1u);
         CHECK_EQ(host.echoed[0], std::string("pong to dave"));
     }
+
+    // Custom identifiers: an alias called as $name, with $prop.
+    {
+        in.defineAlias("square", "return $calc($1 * $1)");
+        CHECK_EQ(eval(in, "$square(5)"), std::string("25"));
+        in.defineAlias("info", "return $iif($prop == size,big,small)");
+        CHECK_EQ(eval(in, "$info(x).size"), std::string("big"));
+        CHECK_EQ(eval(in, "$info(x).color"), std::string("small"));
+    }
+
+    // Token extras.
+    CHECK_EQ(eval(in, "$findtok(a.b.c.b,b,1,46)"), std::string("2"));
+    CHECK_EQ(eval(in, "$remtok(a.b.c,b,1,46)"), std::string("a.c"));
+    CHECK_EQ(eval(in, "$puttok(a.b.c,X,2,46)"), std::string("a.X.c"));
+    CHECK_EQ(eval(in, "$instok(a.c,b,2,46)"), std::string("a.b.c"));
+    CHECK_EQ(eval(in, "$qt(hello world)"), std::string("\"hello world\""));
+    CHECK_EQ(eval(in, "$qt(oneword)"), std::string("oneword"));
+
+    // Hash tables.
+    {
+        Scope s;
+        in.execute("hmake mytable | hadd mytable alice 30 | hadd mytable bob 25", s);
+        CHECK_EQ(eval(in, "$hget(mytable,alice)"), std::string("30"));
+        CHECK_EQ(eval(in, "$hget(mytable,bob)"), std::string("25"));
+        CHECK_EQ(eval(in, "$hget(mytable,1).item"), std::string("alice"));
+        CHECK_EQ(eval(in, "$hget(mytable,2).data"), std::string("25"));
+        in.execute("hinc mytable alice 5", s);
+        CHECK_EQ(eval(in, "$hget(mytable,alice)"), std::string("35"));
+        in.execute("hdel mytable alice", s);
+        CHECK_EQ(eval(in, "$hget(mytable,alice)"), std::string(""));
+        CHECK_EQ(eval(in, "$hget(mytable,1).item"), std::string("bob"));
+        in.execute("hfree mytable", s);
+        CHECK_EQ(eval(in, "$hget(mytable)"), std::string("0"));
+    }
+
+    // $isalias.
+    CHECK_EQ(eval(in, "$isalias(square)"), std::string("$true"));
+    CHECK_EQ(eval(in, "$isalias(nosuch)"), std::string("$false"));
 
     // halt stops the rest of the script.
     {

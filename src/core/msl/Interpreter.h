@@ -32,6 +32,7 @@ struct Scope {
     std::vector<std::string> params;              // $1 == params[0]
     std::map<std::string, std::string, CiLess> locals;
     std::string event;                            // $event (the active on-event name)
+    std::string prop;                             // $prop when an alias is called as an identifier
     // Event context ($nick, $chan, ... during an on-event).
     std::string nick;
     std::string address;  // nick!user@host
@@ -75,6 +76,9 @@ public:
     // `scope` carries $nick/$chan/$target/$1-; the handler body runs in it.
     void raiseEvent(const std::string& event, const std::string& subject, Scope& scope);
     bool hasEvent(const std::string& event) const;
+    std::size_t aliasCount() const { return m_aliases.size(); }
+    std::size_t eventKindCount() const { return m_events.size(); }
+    std::size_t eventHandlerCount() const;
 
     // Resolve all $identifiers and %variables in `text` (one pass, like mIRC).
     std::string evaluate(std::string_view text, Scope& scope);
@@ -87,6 +91,20 @@ public:
     bool evalCondition(std::string_view expr, Scope& scope);
 
     Host& host() { return m_host; }
+
+    // Hash tables (/hmake, /hadd, $hget, ...). In-memory, insertion-ordered.
+    void hashMake(const std::string& table);
+    void hashFree(const std::string& table);
+    bool hashExists(const std::string& table) const;
+    void hashSet(const std::string& table, const std::string& item, const std::string& data);
+    void hashDelete(const std::string& table, const std::string& item);
+    std::string hashGet(const std::string& table, const std::string& item) const;
+    bool hashHas(const std::string& table, const std::string& item) const;
+    int hashCount(const std::string& table) const;
+    std::string hashItemByIndex(const std::string& table, int n) const;   // $hget(t,N).item
+    std::string hashDataByIndex(const std::string& table, int n) const;   // $hget(t,N).data
+    bool aliasDefined(const std::string& name) const { return m_aliases.count(name) != 0; }
+
     std::string getVariable(const std::string& name, const Scope& scope) const;
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);
     void unsetVariable(const std::string& name, Scope& scope);
@@ -110,6 +128,13 @@ private:
     std::map<std::string, std::string, CiLess> m_aliases;
     std::map<std::string, std::string, CiLess> m_globals;
     std::map<std::string, std::vector<EventHandler>, CiLess> m_events;
+
+    // Hash tables: ordered items so $hget(table, N) is stable.
+    struct HashTable {
+        std::vector<std::pair<std::string, std::string>> items;  // insertion order
+        std::map<std::string, std::size_t, CiLess> index;        // folded item -> position
+    };
+    std::map<std::string, HashTable, CiLess> m_hash;
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.

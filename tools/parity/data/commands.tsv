@@ -117,16 +117,16 @@ name	status	since	help_page	corpus_uses	test	notes
 /gtalk	not-possible		agents_scripting.html	0		Microsoft Agent
 /gunload	not-possible		agents_scripting.html	0		Microsoft Agent
 /guser	planned		remote_commands.html	0		
-/hadd	planned		hash_tables.html	14		
+/hadd	done		hash_tables.html	14	test_msl	
 /halt	done		aliases.html	0	test_msl	
 /haltdef	done		halting_text.html	0	test_msl	
-/hdec	planned		hash_tables.html	0		
-/hdel	planned		hash_tables.html	6		
+/hdec	done		hash_tables.html	0	test_msl	
+/hdel	done		hash_tables.html	6	test_msl	
 /help	planned		mirc_commands.html	5		
-/hfree	planned		hash_tables.html	8		
-/hinc	planned		hash_tables.html	0		
+/hfree	done		hash_tables.html	8	test_msl	
+/hinc	done		hash_tables.html	0	test_msl	
 /hload	planned		hash_tables.html	1		
-/hmake	planned		hash_tables.html	6		
+/hmake	done		hash_tables.html	6	test_msl	
 /hop	planned		mirc_commands.html	1		
 /hsave	planned		hash_tables.html	1		
 /ial	planned		internal_address_list.html	6		

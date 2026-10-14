@@ -85,6 +85,64 @@ void Interpreter::unsetVariable(const std::string& name, Scope& scope) {
     m_globals.erase(name);
 }
 
+// --- hash tables --------------------------------------------------------
+
+void Interpreter::hashMake(const std::string& table) { m_hash[table]; }
+void Interpreter::hashFree(const std::string& table) { m_hash.erase(table); }
+bool Interpreter::hashExists(const std::string& table) const { return m_hash.count(table) != 0; }
+
+void Interpreter::hashSet(const std::string& table, const std::string& item, const std::string& data) {
+    HashTable& t = m_hash[table];
+    const auto it = t.index.find(item);
+    if (it != t.index.end()) {
+        t.items[it->second].second = data;
+    } else {
+        t.index[item] = t.items.size();
+        t.items.emplace_back(item, data);
+    }
+}
+
+void Interpreter::hashDelete(const std::string& table, const std::string& item) {
+    const auto tit = m_hash.find(table);
+    if (tit == m_hash.end()) return;
+    HashTable& t = tit->second;
+    const auto it = t.index.find(item);
+    if (it == t.index.end()) return;
+    const std::size_t pos = it->second;
+    t.items.erase(t.items.begin() + static_cast<long>(pos));
+    t.index.clear();
+    for (std::size_t i = 0; i < t.items.size(); ++i) t.index[t.items[i].first] = i;
+}
+
+std::string Interpreter::hashGet(const std::string& table, const std::string& item) const {
+    const auto tit = m_hash.find(table);
+    if (tit == m_hash.end()) return {};
+    const auto it = tit->second.index.find(item);
+    return it == tit->second.index.end() ? std::string() : tit->second.items[it->second].second;
+}
+
+bool Interpreter::hashHas(const std::string& table, const std::string& item) const {
+    const auto tit = m_hash.find(table);
+    return tit != m_hash.end() && tit->second.index.count(item);
+}
+
+int Interpreter::hashCount(const std::string& table) const {
+    const auto tit = m_hash.find(table);
+    return tit == m_hash.end() ? 0 : static_cast<int>(tit->second.items.size());
+}
+
+std::string Interpreter::hashItemByIndex(const std::string& table, int n) const {
+    const auto tit = m_hash.find(table);
+    if (tit == m_hash.end() || n < 1 || n > static_cast<int>(tit->second.items.size())) return {};
+    return tit->second.items[n - 1].first;
+}
+
+std::string Interpreter::hashDataByIndex(const std::string& table, int n) const {
+    const auto tit = m_hash.find(table);
+    if (tit == m_hash.end() || n < 1 || n > static_cast<int>(tit->second.items.size())) return {};
+    return tit->second.items[n - 1].second;
+}
+
 // --- expression evaluation ----------------------------------------------
 
 std::string Interpreter::evalParam(std::string_view token, Scope& scope) const {
@@ -110,6 +168,17 @@ std::string Interpreter::callIdent(const std::string& name, const std::vector<st
                                    const std::string& prop, Scope& scope) {
     const auto it = m_idents.find(name);
     if (it == m_idents.end()) {
+        // Custom identifier: $name resolves to an alias of that name, with its
+        // args as $1.. and the property available as $prop (mIRC semantics).
+        const auto alias = m_aliases.find(name);
+        if (alias != m_aliases.end()) {
+            Scope aliasScope;
+            aliasScope.params = args;
+            aliasScope.prop = prop;
+            aliasScope.depth = scope.depth + 1;
+            if (aliasScope.depth < kMaxDepth) execute(alias->second, aliasScope);
+            return aliasScope.returnValue;
+        }
         // Unknown identifier: mIRC leaves it as typed.
         std::string out = "$" + name;
         if (!args.empty()) {
@@ -405,6 +474,7 @@ std::string parseParens(std::string_view s, std::size_t& pos) {
 // Extract a { ... } block at the first '{' at/after pos; advances pos past '}'.
 std::string parseBrace(std::string_view s, std::size_t& pos) {
     while (pos < s.size() && s[pos] != '{') ++pos;
+    if (pos >= s.size()) return {};  // no block present
     int depth = 0;
     const std::size_t begin = pos;
     for (; pos < s.size(); ++pos) {
@@ -418,7 +488,17 @@ std::string parseBrace(std::string_view s, std::size_t& pos) {
             }
         }
     }
-    return std::string(s.substr(begin + 1));
+    return begin + 1 <= s.size() ? std::string(s.substr(begin + 1)) : std::string();
+}
+
+// Body after a condition: a { block } or, when none follows, the rest of the
+// line (mIRC's braceless `if (x) command`). Advances pos past what it consumed.
+std::string parseBody(std::string_view s, std::size_t& pos) {
+    while (pos < s.size() && s[pos] == ' ') ++pos;
+    if (pos < s.size() && s[pos] == '{') return parseBrace(s, pos);
+    const std::size_t begin = std::min(pos, s.size());
+    pos = s.size();
+    return std::string(s.substr(begin));
 }
 
 std::string firstWord(const std::string& s) {
@@ -438,10 +518,10 @@ std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) co
             if (pos == std::string::npos) continue;
             Stmt::Branch br;
             br.cond = parseParens(piece, pos);
-            const std::string block = parseBrace(piece, pos);
-            br.body = parseBlock(block);
+            br.body = parseBlock(parseBody(piece, pos));
             st.branches.push_back(std::move(br));
-            // elseif / else chain (for if)
+            // elseif / else chain (for if). Only the braced form chains; a
+            // braceless body consumes the rest of the line.
             while (st.kind == Stmt::Kind::If) {
                 std::string rest = trimmed(piece.substr(std::min(pos, piece.size())));
                 std::string rw = toLowerAscii(firstWord(rest));
@@ -451,11 +531,13 @@ std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) co
                     pos = p2;
                     Stmt::Branch eb;
                     eb.cond = parseParens(piece, pos);
-                    eb.body = parseBlock(parseBrace(piece, pos));
+                    eb.body = parseBlock(parseBody(piece, pos));
                     st.branches.push_back(std::move(eb));
                 } else if (rw == "else") {
+                    const std::size_t ep = piece.find("else", pos);
+                    pos = (ep == std::string::npos) ? piece.size() : ep + 4;
                     Stmt::Branch eb;
-                    eb.body = parseBlock(parseBrace(piece, pos));
+                    eb.body = parseBlock(parseBody(piece, pos));
                     st.branches.push_back(std::move(eb));
                     break;
                 } else {
@@ -591,7 +673,13 @@ void Interpreter::clearScripts() {
     m_events.clear();
 }
 
-bool Interpreter::hasEvent(const std::string& event) const { return m_events.count(event) != 0; }
+bool Interpreter::hasEvent(const std::string& event) const { return m_events.count(toLowerAscii(event)) != 0; }
+
+std::size_t Interpreter::eventHandlerCount() const {
+    std::size_t n = 0;
+    for (const auto& [_, v] : m_events) n += v.size();
+    return n;
+}
 
 void Interpreter::loadScript(std::string_view text) {
     // A remote file is a sequence of definitions. Each is a header line

@@ -126,7 +126,7 @@ $finddir	planned		file_directory_identifiers.html	5
 $finddirn	planned		file_directory_identifiers.html	0		
 $findfile	planned		file_directory_identifiers.html	199		
 $findfilen	planned		file_directory_identifiers.html	0		
-$findtok	planned		token_identifiers.html	7		
+$findtok	done		token_identifiers.html	7	test_msl	
 $fline	planned		custom_windows.html	1		
 $flinen	planned		custom_windows.html	0		
 $floor	planned		text_number_identifiers.html	0		
@@ -150,7 +150,7 @@ $halted	planned		halting_text.html	0
 $hash	planned		other_identifiers.html	0		
 $height	planned		picture_windows.html	0		
 $hfind	planned		hash_tables.html	0		
-$hget	planned		hash_tables.html	51		
+$hget	done		hash_tables.html	51	test_msl	
 $highlight	planned		other_identifiers.html	0		
 $hmac	planned		other_identifiers.html	0		
 $hnick	planned		on_opodeop.html	40		
@@ -178,14 +178,14 @@ $input	planned		other_identifiers.html	18
 $inrect	planned		picture_windows.html	37		
 $inroundrect	planned		picture_windows.html	0		
 $insong	planned		playing_sounds.html	0		
-$instok	planned		token_identifiers.html	20		
+$instok	done		token_identifiers.html	20	test_msl	
 $int	done		text_number_identifiers.html	36	test_msl	
 $intersect	planned		text_number_identifiers.html	0		
 $inwave	planned		playing_sounds.html	0		
 $ip	planned		other_identifiers.html	8		
 $iptype	planned		sockets.html	0		
 $isadmin	planned		other_identifiers.html	0		
-$isalias	planned		other_identifiers.html	9		
+$isalias	done		other_identifiers.html	9	test_msl	
 $isbit	planned		text_number_identifiers.html	0		
 $isdde	planned		dde.html	0		
 $isdir	planned		file_directory_identifiers.html	6		
@@ -265,7 +265,7 @@ $nick	done		remote_identifiers.html	2968	test_msl
 $nickmode	planned		nick_address_identifiers.html	0		
 $nofile	planned		file_directory_identifiers.html	10		
 $nopath	planned		file_directory_identifiers.html	46		
-$noqt	planned		text_number_identifiers.html	0		
+$noqt	done		text_number_identifiers.html	0	test_msl	
 $not	planned		text_number_identifiers.html	0		
 $notags	planned		agents_scripting.html	0		
 $notify	planned		nick_address_identifiers.html	12		
@@ -296,10 +296,10 @@ $portfree	planned		sockets.html	1
 $pos	done		text_number_identifiers.html	68	test_msl	
 $powmod	planned		text_number_identifiers.html	0		
 $prefix	planned		other_identifiers.html	0		
-$prop	planned		aliases.html	4		
+$prop	done		aliases.html	4	test_msl	
 $protect	planned		control.html	0		
-$puttok	planned		token_identifiers.html	5		
-$qt	planned		text_number_identifiers.html	0		
+$puttok	done		token_identifiers.html	5	test_msl	
+$qt	done		text_number_identifiers.html	0	test_msl	
 $query	planned		window_identifiers.html	19		
 $rand	done		text_number_identifiers.html	118	test_msl	
 $rands	planned		text_number_identifiers.html	0		
@@ -316,7 +316,7 @@ $regsub	planned		regular_expressions.html	0
 $regsubex	planned		regular_expressions.html	0		
 $remote	planned		remote_identifiers.html	0		
 $remove	done		text_number_identifiers.html	83	test_msl	
-$remtok	planned		token_identifiers.html	49		
+$remtok	done		token_identifiers.html	49	test_msl	
 $replace	done		text_number_identifiers.html	321	test_msl	
 $replacex	planned		text_number_identifiers.html	0		
 $reptok	planned		token_identifiers.html	3		
