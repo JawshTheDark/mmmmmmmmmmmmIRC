@@ -7,11 +7,13 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QBrush>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
+#include <QEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -77,6 +79,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     m_mdi = new QMdiArea(this);
     setCentralWidget(m_mdi);
+    updateMdiBackground();
 
     auto* treeDock = new QDockWidget(tr("Networks"), this);
     treeDock->setObjectName(QStringLiteral("treebar"));
@@ -202,6 +205,21 @@ void MainWindow::setupToolbar() {
     add(Glyph::Logs, tr("Open logs folder"), &MainWindow::openLogsFolder);
     m_toolbar->addSeparator();
     add(Glyph::About, tr("About Lurker Desktop"), &MainWindow::showAbout);
+}
+
+void MainWindow::updateMdiBackground() {
+    if (!m_mdi) return;
+    // QMdiArea ignores stylesheet backgrounds, so tint it from the palette: a
+    // touch darker than the window gives the classic "workspace" recess.
+    m_mdi->setBackground(QBrush(palette().color(QPalette::Window).darker(130)));
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::ApplicationPaletteChange ||
+        event->type() == QEvent::StyleChange) {
+        updateMdiBackground();
+    }
 }
 
 void MainWindow::showOptions(const QString& page) {

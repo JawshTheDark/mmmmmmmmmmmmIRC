@@ -34,6 +34,11 @@ public:
 
     void showConnectDialog();
     void showOptions(const QString& page = QString());  // open Options, optionally at a page
+
+protected:
+    void changeEvent(QEvent* event) override;  // re-tint the MDI on theme/palette change
+
+public:
     void showJoinDialog();        // prompt for a channel and JOIN it
     void requestChannelList();    // /LIST on the active network
     void showAddressBook();       // favourite channels (add / remove / join)
@@ -90,7 +95,8 @@ private:
     bool bufferIsActive(const Buffer& buffer) const;
     void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
     void setupScripting();
-    void setupToolbar();  // the top mIRC-style icon toolbar
+    void setupToolbar();         // the top mIRC-style icon toolbar
+    void updateMdiBackground();  // tint the MDI workspace to the active theme
     Buffer* activeBuffer();
     void echoToWindow(int net, const QString& window, const QString& text);
     void dispatchScriptEvent(const lurker::IrcEvent& event);
