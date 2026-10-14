@@ -3,11 +3,45 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <QApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTimer>
 
-#include "backend/BouncerBackend.h"
-#include "gui/ConnectDialog.h"
+#include "backend/LurkerChatBackend.h"
 #include "gui/MainWindow.h"
+
+namespace {
+// Locate and load .secrets/dev-profile.json for a local Lurker WS connection.
+bool devLurkerSettings(lurker::backend::LurkerConnectSettings& out) {
+    QDir dir(QDir::currentPath());
+    QString path;
+    for (int i = 0; i < 6; ++i) {
+        const QString c = dir.filePath(QStringLiteral(".secrets/dev-profile.json"));
+        if (QFile::exists(c)) {
+            path = c;
+            break;
+        }
+        if (!dir.cdUp()) break;
+    }
+    if (path.isEmpty()) return false;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return false;
+    const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+    const QDir base = QFileInfo(path).dir();
+    out.host = o.value(QStringLiteral("host")).toString();
+    out.tls = o.value(QStringLiteral("tls")).toBool(true);
+    const QJsonObject ws = o.value(QStringLiteral("ws")).toObject();
+    const QString tokenFile = ws.value(QStringLiteral("wsTokenFile")).toString();
+    if (!tokenFile.isEmpty()) {
+        QFile tf(base.filePath(QFileInfo(tokenFile).fileName()));
+        if (tf.open(QIODevice::ReadOnly)) out.token = QString::fromUtf8(tf.readAll()).trimmed();
+    }
+    return !out.host.isEmpty() && !out.token.isEmpty();
+}
+}  // namespace
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
@@ -18,18 +52,19 @@ int main(int argc, char* argv[]) {
     lurker::gui::MainWindow window;
     window.show();
 
-    // --connect-dev: connect immediately from .secrets/dev-profile.json (local
-    // dev only). Lets a headless run produce a live screenshot.
+    // --connect-dev: connect to Lurker over WS from .secrets/dev-profile.json.
     if (args.contains(QStringLiteral("--connect-dev"))) {
-        lurker::backend::ConnectSettings settings;
-        if (lurker::gui::devProfileSettings(settings)) window.connectWith(settings);
+        lurker::backend::LurkerConnectSettings s;
+        if (devLurkerSettings(s)) {
+            auto* backend = new lurker::backend::LurkerChatBackend;
+            window.useBackend(backend);
+            backend->connectToLurker(s);
+        }
     }
 
-    // --smoke-test: quit after one event-loop pass.
     if (args.contains(QStringLiteral("--smoke-test"))) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
     }
-    // --screenshot=<file>[,<delayMs>]: save a PNG of the window, then quit.
     for (const QString& arg : args) {
         if (arg.startsWith(QStringLiteral("--screenshot="))) {
             const QString spec = arg.section(QLatin1Char('='), 1);

@@ -43,6 +43,7 @@ enum class IrcEventType {
 
 struct IrcEvent {
     IrcEventType type = IrcEventType::Unknown;
+    int networkId = -1;  // which network (Lurker gives several at once); -1 = single/unknown
     std::string nick;    // source nick (or server name)
     std::string user;    // source ident
     std::string host;    // source host

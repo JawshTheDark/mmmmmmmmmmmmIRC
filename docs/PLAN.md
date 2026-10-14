@@ -94,16 +94,24 @@ input history on Up/Down, 5000-line scrollback cap, clickable URL hotlinks — c
 `core/Completion` with tests). Remaining 1.3 nicety: full mIRC key-binding set (Ctrl+K colour
 dialog, Alt+N window switch, etc.) — deferred to Phase 3.4.
 
-**1.4 backend done, GUI integration pending.** Auth resolved: the Lurker WS/REST protocol needs a
-*minted session token* (`POST /api/auth/login/token`, web password) — the API token is bouncer +
-`/mcp` only (401 on `/ws`/`/api/*`). `backend/LurkerClient` does config, token mint, networks, the
-WS connect, the snapshot/backlog/history/irc/read-state/send-result frame dispatch, the resume
-cursor (system-buffer ids excluded), and send/history/mark-read verbs. Verified live via
-`lurker-ws-probe`: one snapshot delivered **all 4 networks / 34 channels** at once (cursor
-4,369,048, 200 MB upload cap). What remains for 1.4/1.5: feed `LurkerClient` into the GUI as a
-second backend behind a shared interface, with the treebar grouped by network (the WS gives every
-network at once, unlike the bouncer's one-per-connection). OAuth PKCE (no-password path) is still
-worth adding later for distribution. 1.5–1.7 otherwise not started.
+**1.4 done, integrated into the GUI.** Auth: the Lurker WS/REST protocol needs a *minted session
+token* (`POST /api/auth/login/token`, web password `REDACTED`) — the API token is bouncer + `/mcp`
+only. `backend/LurkerClient` does config, token mint, networks, the WS connect, the
+snapshot/backlog/history/irc/read-state/send-result frame dispatch, the resume cursor (system-buffer
+ids excluded), and send/history/mark-read verbs (`lurker-ws-probe` verifies it: all 4 networks / 34
+channels in one snapshot).
+
+**Both backends now render through one GUI** via `backend/ChatBackend` (abstract) +
+`LurkerChatBackend` and `BouncerChatBackend` adapters. MainWindow is **multi-network**: buffers
+keyed by (networkId, folded target), a treebar that groups channels under their network (named from
+REST), live nicklists and member counts, new windows opening minimized so dozens of channels don't
+bury the workspace. Verified live: the Lurker path shows Libera.Chat / MansionNET / Rizon / irc.so
+with every channel at once. ConnectDialog offers both backends.
+
+**Partial 1.5 (connection manager):** remaining — saved networks + keychain storage (Secret Service),
+reconnect/resume for the WS path, OAuth PKCE (no-password distribution path). 1.6 (options bound to
+mirc.ini) and 1.7 (import an mIRC folder) not started. Also deferred from 1.3: full mIRC key
+bindings; and scroll-up history fetch (WS `history before` / bouncer `CHATHISTORY`).
 
 | WP | Scope | Deliverables | Exit criteria |
 |---|---|---|---|

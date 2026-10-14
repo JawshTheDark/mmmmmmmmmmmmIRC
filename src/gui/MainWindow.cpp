@@ -17,7 +17,6 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-#include "backend/BouncerBackend.h"
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
 
@@ -25,14 +24,27 @@ namespace lurker::gui {
 
 using lurker::IrcEvent;
 using lurker::IrcEventType;
-using lurker::backend::BouncerBackend;
+using lurker::backend::ChatBackend;
+using lurker::backend::DisplayMember;
+using lurker::backend::NetworkInfo;
+
+namespace {
+ChatView::Kind kindFromInt(int k) {
+    switch (static_cast<lurker::backend::BufferKind>(k)) {
+        case lurker::backend::BufferKind::Channel: return ChatView::Kind::Channel;
+        case lurker::backend::BufferKind::Dm: return ChatView::Kind::Query;
+        case lurker::backend::BufferKind::Server: return ChatView::Kind::Status;
+    }
+    return ChatView::Kind::Channel;
+}
+bool looksLikeChannel(const QString& t) { return !t.isEmpty() && QStringLiteral("#&+!").contains(t.front()); }
+}  // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("Lurker Desktop"));
-    resize(1120, 740);
+    resize(1180, 760);
 
     m_mdi = new QMdiArea(this);
-    m_mdi->setViewMode(QMdiArea::SubWindowView);
     setCentralWidget(m_mdi);
 
     auto* treeDock = new QDockWidget(tr("Networks"), this);
@@ -44,6 +56,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(m_treebar, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem* item, int) {
         for (auto& b : m_buffers) {
             if (b.treeItem == item && b.sub) {
+                if (b.sub->isMinimized()) b.sub->showNormal();
                 m_mdi->setActiveSubWindow(b.sub);
                 b.view->focusInput();
             }
@@ -55,22 +68,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     addToolBar(Qt::BottomToolBarArea, m_switchbar);
     m_switchGroup = new QActionGroup(this);
 
-    m_backend = new BouncerBackend(this);
-    connect(m_backend, &BouncerBackend::eventReceived, this, &MainWindow::onEvent);
-    connect(m_backend, &BouncerBackend::statusText, this, &MainWindow::onStatusText);
-    connect(m_backend, &BouncerBackend::connectedAndRegistered, this, [this] {
-        statusBar()->showMessage(tr("Connected"));
-        m_disconnectAction->setEnabled(true);
-    });
-    connect(m_backend, &BouncerBackend::disconnected, this, [this] {
-        statusBar()->showMessage(tr("Disconnected"));
-        m_disconnectAction->setEnabled(false);
-    });
-
     auto* file = menuBar()->addMenu(tr("&File"));
     m_connectAction = file->addAction(tr("&Connect..."), QKeySequence(QStringLiteral("Ctrl+N")), this,
                                       &MainWindow::showConnectDialog);
-    m_disconnectAction = file->addAction(tr("&Disconnect"), this, [this] { m_backend->disconnectFromHost(); });
+    m_disconnectAction = file->addAction(tr("&Disconnect"), this, [this] {
+        if (m_backend) m_backend->disconnectAll();
+    });
     m_disconnectAction->setEnabled(false);
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
@@ -87,22 +90,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         }
     });
 
-    // The status buffer always exists.
-    ensureBuffer(ChatView::Kind::Status, tr("Status"), statusKey());
+    ensureBuffer(-1, ChatView::Kind::Status, tr("Status"), statusKey());
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
 }
 
 MainWindow::~MainWindow() {
-    // Stop reacting to child teardown: Qt will delete the MDI subwindows (and the
-    // backend) during base destruction, and their destroyed/disconnected signals
-    // would otherwise re-enter the buffer map and the status bar after this point.
     m_closing = true;
     if (m_backend) m_backend->disconnect(this);
 }
 
-QString MainWindow::bufferKeyFor(const QString& target) const {
-    if (m_backend) return m_backend->casefold(target);
-    return target.toLower();
+QString MainWindow::keyFor(int net, const QString& target) const {
+    return QString::number(net) + QLatin1Char('\x1f') + target.toLower();
 }
 
 MainWindow::Buffer* MainWindow::findBuffer(const QString& key) {
@@ -110,11 +108,21 @@ MainWindow::Buffer* MainWindow::findBuffer(const QString& key) {
     return it == m_buffers.end() ? nullptr : &it.value();
 }
 
-MainWindow::Buffer& MainWindow::ensureBuffer(ChatView::Kind kind, const QString& display, const QString& key) {
+QTreeWidgetItem* MainWindow::networkNode(int net) {
+    if (net < 0) return nullptr;
+    if (auto* node = m_networkNodes.value(net)) return node;
+    auto* node = new QTreeWidgetItem(m_treebar, {m_networkNames.value(net, tr("Network %1").arg(net))});
+    node->setExpanded(true);
+    m_networkNodes.insert(net, node);
+    return node;
+}
+
+MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const QString& display, const QString& key) {
     if (Buffer* existing = findBuffer(key)) return *existing;
 
     Buffer b;
     b.kind = kind;
+    b.networkId = net;
     b.display = display;
     b.key = key;
     b.view = new ChatView(kind);
@@ -122,31 +130,41 @@ MainWindow::Buffer& MainWindow::ensureBuffer(ChatView::Kind kind, const QString&
     b.sub = m_mdi->addSubWindow(b.view);
     b.sub->setWindowTitle(display);
     b.sub->setAttribute(Qt::WA_DeleteOnClose);
-    b.sub->resize(720, 460);
-    b.sub->show();
+    b.sub->resize(760, 480);
+    // The first window (status) opens normally; later buffers open minimized so
+    // dozens of channels don't bury the workspace — the treebar/switchbar drive
+    // navigation and restore a window when its buffer is selected.
+    if (m_buffers.isEmpty()) b.sub->show();
+    else b.sub->showMinimized();
 
-    b.treeItem = new QTreeWidgetItem(m_treebar, {display});
+    // Tree placement: a network's server buffer IS its top-level node; channels
+    // and queries hang under that node; the global status sits at the top.
+    if (net >= 0 && kind == ChatView::Kind::Status) {
+        b.treeItem = networkNode(net);  // the network node doubles as the server row
+    } else if (net >= 0) {
+        QTreeWidgetItem* parent = networkNode(net);
+        b.treeItem = new QTreeWidgetItem(parent, {display});
+        parent->setExpanded(true);
+    } else {
+        b.treeItem = new QTreeWidgetItem(m_treebar, {display});
+    }
+
     b.switchAction = m_switchbar->addAction(display);
     b.switchAction->setCheckable(true);
     m_switchGroup->addAction(b.switchAction);
 
     if (kind == ChatView::Kind::Channel) {
-        const QString disp = display;
-        b.view->setNickProvider([this, disp]() -> QStringList {
-            QStringList out;
-            if (m_backend && m_backend->session()) {
-                if (const lurker::ChannelState* chan = m_backend->session()->channel(disp.toStdString())) {
-                    for (const auto& [_, member] : chan->members) out << QString::fromStdString(member.nick);
-                    out.sort(Qt::CaseInsensitive);
-                }
-            }
-            return out;
+        const QString key_ = key;
+        b.view->setNickProvider([this, key_]() -> QStringList {
+            Buffer* buf = findBuffer(key_);
+            return buf ? buf->memberNicks : QStringList();
         });
     }
 
     const QString key_ = key;
     connect(b.switchAction, &QAction::triggered, this, [this, key_] {
         if (Buffer* buf = findBuffer(key_)) {
+            if (buf->sub->isMinimized()) buf->sub->showNormal();
             m_mdi->setActiveSubWindow(buf->sub);
             buf->view->focusInput();
         }
@@ -154,23 +172,46 @@ MainWindow::Buffer& MainWindow::ensureBuffer(ChatView::Kind kind, const QString&
     connect(b.view, &ChatView::lineEntered, this, [this, key_](const QString& text) {
         if (Buffer* buf = findBuffer(key_)) onInput(buf, text);
     });
-    connect(b.view, &ChatView::nickActivated, this, [this](const QString& nick) {
-        if (m_backend && m_backend->isRegistered()) {
-            Buffer& q = ensureBuffer(ChatView::Kind::Query, nick, bufferKeyFor(nick));
-            m_mdi->setActiveSubWindow(q.sub);
-            q.view->focusInput();
-        }
+    connect(b.view, &ChatView::nickActivated, this, [this, net](const QString& nick) {
+        Buffer& q = ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick));
+        m_mdi->setActiveSubWindow(q.sub);
+        q.view->focusInput();
     });
     connect(b.sub, &QObject::destroyed, this, [this, key_](QObject*) {
         if (m_closing) return;
         if (Buffer* buf = findBuffer(key_)) {
             if (buf->switchAction) buf->switchAction->deleteLater();
+            // If this buffer's row is a network node, forget it so a later
+            // buffer on that network rebuilds the node instead of dangling.
+            const int nodeNet = m_networkNodes.key(buf->treeItem, -2);
+            if (nodeNet != -2) m_networkNodes.remove(nodeNet);
             delete buf->treeItem;
             m_buffers.remove(key_);
         }
     });
 
     return m_buffers.insert(key, b).value();
+}
+
+void MainWindow::useBackend(ChatBackend* backend) {
+    if (m_backend) {
+        m_backend->disconnect(this);
+        m_backend->deleteLater();
+    }
+    m_backend = backend;
+    backend->setParent(this);
+    connect(backend, &ChatBackend::statusText, this, &MainWindow::onStatusText);
+    connect(backend, &ChatBackend::networkUpdated, this, &MainWindow::onNetworkUpdated);
+    connect(backend, &ChatBackend::bufferOpened, this, &MainWindow::onBufferOpened);
+    connect(backend, &ChatBackend::event, this, &MainWindow::onEvent);
+    connect(backend, &ChatBackend::membersReplaced, this, &MainWindow::onMembersReplaced);
+    connect(backend, &ChatBackend::topicChanged, this, &MainWindow::onTopicChanged);
+    connect(backend, &ChatBackend::readyChanged, this, [this] {
+        const bool ready = m_backend && m_backend->isReady();
+        m_disconnectAction->setEnabled(ready);
+        statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
+    });
+    connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
 }
 
 void MainWindow::closeBuffer(Buffer* buffer) {
@@ -192,164 +233,121 @@ void MainWindow::onStatusText(const QString& text) {
     statusBar()->showMessage(text, 6000);
 }
 
-void MainWindow::refreshNicklist(const QString& channelDisplay) {
-    Buffer* buf = findBuffer(bufferKeyFor(channelDisplay));
-    if (!buf || buf->kind != ChatView::Kind::Channel || !m_backend || !m_backend->session()) return;
-    const lurker::ChannelState* chan = m_backend->session()->channel(channelDisplay.toStdString());
-    if (!chan) return;
-    const lurker::Isupport& isupport = m_backend->session()->isupport();
+void MainWindow::onNetworkUpdated(const NetworkInfo& info) {
+    m_networkNames.insert(info.id, info.name.isEmpty() ? tr("Network %1").arg(info.id) : info.name);
+    if (auto* node = m_networkNodes.value(info.id)) node->setText(0, m_networkNames.value(info.id));
+    else networkNode(info.id)->setText(0, m_networkNames.value(info.id));
+    // A per-network server buffer collects that network's server text.
+    Buffer& server = ensureBuffer(info.id, ChatView::Kind::Status, m_networkNames.value(info.id), serverKeyFor(info.id));
+    server.view->addSystemLine(tr("%1: %2 as %3").arg(m_networkNames.value(info.id), info.state, info.nick).toUtf8());
+}
 
-    std::vector<const lurker::ChannelMember*> members;
-    members.reserve(chan->members.size());
-    for (const auto& [_, m] : chan->members) members.push_back(&m);
-    std::sort(members.begin(), members.end(), [&](const lurker::ChannelMember* a, const lurker::ChannelMember* b) {
-        const int ra = a->prefixModes.empty() ? INT_MAX : isupport.rankOfMode(a->prefixModes.front());
-        const int rb = b->prefixModes.empty() ? INT_MAX : isupport.rankOfMode(b->prefixModes.front());
-        if (ra != rb) return ra < rb;
-        return m_backend->casefold(QString::fromStdString(a->nick)) <
-               m_backend->casefold(QString::fromStdString(b->nick));
-    });
+void MainWindow::onBufferOpened(int net, const QString& target, int kind) {
+    ensureBuffer(net, kindFromInt(kind), target, keyFor(net, target));
+}
 
-    QStringList sigils, nicks;
-    for (const lurker::ChannelMember* m : members) {
-        const char sigil = m->prefixModes.empty() ? 0 : isupport.sigilForMode(m->prefixModes.front());
-        sigils << (sigil ? QString(QChar(sigil)) : QString());
-        nicks << QString::fromStdString(m->nick);
+MainWindow::Buffer* MainWindow::routeTarget(int net, const QString& target, ChatView::Kind fallback) {
+    if (target.isEmpty()) {
+        Buffer* s = findBuffer(serverKeyFor(net));
+        return s ? s : findBuffer(statusKey());
     }
-    buf->view->setMembers(sigils, nicks);
-    buf->sub->setWindowTitle(QStringLiteral("%1 (%2)").arg(buf->display).arg(nicks.size()));
+    const QString key = keyFor(net, target);
+    if (Buffer* b = findBuffer(key)) return b;
+    const ChatView::Kind kind = looksLikeChannel(target) ? ChatView::Kind::Channel : fallback;
+    return &ensureBuffer(net, kind, target, key);
 }
 
 void MainWindow::onEvent(const IrcEvent& event) {
+    const int net = event.networkId;
     const QString ts = timestampFor(event.time);
     const QString nick = QString::fromStdString(event.nick);
     const QByteArray text = QByteArray::fromStdString(event.text);
     const QString target = QString::fromStdString(event.target);
 
-    auto statusBuf = [this] { return findBuffer(statusKey()); };
-    auto channelBuf = [this](const QString& name) -> Buffer& {
-        return ensureBuffer(ChatView::Kind::Channel, name, bufferKeyFor(name));
-    };
-
     switch (event.type) {
         case IrcEventType::Message:
         case IrcEventType::Action: {
-            const bool action = event.type == IrcEventType::Action;
-            Buffer* buf = nullptr;
-            if (target.isEmpty()) {
-                buf = statusBuf();
-            } else if (m_backend->session() && m_backend->session()->isupport().chanTypes.find(
-                                                   event.target.empty() ? '#' : event.target.front()) !=
-                                                   std::string::npos &&
-                       !target.isEmpty() &&
-                       QStringLiteral("#&+!").contains(target.front())) {
-                buf = &channelBuf(target);
-            } else {
-                // a query: create on demand (incoming DM) keyed by the peer
-                buf = &ensureBuffer(ChatView::Kind::Query, target, bufferKeyFor(target));
-            }
-            buf->view->addMessage(ts, nick, text, action, event.self, event.raw.tag("+draft/channel-context").has_value());
+            Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
+            if (buf) buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self);
             break;
         }
         case IrcEventType::Notice: {
-            Buffer* buf = target.isEmpty() ? statusBuf() : findBuffer(bufferKeyFor(target));
-            if (!buf) buf = statusBuf();
-            buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
+            Buffer* buf = routeTarget(net, target, ChatView::Kind::Query);
+            if (buf) buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
             break;
         }
         case IrcEventType::Join: {
-            Buffer& buf = channelBuf(target);
-            if (event.self) buf.view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8());
-            else buf.view->addSystemLine(tr("%1 (%2@%3) joined")
-                                             .arg(nick, QString::fromStdString(event.user),
-                                                  QString::fromStdString(event.host)).toUtf8());
-            refreshNicklist(target);
-            break;
-        }
-        case IrcEventType::Part: {
-            if (Buffer* b = findBuffer(bufferKeyFor(target))) {
-                b->view->addSystemLine(tr("%1 left%2").arg(nick, text.isEmpty() ? QString()
-                                            : QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
-            }
-            refreshNicklist(target);
-            break;
-        }
-        case IrcEventType::Quit: {
-            if (Buffer* b = findBuffer(bufferKeyFor(target))) {
-                b->view->addSystemLine(tr("%1 quit%2").arg(nick, text.isEmpty() ? QString()
-                                            : QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
-            }
-            refreshNicklist(target);
-            break;
-        }
-        case IrcEventType::NickChange: {
-            if (!target.isEmpty()) {
-                if (Buffer* b = findBuffer(bufferKeyFor(target))) {
-                    b->view->addSystemLine(tr("%1 is now known as %2")
-                                               .arg(nick, QString::fromStdString(event.arg)).toUtf8());
-                }
-                refreshNicklist(target);
+            Buffer* buf = routeTarget(net, target, ChatView::Kind::Channel);
+            if (buf) {
+                if (event.self) buf->view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8());
+                else buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8());
             }
             break;
         }
-        case IrcEventType::Kick: {
-            if (Buffer* b = findBuffer(bufferKeyFor(target))) {
-                b->view->addSystemLine(tr("%1 was kicked by %2%3")
-                                           .arg(QString::fromStdString(event.arg), nick,
-                                                text.isEmpty() ? QString()
-                                                               : QStringLiteral(" (%1)").arg(QString::fromUtf8(text)))
-                                           .toUtf8());
-            }
-            refreshNicklist(target);
+        case IrcEventType::Part:
+            if (Buffer* b = findBuffer(keyFor(net, target)))
+                b->view->addSystemLine(tr("%1 left%2").arg(nick, text.isEmpty() ? QString() :
+                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
             break;
-        }
-        case IrcEventType::Mode: {
-            Buffer* b = target.isEmpty() ? statusBuf() : findBuffer(bufferKeyFor(target));
-            if (b) b->view->addSystemLine(tr("%1 set mode %2").arg(nick, QString::fromUtf8(text)).toUtf8());
-            if (!target.isEmpty()) refreshNicklist(target);
+        case IrcEventType::Quit:
+            if (Buffer* b = findBuffer(keyFor(net, target)))
+                b->view->addSystemLine(tr("%1 quit%2").arg(nick, text.isEmpty() ? QString() :
+                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
             break;
-        }
-        case IrcEventType::Topic: {
-            Buffer& b = channelBuf(target);
-            b.view->setTopic(text);
-            b.view->addSystemLine(tr("%1 changed the topic").arg(nick).toUtf8());
+        case IrcEventType::NickChange:
+            if (!target.isEmpty())
+                if (Buffer* b = findBuffer(keyFor(net, target)))
+                    b->view->addSystemLine(tr("%1 is now known as %2").arg(nick, QString::fromStdString(event.arg)).toUtf8());
             break;
-        }
-        case IrcEventType::TopicState: {
-            if (Buffer* b = findBuffer(bufferKeyFor(target))) b->view->setTopic(text);
+        case IrcEventType::Kick:
+            if (Buffer* b = findBuffer(keyFor(net, target)))
+                b->view->addSystemLine(tr("%1 was kicked by %2").arg(QString::fromStdString(event.arg), nick).toUtf8());
             break;
-        }
-        case IrcEventType::NamesUpdated:
-        case IrcEventType::MemberUpdated:
-            refreshNicklist(target);
+        case IrcEventType::Mode:
+            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
+                b->view->addSystemLine(tr("%1 set mode %2").arg(nick, QString::fromUtf8(text)).toUtf8());
+            break;
+        case IrcEventType::Topic:
+            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
+                b->view->addSystemLine(tr("%1 changed the topic").arg(nick).toUtf8());
             break;
         case IrcEventType::Invite:
-            if (Buffer* s = statusBuf())
+            if (Buffer* s = findBuffer(serverKeyFor(net)))
                 s->view->addSystemLine(tr("%1 invites you to %2").arg(nick, QString::fromStdString(event.arg)).toUtf8());
-            break;
-        case IrcEventType::Registered:
-            if (Buffer* s = statusBuf()) s->view->addSystemLine(tr("Registered as %1").arg(nick).toUtf8());
-            break;
-        case IrcEventType::CtcpRequest:
-        case IrcEventType::CtcpReply:
-            if (Buffer* s = statusBuf())
-                s->view->addSystemLine(tr("CTCP %1 %2 %3")
-                                           .arg(event.type == IrcEventType::CtcpReply ? tr("reply") : tr("request"),
-                                                QString::fromStdString(event.arg), QString::fromUtf8(text))
-                                           .toUtf8());
             break;
         case IrcEventType::MotdLine:
         case IrcEventType::ServerText:
         case IrcEventType::AwaySelf:
-            if (Buffer* s = statusBuf()) s->view->addMessage(ts, QString(), text);
+            if (Buffer* s = findBuffer(serverKeyFor(net))) s->view->addMessage(ts, QString(), text);
+            else onStatusText(QString::fromUtf8(text));
             break;
         case IrcEventType::ErrorText:
-        case IrcEventType::SaslFail:
-            if (Buffer* s = statusBuf()) s->view->addSystemLine(QByteArray("⚠ ") + text);
+            if (Buffer* s = findBuffer(serverKeyFor(net))) s->view->addSystemLine(QByteArray("⚠ ") + text);
+            else onStatusText(QStringLiteral("⚠ ") + QString::fromUtf8(text));
+            break;
+        case IrcEventType::Registered:
+            if (Buffer* s = findBuffer(serverKeyFor(net))) s->view->addSystemLine(tr("Registered as %1").arg(nick).toUtf8());
             break;
         default:
             break;
     }
+}
+
+void MainWindow::onMembersReplaced(int net, const QString& target, const QList<DisplayMember>& members) {
+    Buffer* buf = findBuffer(keyFor(net, target));
+    if (!buf || buf->kind != ChatView::Kind::Channel) return;
+    QStringList sigils, nicks;
+    for (const DisplayMember& m : members) {
+        sigils << m.sigil;
+        nicks << m.nick;
+    }
+    buf->memberNicks = nicks;
+    buf->view->setMembers(sigils, nicks);
+    buf->sub->setWindowTitle(QStringLiteral("%1 (%2)").arg(buf->display).arg(nicks.size()));
+}
+
+void MainWindow::onTopicChanged(int net, const QString& target, const QByteArray& topic) {
+    if (Buffer* b = findBuffer(keyFor(net, target))) b->view->setTopic(topic);
 }
 
 void MainWindow::onInput(Buffer* buffer, const QString& text) {
@@ -359,51 +357,42 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
                : buffer->kind == ChatView::Kind::Query  ? lurker::BufferKind::Dm
                                                         : lurker::BufferKind::Server;
     ctx.target = buffer->display.toStdString();
-    if (m_backend && m_backend->session()) {
-        const auto& ct = m_backend->session()->isupport().chanTypes;
-        if (!ct.empty()) ctx.chanTypes = ct;
-    }
 
     const lurker::ParseResult result = lurker::parseInput(text.toStdString(), ctx);
     if (!result.ok()) {
         buffer->view->addSystemLine(QByteArray("⚠ ") + QByteArray::fromStdString(result.error));
         return;
     }
-    if (!m_backend || !m_backend->session() || !m_backend->isRegistered()) {
+    if (!m_backend || !m_backend->isReady()) {
         buffer->view->addSystemLine(tr("Not connected.").toUtf8());
         return;
     }
-    lurker::IrcSession* s = m_backend->session();
+    const int net = buffer->networkId;
     for (const lurker::Action& a : result.actions) {
         using lurker::ActionKind;
+        const QString target = QString::fromStdString(a.target);
         switch (a.kind) {
-            case ActionKind::Send: s->sendMessage(a.target, a.text); break;
-            case ActionKind::Action: s->sendAction(a.target, a.text); break;
-            case ActionKind::Notice: s->sendNotice(a.target, a.text); break;
-            case ActionKind::Raw: s->sendRaw(a.line); break;
-            case ActionKind::Join: s->join(a.channel, a.key); break;
-            case ActionKind::Part: s->part(a.channel, a.reason); break;
-            case ActionKind::SetTopic: s->setTopic(a.channel, a.text); break;
-            case ActionKind::Away: s->setAway(a.text); break;
-            case ActionKind::Back: s->clearAway(); break;
-            case ActionKind::Ctcp: s->sendCtcpRequest(a.target, a.ctcpType, a.text); break;
-            case ActionKind::ListChannels: s->sendRaw("LIST"); break;
+            case ActionKind::Send: m_backend->sendMessage(net, target, QString::fromStdString(a.text)); break;
+            case ActionKind::Action: m_backend->sendAction(net, target, QString::fromStdString(a.text)); break;
+            case ActionKind::Notice: m_backend->sendNotice(net, target, QString::fromStdString(a.text)); break;
+            case ActionKind::Raw: m_backend->sendRaw(net, QString::fromStdString(a.line)); break;
+            case ActionKind::Join: m_backend->joinChannel(net, QString::fromStdString(a.channel), QString::fromStdString(a.key)); break;
+            case ActionKind::Part: m_backend->partChannel(net, QString::fromStdString(a.channel), QString::fromStdString(a.reason)); break;
+            case ActionKind::SetTopic: m_backend->setTopic(net, QString::fromStdString(a.channel), QString::fromStdString(a.text)); break;
+            case ActionKind::Away: m_backend->setAway(net, QString::fromStdString(a.text)); break;
+            case ActionKind::Back: m_backend->clearAway(net); break;
+            case ActionKind::Ctcp: m_backend->sendCtcp(net, target, QString::fromStdString(a.ctcpType), QString::fromStdString(a.text)); break;
+            case ActionKind::ListChannels: m_backend->sendRaw(net, QStringLiteral("LIST")); break;
             case ActionKind::OpenBuffer: {
-                Buffer& q = ensureBuffer(ChatView::Kind::Query, QString::fromStdString(a.target),
-                                         bufferKeyFor(QString::fromStdString(a.target)));
+                Buffer& q = ensureBuffer(net, ChatView::Kind::Query, target, keyFor(net, target));
+                m_backend->requestHistory(net, target);
                 m_mdi->setActiveSubWindow(q.sub);
                 q.view->focusInput();
                 break;
             }
             case ActionKind::CloseBuffer: closeBuffer(buffer); break;
-            case ActionKind::LocalClear: /* handled below */ break;
-            case ActionKind::LocalHelp:
-                buffer->view->addSystemLine(QByteArray::fromStdString(lurker::helpText()));
-                break;
-        }
-        if (a.kind == ActionKind::LocalClear) {
-            // Rebuild the view fresh is overkill; a cleared marker suffices for now.
-            buffer->view->addSystemLine(tr("(cleared)").toUtf8());
+            case ActionKind::LocalClear: buffer->view->addSystemLine(tr("(cleared)").toUtf8()); break;
+            case ActionKind::LocalHelp: buffer->view->addSystemLine(QByteArray::fromStdString(lurker::helpText())); break;
         }
     }
 }
@@ -411,11 +400,7 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
 void MainWindow::showConnectDialog() {
     ConnectDialog dialog(this);
     if (dialog.exec() != QDialog::Accepted) return;
-    connectWith(dialog.settings());
-}
-
-void MainWindow::connectWith(const lurker::backend::ConnectSettings& settings) {
-    m_backend->connectToHost(settings);
+    useBackend(dialog.createBackend(this));
     if (Buffer* s = findBuffer(statusKey())) {
         m_mdi->setActiveSubWindow(s->sub);
         s->view->focusInput();

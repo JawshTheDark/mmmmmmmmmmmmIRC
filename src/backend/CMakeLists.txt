@@ -5,6 +5,11 @@ qt_add_library(lurker_backend STATIC
     BouncerBackend.h
     LurkerClient.cpp
     LurkerClient.h
+    ChatBackend.h
+    LurkerChatBackend.cpp
+    LurkerChatBackend.h
+    BouncerChatBackend.cpp
+    BouncerChatBackend.h
 )
 target_include_directories(lurker_backend PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(lurker_backend PUBLIC lurker_core Qt6::Network Qt6::WebSockets)

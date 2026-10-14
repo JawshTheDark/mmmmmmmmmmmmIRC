@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QMainWindow>
 
+#include "backend/ChatBackend.h"
 #include "core/IrcEvent.h"
 #include "gui/ChatView.h"
 
@@ -17,16 +18,11 @@ class QToolBar;
 class QTreeWidget;
 class QTreeWidgetItem;
 
-namespace lurker::backend {
-class BouncerBackend;
-struct ConnectSettings;
-}
-
 namespace lurker::gui {
 
-// The application frame: an MDI workspace of ChatViews (status, channels,
-// queries), a treebar and switchbar listing them, menus, and one bouncer
-// connection driving it all.
+// The application frame. Holds one ChatBackend (bouncer or Lurker), a tree of
+// networks → buffers, an MDI workspace of ChatViews, and a switchbar. Buffers
+// are keyed by (networkId, folded target) so several networks coexist.
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
@@ -34,7 +30,8 @@ public:
     ~MainWindow() override;
 
     void showConnectDialog();
-    void connectWith(const lurker::backend::ConnectSettings& settings);
+    // Adopts a backend (ownership transferred), wires it, and starts rendering.
+    void useBackend(lurker::backend::ChatBackend* backend);
 
 private:
     struct Buffer {
@@ -43,21 +40,30 @@ private:
         QAction* switchAction = nullptr;
         QTreeWidgetItem* treeItem = nullptr;
         ChatView::Kind kind = ChatView::Kind::Channel;
-        QString display;  // channel/nick as shown
-        QString key;      // casefolded identity ("" => status)
+        int networkId = -1;
+        QString display;        // channel/nick as shown
+        QString key;            // "net\x1ffoldedtarget"
+        QStringList memberNicks; // current nicklist (no sigils), for tab-completion
     };
 
-    Buffer& ensureBuffer(ChatView::Kind kind, const QString& display, const QString& key);
-    Buffer* findBuffer(const QString& key);
-    QString statusKey() const { return QStringLiteral(":status:"); }
-    QString bufferKeyFor(const QString& target) const;  // casefolded via the session
+    QString keyFor(int net, const QString& target) const;
+    QString statusKey() const { return QStringLiteral("-1\x1f:status:"); }
+    QString serverKeyFor(int net) const { return keyFor(net, QStringLiteral(":server:")); }
 
-    void onEvent(const lurker::IrcEvent& event);
+    Buffer& ensureBuffer(int net, ChatView::Kind kind, const QString& display, const QString& key);
+    Buffer* findBuffer(const QString& key);
+    QTreeWidgetItem* networkNode(int net);
+
     void onStatusText(const QString& text);
+    void onNetworkUpdated(const lurker::backend::NetworkInfo& info);
+    void onBufferOpened(int net, const QString& target, int kind);
+    void onEvent(const lurker::IrcEvent& event);
+    void onMembersReplaced(int net, const QString& target, const QList<lurker::backend::DisplayMember>& members);
+    void onTopicChanged(int net, const QString& target, const QByteArray& topic);
     void onInput(Buffer* buffer, const QString& text);
-    void refreshNicklist(const QString& channelDisplay);
     void closeBuffer(Buffer* buffer);
 
+    Buffer* routeTarget(int net, const QString& target, ChatView::Kind fallback);
     QString timestampFor(const std::string& isoTime) const;
 
     QMdiArea* m_mdi = nullptr;
@@ -67,9 +73,11 @@ private:
     QAction* m_connectAction = nullptr;
     QAction* m_disconnectAction = nullptr;
 
-    lurker::backend::BouncerBackend* m_backend = nullptr;
-    QHash<QString, Buffer> m_buffers;  // key -> buffer
-    bool m_closing = false;            // true once teardown starts; silences buffer cleanup
+    lurker::backend::ChatBackend* m_backend = nullptr;
+    QHash<QString, Buffer> m_buffers;              // key -> buffer
+    QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
+    QHash<int, QString> m_networkNames;            // networkId -> display name
+    bool m_closing = false;
 };
 
 }  // namespace lurker::gui
