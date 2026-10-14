@@ -544,7 +544,7 @@ void registerBuiltins(Interpreter& in) {
     // $bvar(&name, N) byte, or N1-N2 range (space-separated), or 1- for all.
     in.registerIdent("bvar", [](Interpreter& i, S&, const A& a, const std::string& prop) {
         const auto* v = i.binVarGet(arg(a, 0));
-        if (!v) return std::string();
+        if (!v) return prop == "len" ? std::string("0") : std::string();
         if (prop == "len" || a.size() < 2) return std::to_string(v->size());
         const std::string spec = a[1];
         const std::size_t dash = spec.find('-');
