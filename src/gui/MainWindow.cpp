@@ -23,6 +23,7 @@
 #include <QListWidget>
 #include <QMdiArea>
 #include <QMdiSubWindow>
+#include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
@@ -94,6 +95,43 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 break;
             }
         }
+    });
+    m_treebar->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_treebar, &QTreeWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        QTreeWidgetItem* item = m_treebar->itemAt(pos);
+        if (!item) return;
+        Buffer* target = nullptr;
+        for (auto& b : m_buffers) {
+            if (b.treeItem == item) {
+                target = &b;
+                break;
+            }
+        }
+        if (!target) return;
+        QMenu menu(this);
+        const int net = target->networkId;
+        if (target->kind == ChatView::Kind::Channel) {
+            const QString chan = target->display;
+            menu.addAction(tr("Activate"), this, [this, key = target->key] {
+                if (Buffer* b = findBuffer(key)) activateBuffer(b);
+            });
+            menu.addAction(tr("Part channel"), this, [this, net, chan] {
+                if (m_backend && m_backend->isReady()) m_backend->partChannel(net, chan, QString());
+            });
+            menu.addAction(tr("Close"), this, [this, key = target->key] {
+                if (Buffer* b = findBuffer(key)) closeBuffer(b);
+            });
+        } else if (target->kind == ChatView::Kind::Query) {
+            menu.addAction(tr("Close query"), this, [this, key = target->key] {
+                if (Buffer* b = findBuffer(key)) closeBuffer(b);
+            });
+        } else {  // Status / network node
+            menu.addAction(tr("Disconnect"), this, [this] {
+                if (m_backend) m_backend->disconnectAll();
+            });
+            menu.addAction(tr("Join channel..."), this, &MainWindow::showJoinDialog);
+        }
+        menu.exec(m_treebar->mapToGlobal(pos));
     });
 
     m_switchbar = new QToolBar(tr("Windows"), this);
