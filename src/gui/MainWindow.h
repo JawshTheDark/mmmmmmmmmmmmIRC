@@ -101,6 +101,7 @@ private:
     void echoToWindow(int net, const QString& window, const QString& text);
     void dispatchScriptEvent(const lurker::IrcEvent& event);
     void onInput(Buffer* buffer, const QString& text);
+    void handleNickAction(int net, const QString& key, const QString& nick, const QString& action);
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
     void hydrateBuffer(Buffer* buffer);   // fetch backlog once

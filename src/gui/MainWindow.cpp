@@ -372,6 +372,43 @@ void MainWindow::showAbout() {
             .arg(version, QStringLiteral(QT_VERSION_STR), QStringLiteral(__DATE__)));
 }
 
+void MainWindow::handleNickAction(int net, const QString& key, const QString& nick, const QString& action) {
+    // Query doesn't need an active connection — just open the window.
+    if (action == QLatin1String("query")) {
+        activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick)));
+        return;
+    }
+    if (!m_backend || !m_backend->isReady()) {
+        statusBar()->showMessage(tr("Not connected"), 5000);
+        return;
+    }
+    Buffer* buf = findBuffer(key);
+    const QString chan = buf ? buf->display : QString();
+    if (action == QLatin1String("whois")) {
+        m_backend->sendRaw(net, QStringLiteral("WHOIS %1").arg(nick));
+    } else if (action == QLatin1String("slap")) {
+        m_backend->sendAction(net, chan,
+                              tr("slaps %1 around a bit with a large trout").arg(nick));
+    } else if (action == QLatin1String("op")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 +o %2").arg(chan, nick));
+    } else if (action == QLatin1String("deop")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 -o %2").arg(chan, nick));
+    } else if (action == QLatin1String("voice")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 +v %2").arg(chan, nick));
+    } else if (action == QLatin1String("devoice")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 -v %2").arg(chan, nick));
+    } else if (action == QLatin1String("kick")) {
+        m_backend->sendRaw(net, QStringLiteral("KICK %1 %2").arg(chan, nick));
+    } else if (action == QLatin1String("ban")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 +b %2!*@*").arg(chan, nick));
+    } else if (action == QLatin1String("kickban")) {
+        m_backend->sendRaw(net, QStringLiteral("MODE %1 +b %2!*@*").arg(chan, nick));
+        m_backend->sendRaw(net, QStringLiteral("KICK %1 %2").arg(chan, nick));
+    } else if (action.startsWith(QLatin1String("ctcp-"))) {
+        m_backend->sendCtcp(net, nick, action.mid(5).toUpper(), QString());
+    }
+}
+
 void MainWindow::setupScripting() {
     m_scriptHost.echoFn = [this](const lurker::msl::ScriptTarget& where, const QString& text) {
         echoToWindow(where.networkId, QString::fromStdString(where.window), text);
@@ -671,6 +708,9 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     });
     connect(b.view, &ChatView::nickActivated, this, [this, net](const QString& nick) {
         activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick)));
+    });
+    connect(b.view, &ChatView::nickContextAction, this, [this, net, key_](const QString& nick, const QString& action) {
+        handleNickAction(net, key_, nick, action);
     });
     connect(b.sub, &QObject::destroyed, this, [this, key_](QObject*) {
         if (m_closing) return;
