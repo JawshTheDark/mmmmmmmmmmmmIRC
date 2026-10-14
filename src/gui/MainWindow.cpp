@@ -27,6 +27,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -445,6 +446,32 @@ void MainWindow::handleNickAction(int net, const QString& key, const QString& ni
     } else if (action.startsWith(QLatin1String("ctcp-"))) {
         m_backend->sendCtcp(net, nick, action.mid(5).toUpper(), QString());
     }
+}
+
+void MainWindow::logLine(const Buffer* buffer, const QString& plainLine) {
+    if (!buffer) return;
+    QSettings s;
+    const bool isChannel = buffer->kind == ChatView::Kind::Channel;
+    const bool isQuery = buffer->kind == ChatView::Kind::Query;
+    if (isChannel && !s.value(QStringLiteral("irc/logChannels"), false).toBool()) return;
+    if (isQuery && !s.value(QStringLiteral("irc/logQueries"), false).toBool()) return;
+    if (!isChannel && !isQuery) return;  // never log the status window
+
+    QString dir = s.value(QStringLiteral("irc/logDir")).toString();
+    if (dir.isEmpty())
+        dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/logs");
+    QDir().mkpath(dir);
+    QString safe = buffer->display;
+    safe.replace(QRegularExpression(QStringLiteral("[^\\w#&.+-]")), QStringLiteral("_"));
+    const QString path = QStringLiteral("%1/net%2-%3.log").arg(dir, QString::number(buffer->networkId), safe);
+
+    QFile f(path);
+    if (!f.open(QIODevice::Append | QIODevice::Text)) return;
+    QString out = plainLine;
+    if (s.value(QStringLiteral("irc/logTimestamp"), true).toBool())
+        out = QDateTime::currentDateTime().toString(QStringLiteral("[yyyy-MM-dd HH:mm:ss] ")) + out;
+    f.write(out.toUtf8());
+    f.write("\n");
 }
 
 void MainWindow::setupScripting() {
@@ -908,8 +935,11 @@ void MainWindow::onEvent(const IrcEvent& event) {
         case IrcEventType::Action: {
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
             if (buf) {
-                buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self, event.highlight);
+                const bool act = event.type == IrcEventType::Action;
+                buf->view->addMessage(ts, nick, text, act, event.self, event.highlight);
                 noteMessage(buf, event.id);
+                logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, stripFormattingQt(text))
+                                 : QStringLiteral("<%1> %2").arg(nick, stripFormattingQt(text)));
             }
             break;
         }
@@ -918,6 +948,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (buf) {
                 buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
                 noteMessage(buf, event.id);
+                logLine(buf, QStringLiteral("-%1- %2").arg(nick, stripFormattingQt(text)));
             }
             break;
         }
