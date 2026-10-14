@@ -187,11 +187,16 @@ std::string Interpreter::callIdent(const std::string& name, const std::vector<st
         // args as $1.. and the property available as $prop (mIRC semantics).
         const auto alias = m_aliases.find(name);
         if (alias != m_aliases.end()) {
+            if (m_callDepth >= kMaxDepth) {
+                m_host.scriptError("recursion limit exceeded in $" + name);
+                return {};
+            }
+            ++m_callDepth;
             Scope aliasScope;
             aliasScope.params = args;
             aliasScope.prop = prop;
-            aliasScope.depth = scope.depth + 1;
-            if (aliasScope.depth < kMaxDepth) execute(alias->second, aliasScope);
+            execute(alias->second, aliasScope);
+            --m_callDepth;
             return aliasScope.returnValue;
         }
         // Unknown identifier: mIRC leaves it as typed.
@@ -283,6 +288,48 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
                 i = k;
                 continue;
             }
+            // $(text,N): the evaluation operator. Evaluates the enclosed text N
+            // times (like [ ] brackets, but with an explicit repeat count). N is
+            // the final comma-separated argument when it is a non-negative
+            // integer; otherwise the whole content is the text and N defaults to
+            // 1. N==0 returns the text unevaluated. We take the RAW inner text so
+            // the repeated passes see it exactly as written.
+            if (j < n && text[j] == '(') {
+                int depth = 1;
+                std::size_t a = j + 1;
+                std::size_t lastComma = std::string_view::npos;
+                for (; a < n && depth; ++a) {
+                    const char ac = text[a];
+                    if (ac == '(') ++depth;
+                    else if (ac == ')') {
+                        if (--depth == 0) break;
+                    } else if (ac == ',' && depth == 1) {
+                        lastComma = a;
+                    }
+                }
+                const std::size_t closeParen = a;  // index of ')' or n if unterminated
+                std::string_view inner = text.substr(j + 1, closeParen - (j + 1));
+                int reps = 1;
+                if (lastComma != std::string_view::npos) {
+                    std::string_view ntok = text.substr(lastComma + 1, closeParen - lastComma - 1);
+                    std::size_t b0 = 0, b1 = ntok.size();
+                    while (b0 < b1 && ntok[b0] == ' ') ++b0;
+                    while (b1 > b0 && ntok[b1 - 1] == ' ') --b1;
+                    ntok = ntok.substr(b0, b1 - b0);
+                    const bool numeric = !ntok.empty() &&
+                        std::all_of(ntok.begin(), ntok.end(),
+                                    [](unsigned char d) { return std::isdigit(d) != 0; });
+                    if (numeric) {
+                        reps = std::stoi(std::string(ntok));
+                        inner = text.substr(j + 1, lastComma - (j + 1));
+                    }
+                }
+                std::string val(inner);
+                for (int r = 0; r < reps; ++r) val = evaluate(val, scope);
+                out += val;
+                i = (closeParen < n) ? closeParen + 1 : n;
+                continue;
+            }
             // $identifier[(args)][.prop]
             std::size_t k = j;
             while (k < n && identChar(text[k])) ++k;
@@ -345,9 +392,9 @@ bool asNumber(const std::string& s, double& out) {
 bool compare(const std::string& a, const std::string& op, const std::string& b) {
     double na, nb;
     const bool numeric = asNumber(a, na) && asNumber(b, nb);
-    if (op == "==") return a == b;
-    if (op == "===") return a == b;  // case-sensitive exact (same here; a/b already literal)
-    if (op == "!=") return a != b;
+    if (op == "==") return toLowerAscii(a) == toLowerAscii(b);  // mIRC == is case-insensitive
+    if (op == "===") return a == b;                             // case-sensitive exact
+    if (op == "!=") return toLowerAscii(a) != toLowerAscii(b);  // case-insensitive, opposite of ==
     if (op == "<") return numeric ? na < nb : a < b;
     if (op == ">") return numeric ? na > nb : a > b;
     if (op == "<=") return numeric ? na <= nb : a <= b;
@@ -533,8 +580,31 @@ std::string firstWord(const std::string& s) {
 
 std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) const {
     std::vector<Stmt> stmts;
-    for (const std::string& piece : topLevelPieces(text)) {
-        std::string word = toLowerAscii(firstWord(piece));
+    const std::vector<std::string> pieces = topLevelPieces(text);
+
+    // Parse a standalone `elseif (cond) body` / `else body` piece onto `st`.
+    // Returns true while the chain can continue (after elseif), false after else.
+    auto appendElse = [this](Stmt& st, const std::string& piece) -> bool {
+        if (toLowerAscii(firstWord(piece)) == "elseif") {
+            std::size_t p = piece.find('(');
+            if (p == std::string::npos) return false;
+            Stmt::Branch eb;
+            eb.cond = parseParens(piece, p);
+            eb.body = parseBlock(parseBody(piece, p));
+            st.branches.push_back(std::move(eb));
+            return true;
+        }
+        const std::size_t ep = piece.find("else");
+        std::size_t p = (ep == std::string::npos) ? piece.size() : ep + 4;
+        Stmt::Branch eb;
+        eb.body = parseBlock(parseBody(piece, p));
+        st.branches.push_back(std::move(eb));
+        return false;
+    };
+
+    for (std::size_t idx = 0; idx < pieces.size(); ++idx) {
+        const std::string& piece = pieces[idx];
+        const std::string word = toLowerAscii(firstWord(piece));
         if (word == "if" || word == "while") {
             Stmt st;
             st.kind = word == "if" ? Stmt::Kind::If : Stmt::Kind::While;
@@ -544,13 +614,13 @@ std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) co
             br.cond = parseParens(piece, pos);
             br.body = parseBlock(parseBody(piece, pos));
             st.branches.push_back(std::move(br));
-            // elseif / else chain (for if). Only the braced form chains; a
-            // braceless body consumes the rest of the line.
-            while (st.kind == Stmt::Kind::If) {
-                std::string rest = trimmed(piece.substr(std::min(pos, piece.size())));
-                std::string rw = toLowerAscii(firstWord(rest));
+            bool chainOpen = (st.kind == Stmt::Kind::If);
+            // elseif / else that trail on the SAME piece (one-line form).
+            while (chainOpen) {
+                const std::string rest = trimmed(piece.substr(std::min(pos, piece.size())));
+                const std::string rw = toLowerAscii(firstWord(rest));
                 if (rw == "elseif") {
-                    std::size_t p2 = piece.find('(', pos);
+                    const std::size_t p2 = piece.find('(', pos);
                     if (p2 == std::string::npos) break;
                     pos = p2;
                     Stmt::Branch eb;
@@ -563,12 +633,25 @@ std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) co
                     Stmt::Branch eb;
                     eb.body = parseBlock(parseBody(piece, pos));
                     st.branches.push_back(std::move(eb));
-                    break;
+                    chainOpen = false;
                 } else {
                     break;
                 }
             }
+            // elseif / else that follow as separate pieces (newline- or
+            // '|'-separated) — the dominant multi-line mIRC style.
+            while (chainOpen && idx + 1 < pieces.size()) {
+                const std::string nw = toLowerAscii(firstWord(pieces[idx + 1]));
+                if (nw != "elseif" && nw != "else") break;
+                ++idx;
+                chainOpen = appendElse(st, pieces[idx]);
+            }
             stmts.push_back(std::move(st));
+        } else if ((word == "elseif" || word == "else") && !stmts.empty() &&
+                   stmts.back().kind == Stmt::Kind::If) {
+            // Orphaned continuation (its `if` was parsed in a different call);
+            // attach to the nearest preceding if rather than mis-running it.
+            appendElse(stmts.back(), piece);
         } else {
             Stmt st;
             st.kind = Stmt::Kind::Command;
@@ -581,7 +664,10 @@ std::vector<Interpreter::Stmt> Interpreter::parseBlock(std::string_view text) co
 
 void Interpreter::runStmts(const std::vector<Stmt>& stmts, Scope& scope) {
     for (const Stmt& st : stmts) {
-        if (scope.halted || scope.returned) return;
+        // Any of these signals unwinds the current statement list: /halt and
+        // /return propagate all the way out, /break and /continue only as far
+        // as the enclosing while (which clears them).
+        if (scope.halted || scope.returned || scope.breakLoop || scope.continueLoop) return;
         switch (st.kind) {
             case Stmt::Kind::Command:
                 runCommandLine(st.text, scope);
@@ -600,6 +686,11 @@ void Interpreter::runStmts(const std::vector<Stmt>& stmts, Scope& scope) {
                 while (evalCondition(br.cond, scope)) {
                     runStmts(br.body, scope);
                     if (scope.halted || scope.returned) return;
+                    if (scope.breakLoop) {
+                        scope.breakLoop = false;
+                        break;
+                    }
+                    scope.continueLoop = false;  // /continue falls through to the next test
                     if (++guard > 1000000) {
                         m_host.scriptError("while: loop limit exceeded");
                         break;
@@ -663,9 +754,18 @@ void Interpreter::execute(std::string_view script, Scope& scope) {
 std::string Interpreter::callAlias(const std::string& name, const std::vector<std::string>& params) {
     const auto it = m_aliases.find(name);
     if (it == m_aliases.end()) return std::string();
+    // Global depth guard: a fresh Scope per call means scope.depth can't catch
+    // recursion across alias calls, so an unbounded `alias x { x }` would blow
+    // the C++ stack. m_callDepth guards every alias/identifier invocation.
+    if (m_callDepth >= kMaxDepth) {
+        m_host.scriptError("recursion limit exceeded in alias " + name);
+        return {};
+    }
+    ++m_callDepth;
     Scope scope;
     scope.params = params;
     execute(it->second, scope);
+    --m_callDepth;
     return scope.returnValue;
 }
 

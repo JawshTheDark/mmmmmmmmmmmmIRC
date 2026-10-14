@@ -22,6 +22,19 @@
 
 namespace lurker::gui {
 
+namespace {
+// The chat font comes from Options ▸ Display (family + size); it falls back to
+// the platform's fixed-width font so the client is readable out of the box.
+QFont configuredChatFont() {
+    QSettings s;
+    const QString family = s.value(QStringLiteral("display/fontFamily")).toString();
+    const int size = s.value(QStringLiteral("display/fontSize"), 10).toInt();
+    QFont f = family.isEmpty() ? QFontDatabase::systemFont(QFontDatabase::FixedFont) : QFont(family);
+    if (size > 0) f.setPointSize(size);
+    return f;
+}
+}  // namespace
+
 ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -39,7 +52,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
 
     m_messages = new QTextBrowser(this);
     m_messages->setOpenExternalLinks(true);
-    m_messages->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_messages->setFont(configuredChatFont());
     m_messages->document()->setMaximumBlockCount(
         QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());  // scrollback cap
 
@@ -47,7 +60,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         auto* split = new QSplitter(Qt::Horizontal, this);
         split->addWidget(m_messages);
         m_nicklist = new QListWidget(split);
-        m_nicklist->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        m_nicklist->setFont(configuredChatFont());
         m_nicklist->setMaximumWidth(220);
         m_nicklist->setUniformItemSizes(true);
         split->addWidget(m_nicklist);
@@ -66,7 +79,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     }
 
     m_input = new QLineEdit(this);
-    m_input->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_input->setFont(configuredChatFont());
     m_input->setClearButtonEnabled(false);
     m_input->setPlaceholderText(kind == Kind::Status ? tr("Type a command, e.g. /join #channel")
                                                      : tr("Message, or /command"));
@@ -81,6 +94,15 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         m_input->clear();
         emit lineEntered(text);
     });
+}
+
+void ChatView::applyDisplaySettings() {
+    const QFont f = configuredChatFont();
+    m_messages->setFont(f);
+    if (m_nicklist) m_nicklist->setFont(f);
+    m_input->setFont(f);
+    m_messages->document()->setMaximumBlockCount(
+        QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());
 }
 
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {

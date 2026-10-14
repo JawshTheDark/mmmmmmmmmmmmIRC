@@ -33,6 +33,14 @@ public:
     ~MainWindow() override;
 
     void showConnectDialog();
+    void showOptions(const QString& page = QString());  // open Options, optionally at a page
+    void showJoinDialog();        // prompt for a channel and JOIN it
+    void requestChannelList();    // /LIST on the active network
+    void showAddressBook();       // favourite channels (add / remove / join)
+    void showDccInfo();           // DCC status (transfers proxied through Lurker)
+    void openLogsFolder();        // reveal the logging folder
+    void showAbout();             // About box
+    void promptLoadScript();      // file picker → loadScriptFile
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
     void useBackend(lurker::backend::ChatBackend* backend);
     // Open (creating if needed) and focus a conversation; also used by dev flags.
@@ -82,6 +90,7 @@ private:
     bool bufferIsActive(const Buffer& buffer) const;
     void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
     void setupScripting();
+    void setupToolbar();  // the top mIRC-style icon toolbar
     Buffer* activeBuffer();
     void echoToWindow(int net, const QString& window, const QString& text);
     void dispatchScriptEvent(const lurker::IrcEvent& event);
@@ -96,9 +105,11 @@ private:
     QMdiArea* m_mdi = nullptr;
     QTreeWidget* m_treebar = nullptr;
     QToolBar* m_switchbar = nullptr;
+    QToolBar* m_toolbar = nullptr;   // top icon toolbar
     QActionGroup* m_switchGroup = nullptr;
     QAction* m_connectAction = nullptr;
     QAction* m_disconnectAction = nullptr;
+    QAction* m_tbDisconnect = nullptr;  // toolbar twin of m_disconnectAction
 
     lurker::backend::ChatBackend* m_backend = nullptr;
     QHash<QString, Buffer> m_buffers;              // key -> buffer

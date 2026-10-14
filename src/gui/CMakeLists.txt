@@ -2,6 +2,7 @@ set(CMAKE_AUTOMOC ON)
 
 qt_add_executable(lurker-desktop
     main.cpp
+    AppIcon.h
     MainWindow.cpp
     MainWindow.h
     ChatView.cpp
@@ -15,6 +16,7 @@ qt_add_executable(lurker-desktop
     ScriptDialog.h
     Theme.cpp
     Theme.h
+    ToolbarIcons.h
     PictureWindow.cpp
     PictureWindow.h
     ScriptSockets.cpp
@@ -32,4 +34,4 @@ target_link_libraries(lurker-desktop PRIVATE
     Qt6::WebSockets
 )
 target_compile_definitions(lurker-desktop PRIVATE LURKER_DESKTOP_VERSION="${PROJECT_VERSION}")
-target_compile_options(lurker-desktop PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(lurker-desktop PRIVATE ${LURKER_WARNINGS})

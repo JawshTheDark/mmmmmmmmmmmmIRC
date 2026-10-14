@@ -8,21 +8,32 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QDateTime>
+#include <QDesktopServices>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
+#include <QInputDialog>
+#include <QLabel>
+#include <QListWidget>
 #include <QMdiArea>
 #include <QMdiSubWindow>
 #include <QMenuBar>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QStyle>
 #include <QToolBar>
 #include <QTreeWidget>
 #include <QTimer>
 #include <QTreeWidgetItem>
+#include <QUrl>
+#include <QVBoxLayout>
 
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
@@ -32,6 +43,7 @@
 #include "gui/ScriptEditor.h"
 #include "gui/ScriptSockets.h"
 #include "gui/Theme.h"
+#include "gui/ToolbarIcons.h"
 
 namespace lurker::gui {
 
@@ -93,17 +105,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     m_disconnectAction->setEnabled(false);
     file->addSeparator();
-    file->addAction(tr("&Load Script..."), this, [this] {
-        const QString path = QFileDialog::getOpenFileName(this, tr("Load MSL script"), m_scriptHost.baseDir,
-                                                          tr("mIRC scripts (*.mrc);;All files (*)"));
-        if (!path.isEmpty()) loadScriptFile(path);
-    });
+    file->addAction(tr("&Load Script..."), this, &MainWindow::promptLoadScript);
     file->addAction(tr("&Scripts Editor..."), this, &MainWindow::openScriptEditor);
-    file->addAction(tr("&Options..."), QKeySequence(QStringLiteral("Alt+O")), this, [this] {
-        OptionsDialog(this).exec();
-    });
+    file->addAction(tr("&Options..."), QKeySequence(QStringLiteral("Alt+O")), this,
+                    [this] { showOptions(); });
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
+
+    auto* toolsMenu = menuBar()->addMenu(tr("&Tools"));
+    toolsMenu->addAction(tr("&Join Channel..."), QKeySequence(QStringLiteral("Ctrl+J")), this,
+                         &MainWindow::showJoinDialog);
+    toolsMenu->addAction(tr("Channels &List"), this, &MainWindow::requestChannelList);
+    toolsMenu->addAction(tr("&Address Book..."), this, &MainWindow::showAddressBook);
+    toolsMenu->addSeparator();
+    toolsMenu->addAction(tr("&DCC..."), this, &MainWindow::showDccInfo);
+    toolsMenu->addAction(tr("Open Logs &Folder"), this, &MainWindow::openLogsFolder);
 
     auto* windowMenu = menuBar()->addMenu(tr("&Window"));
     windowMenu->addAction(tr("&Cascade"), m_mdi, &QMdiArea::cascadeSubWindows);
@@ -126,6 +142,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             QSettings().setValue(QStringLiteral("theme"), id);
         });
     }
+    auto* helpMenu = menuBar()->addMenu(tr("&Help"));
+    helpMenu->addAction(tr("&About Lurker Desktop..."), this, &MainWindow::showAbout);
 
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
         if (m_closing) return;
@@ -134,9 +152,204 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         }
     });
 
+    setupToolbar();
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_toolbar->toggleViewAction());  // show/hide the toolbar
+
     ensureBuffer(-1, ChatView::Kind::Status, tr("Status"), statusKey());
     setupScripting();
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
+}
+
+void MainWindow::setupToolbar() {
+    m_toolbar = new QToolBar(tr("Toolbar"), this);
+    m_toolbar->setObjectName(QStringLiteral("maintoolbar"));
+    m_toolbar->setMovable(true);
+    m_toolbar->setIconSize(QSize(24, 24));
+    m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    addToolBar(Qt::TopToolBarArea, m_toolbar);
+
+    const QColor fg = palette().color(QPalette::ButtonText);
+    QColor accent = palette().color(QPalette::Highlight);
+    if (!accent.isValid() || accent.lightness() > 220) accent = QColor(60, 120, 210);
+
+    auto add = [&](Glyph g, const QString& text, auto slot) {
+        QAction* a = m_toolbar->addAction(makeGlyph(g, fg, accent), text);
+        a->setToolTip(text);
+        connect(a, &QAction::triggered, this, slot);
+        return a;
+    };
+
+    add(Glyph::Connect, tr("Connect to a server"), &MainWindow::showConnectDialog);
+    m_tbDisconnect = add(Glyph::Disconnect, tr("Disconnect"), [this] {
+        if (m_backend) m_backend->disconnectAll();
+    });
+    m_tbDisconnect->setEnabled(false);
+    m_toolbar->addSeparator();
+    add(Glyph::Join, tr("Join a channel"), &MainWindow::showJoinDialog);
+    add(Glyph::ChannelList, tr("Channels list"), &MainWindow::requestChannelList);
+    add(Glyph::AddressBook, tr("Favourites / Address Book"), &MainWindow::showAddressBook);
+    m_toolbar->addSeparator();
+    add(Glyph::Options, tr("mIRC Options"), [this] { showOptions(); });
+    add(Glyph::Colors, tr("Colors"), [this] { showOptions(QStringLiteral("Colors")); });
+    m_toolbar->addSeparator();
+    add(Glyph::ScriptEditor, tr("Script Editor"), &MainWindow::openScriptEditor);
+    add(Glyph::LoadScript, tr("Load a script"), &MainWindow::promptLoadScript);
+    m_toolbar->addSeparator();
+    add(Glyph::DccSend, tr("DCC Send"), &MainWindow::showDccInfo);
+    add(Glyph::DccChat, tr("DCC Chat"), &MainWindow::showDccInfo);
+    add(Glyph::Logs, tr("Open logs folder"), &MainWindow::openLogsFolder);
+    m_toolbar->addSeparator();
+    add(Glyph::About, tr("About Lurker Desktop"), &MainWindow::showAbout);
+}
+
+void MainWindow::showOptions(const QString& page) {
+    OptionsDialog dlg(this);
+    if (!page.isEmpty()) dlg.selectPage(page);
+    if (dlg.exec() == QDialog::Accepted) {
+        // Push display changes (font, scrollback) to every open conversation.
+        for (auto& b : m_buffers) {
+            if (b.view) b.view->applyDisplaySettings();
+        }
+    }
+}
+
+void MainWindow::promptLoadScript() {
+    const QString path = QFileDialog::getOpenFileName(this, tr("Load MSL script"), m_scriptHost.baseDir,
+                                                      tr("mIRC scripts (*.mrc);;All files (*)"));
+    if (!path.isEmpty()) loadScriptFile(path);
+}
+
+void MainWindow::showJoinDialog() {
+    // Pick the network of the active window, else the first connected network.
+    int net = -1;
+    if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+    if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+    if (net < 0 || !m_backend || !m_backend->isReady()) {
+        statusBar()->showMessage(tr("Connect to a server before joining a channel"), 6000);
+        return;
+    }
+    bool ok = false;
+    QString chan = QInputDialog::getText(this, tr("Join Channel"), tr("Channel (e.g. #lurker):"),
+                                         QLineEdit::Normal, QStringLiteral("#"), &ok);
+    chan = chan.trimmed();
+    if (!ok || chan.isEmpty() || chan == QLatin1String("#")) return;
+    if (!chan.startsWith(QLatin1Char('#')) && !chan.startsWith(QLatin1Char('&'))) chan.prepend(QLatin1Char('#'));
+    m_backend->joinChannel(net, chan, QString());
+    openConversation(net, chan);
+}
+
+void MainWindow::requestChannelList() {
+    int net = -1;
+    if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+    if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+    if (net < 0 || !m_backend || !m_backend->isReady()) {
+        statusBar()->showMessage(tr("Connect to a server to list channels"), 6000);
+        return;
+    }
+    m_backend->sendRaw(net, QStringLiteral("LIST"));
+    statusBar()->showMessage(tr("Requested channel list — results appear in the Status window"), 6000);
+}
+
+void MainWindow::showAddressBook() {
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Favourites"));
+    dlg.resize(360, 320);
+    auto* v = new QVBoxLayout(&dlg);
+    v->addWidget(new QLabel(tr("Favourite channels — double-click to join:"), &dlg));
+    auto* list = new QListWidget(&dlg);
+    QSettings s;
+    list->addItems(s.value(QStringLiteral("favourites/channels")).toStringList());
+    v->addWidget(list, 1);
+    auto* row = new QHBoxLayout;
+    auto* addBtn = new QPushButton(tr("Add..."), &dlg);
+    auto* delBtn = new QPushButton(tr("Remove"), &dlg);
+    auto* joinBtn = new QPushButton(tr("Join"), &dlg);
+    row->addWidget(addBtn);
+    row->addWidget(delBtn);
+    row->addStretch(1);
+    row->addWidget(joinBtn);
+    v->addLayout(row);
+    auto* bb = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    v->addWidget(bb);
+    connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::accept);
+
+    auto persist = [list] {
+        QStringList items;
+        for (int i = 0; i < list->count(); ++i) items << list->item(i)->text();
+        QSettings().setValue(QStringLiteral("favourites/channels"), items);
+    };
+    connect(addBtn, &QPushButton::clicked, &dlg, [&] {
+        bool ok = false;
+        QString c = QInputDialog::getText(&dlg, tr("Add Favourite"), tr("Channel:"), QLineEdit::Normal,
+                                          QStringLiteral("#"), &ok);
+        c = c.trimmed();
+        if (ok && !c.isEmpty() && c != QLatin1String("#")) {
+            list->addItem(c);
+            persist();
+        }
+    });
+    connect(delBtn, &QPushButton::clicked, &dlg, [&] {
+        qDeleteAll(list->selectedItems());
+        persist();
+    });
+    auto joinSel = [&] {
+        if (auto* it = list->currentItem()) {
+            int net = -1;
+            if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+            if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+            if (net >= 0 && m_backend && m_backend->isReady()) {
+                m_backend->joinChannel(net, it->text(), QString());
+                openConversation(net, it->text());
+                dlg.accept();
+            } else {
+                statusBar()->showMessage(tr("Connect to a server first"), 6000);
+            }
+        }
+    };
+    connect(joinBtn, &QPushButton::clicked, &dlg, joinSel);
+    connect(list, &QListWidget::itemDoubleClicked, &dlg, joinSel);
+    dlg.exec();
+}
+
+void MainWindow::showDccInfo() {
+    QSettings s;
+    const QString dir =
+        s.value(QStringLiteral("dcc/downloadDir"),
+                QStandardPaths::writableLocation(QStandardPaths::DownloadLocation))
+            .toString();
+    QMessageBox::information(
+        this, tr("DCC"),
+        tr("<b>DCC transfers are proxied through Lurker.</b><br><br>"
+           "Rather than opening direct peer-to-peer connections, sends and chats are relayed "
+           "through your Lurker bouncer so they work behind NAT and from any device.<br><br>"
+           "Download folder: <code>%1</code><br>"
+           "Configure this under <b>Options ▸ DCC</b>. The server-side bridge is wired to "
+           "Lurker's file host and <code>/api/dcc</code>.")
+            .arg(dir.toHtmlEscaped()));
+}
+
+void MainWindow::openLogsFolder() {
+    QSettings s;
+    QString dir = s.value(QStringLiteral("irc/logDir")).toString();
+    if (dir.isEmpty()) {
+        dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/logs");
+    }
+    QDir().mkpath(dir);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void MainWindow::showAbout() {
+    const QString version = QStringLiteral(LURKER_DESKTOP_VERSION);
+    QMessageBox::about(
+        this, tr("About Lurker Desktop"),
+        tr("<h3>Lurker Desktop %1</h3>"
+           "<p>A clean-room, cross-platform IRC client for Lurker, built for full mIRC "
+           "feature and scripting (MSL) parity.</p>"
+           "<p>Qt %2 · built %3</p>"
+           "<p>Licensed under the Mozilla Public License 2.0. Not affiliated with or derived "
+           "from mIRC; no mIRC code or artwork is used.</p>")
+            .arg(version, QStringLiteral(QT_VERSION_STR), QStringLiteral(__DATE__)));
 }
 
 void MainWindow::setupScripting() {
@@ -472,6 +685,7 @@ void MainWindow::useBackend(ChatBackend* backend) {
     connect(backend, &ChatBackend::readyChanged, this, [this] {
         const bool ready = m_backend && m_backend->isReady();
         m_disconnectAction->setEnabled(ready);
+        if (m_tbDisconnect) m_tbDisconnect->setEnabled(ready);
         statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
     });
     connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });

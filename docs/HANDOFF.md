@@ -18,7 +18,12 @@ WebSocket (all networks at once, password mints a token); Bouncer mode uses raw 
 **View ▸ Theme** for skins (incl. BeOS). Without Qt: `-DLURKER_BUILD_GUI=OFF` builds core + tests.
 
 Dev flags: `--connect-dev`, `--script=<file|dir>`, `--msl=<line>`, `--simulate=net|nick|target|text`,
-`--theme=<id>`, `--scripteditor`, `--options`, `--screenshot=out.png[,ms]` (with `QT_QPA_PLATFORM=offscreen`).
+`--theme=<id>`, `--scripteditor`, `--options[=Page]`, `--export-icon=out.png[,size]`,
+`--screenshot=out.png[,ms]` (with `QT_QPA_PLATFORM=offscreen`).
+
+The top **toolbar** (clean-room icons in `ToolbarIcons.h`) and the tree **Options** dialog
+(`OptionsDialog`, mIRC's Connect/IRC/DCC/Display/Colors/Sound/Mouse/Logging/Other tree) are built from
+the published layout — no mIRC artwork. The app icon is drawn in `AppIcon.h`.
 
 ## Architecture
 
@@ -41,21 +46,28 @@ Phase 1 (client): both backends, multi-network GUI, history-on-open, unread + re
 Phase 2 (MSL): evaluation, control flow (incl. braceless), aliases, custom identifiers, events/
 remotes (on TEXT/ACTION/JOIN/PART/KICK/DIALOG/SIGNAL/SOCK*), ~100 identifiers, ~55 commands, hash
 tables, regex, file & INI I/O, timers, sockets, signals, binary variables, dialogs, picture + custom
-windows. Phase 3 (started): theming (Default/Dark/OLED/BeOS), Scripts Editor, Options dialog.
+windows. Control flow now includes `/break` `/continue` `/tokenize`, `$(text,N)` evaluation,
+`$gettok` ranges, `$wildtok`/`$reptok`, case-insensitive `==`/`!=`, and a recursion guard (an
+unbounded alias reports an error instead of crashing). Phase 3 (started): theming
+(Default/Dark/OLED/BeOS), configurable chat font/size (live), 16-colour palette page, Scripts Editor,
+full tree Options dialog, top toolbar, app icon. Phase 5.5: **CI** (Linux + Windows build/test on every
+push/PR) and **Releases** (tag `v*` → AppImage + Windows zip) via GitHub Actions.
 
 Validated: [NeonScript](https://github.com/jawshthedark/neonscript) loads fully (1024 aliases, 457
 handlers); jirc's Anope/abaexp/ppfserv scripts parse correctly.
 
 ## Next (priority order)
 
-1. **DCC through Lurker** (owner requirement): `soju.im/FILEHOST` + `/api/dcc` — see DESIGN.md.
+1. **DCC through Lurker** (owner requirement): `soju.im/FILEHOST` + `/api/dcc` — see DESIGN.md. The
+   toolbar DCC buttons + Options ▸ DCC page are in; the server-side bridge is the remaining work.
 2. IRC-state identifiers that need the session wired into the MSL Host: `$nick(#,N)`, `$nickcount`,
    `$ial`/`$ialchan`, `$comchan`, `$onotice`, `$level`; `on`-event `$halt` of default processing.
 3. `$regsubex`, `$hfind`, more of the identifier tail (see PARITY.md `planned`, ordered by corpus use).
-4. Deeper theming (per-channel backgrounds/fonts/text size, import/export) — Phase 3.6.
-5. Full options tree + mIRC colour-scheme editor; keybindings.
-6. Packaging/CI for Linux + Windows (Phase 5.5).
-7. Run the oracle (tools/oracle) to pin evaluation edge cases.
+4. Make more Options pages take effect live (timestamps/format, join-event display, highlight words,
+   logging) — the settings persist already; wire the consumers.
+5. Deeper theming (per-channel backgrounds, feed the 16-colour palette into message rendering,
+   import/export) — Phase 3.6.
+6. Run the oracle (tools/oracle) to pin evaluation edge cases.
 
 ## Gotchas
 

@@ -14,6 +14,7 @@
 #include <QSettings>
 
 #include "backend/LurkerChatBackend.h"
+#include "gui/AppIcon.h"
 #include "gui/MainWindow.h"
 #include "gui/OptionsDialog.h"
 #include "gui/Theme.h"
@@ -52,8 +53,19 @@ int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("lurker-desktop"));
     QApplication::setOrganizationName(QStringLiteral("lurker-desktop"));
+    QApplication::setApplicationDisplayName(QStringLiteral("Lurker Desktop"));
+    QApplication::setWindowIcon(lurker::gui::appIcon());
 
     const QStringList args = QCoreApplication::arguments();
+    // --export-icon=<path>: render the app icon to a PNG (used by packaging) and exit.
+    for (const QString& a : args) {
+        if (a.startsWith(QStringLiteral("--export-icon="))) {
+            const QString path = a.section(QLatin1Char('='), 1);
+            const int sz = path.contains(QLatin1Char(',')) ? path.section(QLatin1Char(','), 1, 1).toInt() : 256;
+            lurker::gui::appIconPixmap(sz > 0 ? sz : 256).save(path.section(QLatin1Char(','), 0, 0));
+            return 0;
+        }
+    }
     // Apply the saved theme (or --theme=<id> for dev) before building the window.
     QString themeId = QSettings().value(QStringLiteral("theme"), QStringLiteral("default")).toString();
     for (const QString& a : args) {
@@ -94,10 +106,13 @@ int main(int argc, char* argv[]) {
         } else if (arg.startsWith(QStringLiteral("--script="))) {
             const QString path = arg.section(QLatin1Char('='), 1);
             QTimer::singleShot(200, &window, [&window, path] { window.loadScriptFile(path); });
-        } else if (arg == QStringLiteral("--options")) {
-            QTimer::singleShot(500, &window, [&window] {
+        } else if (arg == QStringLiteral("--options") || arg.startsWith(QStringLiteral("--options="))) {
+            const QString page = arg.contains(QLatin1Char('=')) ? arg.section(QLatin1Char('='), 1) : QString();
+            QTimer::singleShot(500, &window, [&window, page] {
                 lurker::gui::OptionsDialog* d = new lurker::gui::OptionsDialog(&window);
-                d->setAttribute(Qt::WA_DeleteOnClose); d->show();
+                d->setAttribute(Qt::WA_DeleteOnClose);
+                if (!page.isEmpty()) d->selectPage(page);
+                d->show();
             });
         } else if (arg == QStringLiteral("--scripteditor")) {
             QTimer::singleShot(600, &window, [&window] { window.openScriptEditor(); });

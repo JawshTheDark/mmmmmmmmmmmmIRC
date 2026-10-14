@@ -406,5 +406,61 @@ int main() {
         CHECK_EQ(host.echoed[0], std::string("one"));
     }
 
+    // --- regression: control flow, token ranges and evaluation operator ---
+    auto run = [&](const std::string& script) -> std::string {
+        host.echoed.clear();
+        Scope s;
+        in.execute(script, s);
+        return host.echoed.empty() ? std::string() : host.echoed.back();
+    };
+
+    // if / elseif / else across the three layouts mIRC accepts.
+    CHECK_EQ(run("if (1 == 2) { echo A } | elseif (1 == 1) { echo B } | else { echo C }"), std::string("B"));
+    CHECK_EQ(run("if (1 == 2) {\n echo A \n}\nelseif (1 == 1) {\n echo B \n}\nelse {\n echo C \n}"),
+             std::string("B"));
+    CHECK_EQ(run("if (0) {\n echo A \n}\nelse {\n echo C \n}"), std::string("C"));
+    CHECK_EQ(run("if (5 > 3) echo big | else echo small"), std::string("big"));
+
+    // == / != are case-insensitive; === is case-sensitive (mIRC semantics).
+    CHECK_EQ(run("if (ABC == abc) echo eq | else echo ne"), std::string("eq"));
+    CHECK_EQ(run("if (ABC != abc) echo ne | else echo eq"), std::string("eq"));
+    CHECK_EQ(run("if (ABC === abc) echo eq | else echo ne"), std::string("ne"));
+
+    // break and continue in while loops.
+    CHECK_EQ(run("var %i = 0 | while (%i < 10) { inc %i | if (%i == 3) break } | echo %i"), std::string("3"));
+    CHECK_EQ(run("var %i = 0 | var %n = 0 | while (%i < 5) { inc %i | if (%i == 3) continue | inc %n } | echo %n"),
+             std::string("4"));
+
+    // /tokenize populates $1-$N for the current scope.
+    CHECK_EQ(run("tokenize 32 alpha beta gamma | echo $2"), std::string("beta"));
+
+    // $gettok ranges: N-M and N- (to the end).
+    CHECK_EQ(eval(in, "$gettok(a.b.c.d,2-3,46)"), std::string("b.c"));
+    CHECK_EQ(eval(in, "$gettok(a.b.c.d,2-,46)"), std::string("b.c.d"));
+    CHECK_EQ(eval(in, "$gettok(a.b.c.d,-2,46)"), std::string("c"));
+
+    // $wildtok and $reptok.
+    CHECK_EQ(eval(in, "$wildtok(aa ab ba,a*,2,32)"), std::string("ab"));
+    CHECK_EQ(eval(in, "$wildtok(aa ab ba,a*,0,32)"), std::string("2"));
+    CHECK_EQ(eval(in, "$reptok(a b c,b,X,32)"), std::string("a X c"));
+
+    // $(text,N): the explicit N-pass evaluation operator.
+    {
+        Scope s;
+        s.locals["a"] = "%b";
+        s.locals["b"] = "%c";
+        s.locals["c"] = "deep";
+        CHECK_EQ(in.evaluate("$(%a,3)", s), std::string("deep"));
+    }
+
+    // Unbounded recursion is caught, not a crash (reports an error and stops).
+    {
+        host.errors.clear();
+        in.defineAlias("recx", "recx");
+        Scope s;
+        in.execute("recx", s);
+        CHECK(!host.errors.empty());
+    }
+
     return check::summary();
 }

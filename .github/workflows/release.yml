@@ -1,0 +1,117 @@
+name: Release
+
+# Tag a commit to cut a release, e.g.:
+#   git tag v0.1.0 && git push origin v0.1.0
+# This builds Linux (AppImage) and Windows (zip) artifacts and attaches them to
+# a GitHub Release for the tag.
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libfuse2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          modules: 'qtwebsockets'
+          cache: true
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: Stage AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp build/src/gui/lurker-desktop AppDir/usr/bin/
+          cp packaging/lurker-desktop.desktop AppDir/usr/share/applications/
+          cp packaging/lurker-desktop.png AppDir/usr/share/icons/hicolor/256x256/apps/lurker-desktop.png
+
+      - name: Fetch linuxdeploy
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Build AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+          OUTPUT: lurker-desktop-${{ github.ref_name }}-x86_64.AppImage
+        run: |
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+          # linuxdeploy names the file from the .desktop; normalise it.
+          mv ./*.AppImage "lurker-desktop-${{ github.ref_name }}-x86_64.AppImage" 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: lurker-desktop-*-x86_64.AppImage
+          if-no-files-found: error
+
+  windows:
+    name: Windows zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          modules: 'qtwebsockets'
+          cache: true
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release
+
+      - name: Deploy
+        run: |
+          mkdir dist
+          copy build\src\gui\Release\lurker-desktop.exe dist\
+          windeployqt --release --no-translations --no-system-d3d-compiler dist\lurker-desktop.exe
+
+      - name: Package
+        run: Compress-Archive -Path dist\* -DestinationPath lurker-desktop-${{ github.ref_name }}-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: lurker-desktop-*-windows-x64.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [ linux, windows ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

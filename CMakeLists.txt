@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Portable warning flags: GCC/Clang get the full set; MSVC (Windows) gets /W3,
+# since -Wextra/-Wpedantic are not valid cl.exe options.
+if(MSVC)
+    set(LURKER_WARNINGS /W3)
+else()
+    set(LURKER_WARNINGS -Wall -Wextra -Wpedantic)
+endif()
+
 # The protocol-independent logic (formatting codes, slash commands) is plain
 # standard C++ with no Qt, so it builds and is tested on its own. The GUI client
 # is only configured when Qt 6 is available.
@@ -22,7 +30,7 @@ add_library(lurker_core STATIC
     src/core/msl/Dialog.cpp
 )
 target_include_directories(lurker_core PUBLIC src)
-target_compile_options(lurker_core PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(lurker_core PRIVATE ${LURKER_WARNINGS})
 
 enable_testing()
 add_subdirectory(tests)

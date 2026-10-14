@@ -40,6 +40,8 @@ struct Scope {
     std::string target;   // the window ($target): channel, query nick or @window
     bool halted = false;                          // /halt stops the whole script
     bool returned = false;                        // /return stops the current alias
+    bool breakLoop = false;                       // /break exits the innermost while
+    bool continueLoop = false;                    // /continue restarts the innermost while
     std::string returnValue;                      // value of /return or /returnex
     int depth = 0;                                // recursion guard
 };
@@ -157,6 +159,7 @@ private:
     std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
     std::map<std::string, std::vector<unsigned char>, CiLess> m_binvars;  // &binary variables
+    int m_callDepth = 0;  // guards alias/identifier recursion across scopes
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.

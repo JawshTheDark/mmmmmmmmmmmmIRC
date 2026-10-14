@@ -386,10 +386,29 @@ void registerBuiltins(Interpreter& in) {
         return static_cast<char>(argInt(a, idx, 32));
     };
     in.registerIdent("gettok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
-        auto toks = splitTokens(arg(a, 0), sepChar(a, 2));
-        int n = argInt(a, 1);
-        if (n < 0) n = static_cast<int>(toks.size()) + n + 1;
-        return (n >= 1 && n <= static_cast<int>(toks.size())) ? toks[n - 1] : std::string();
+        const char sep = sepChar(a, 2);
+        auto toks = splitTokens(arg(a, 0), sep);
+        const int total = static_cast<int>(toks.size());
+        const std::string spec = arg(a, 1);
+        // A negative index counts from the end; mIRC also accepts a range N-M
+        // (or N- for "to the end"), returning those tokens joined by the sep.
+        auto resolve = [&](int v) { return v < 0 ? total + v + 1 : v; };
+        const std::size_t dash = spec.find('-', spec.rfind('-', 0) == 0 ? 1 : 0);
+        if (dash == std::string::npos) {
+            int n = resolve(argInt(a, 1));
+            return (n >= 1 && n <= total) ? toks[n - 1] : std::string();
+        }
+        int lo = resolve(std::atoi(spec.substr(0, dash).c_str()));
+        const std::string hiStr = spec.substr(dash + 1);
+        int hi = hiStr.empty() ? total : resolve(std::atoi(hiStr.c_str()));
+        if (lo < 1) lo = 1;
+        if (hi > total) hi = total;
+        std::string out;
+        for (int k = lo; k <= hi; ++k) {
+            if (!out.empty()) out += sep;
+            out += toks[k - 1];
+        }
+        return out;
     });
     in.registerIdent("numtok", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
         return std::to_string(arg(a, 0).empty() ? 0 : splitTokens(arg(a, 0), sepChar(a, 1)).size());
@@ -480,6 +499,45 @@ void registerBuiltins(Interpreter& in) {
             return toLowerAscii(x) < toLowerAscii(y);
         });
         if (sw.find('r') != std::string::npos) std::reverse(toks.begin(), toks.end());
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
+    // $wildtok(text,wildcard,N,C): the Nth token matching the wildcard; N==0
+    // returns the count of matching tokens.
+    in.registerIdent("wildtok", [](Interpreter&, S&, const A& a, const std::string&) {
+        const char sep = static_cast<char>(argInt(a, 3, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string wc = arg(a, 1);
+        const int which = argInt(a, 2, 1);
+        int seen = 0;
+        for (const auto& t : toks) {
+            if (matchWild(wc, t)) {
+                ++seen;
+                if (which != 0 && seen == which) return t;
+            }
+        }
+        return which == 0 ? std::to_string(seen) : std::string();
+    });
+    // $reptok(text,token,new,N,C) replaces the Nth matching token; the 4-arg
+    // form $reptok(text,token,new,C) replaces the first match.
+    in.registerIdent("reptok", [](Interpreter&, S&, const A& a, const std::string&) {
+        const bool hasN = a.size() >= 5;
+        const char sep = static_cast<char>(argInt(a, hasN ? 4 : 3, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string find = arg(a, 1);
+        const std::string repl = arg(a, 2);
+        const int which = hasN ? argInt(a, 3, 1) : 1;
+        int seen = 0;
+        for (auto& t : toks) {
+            if (toLowerAscii(t) == toLowerAscii(find)) {
+                ++seen;
+                if (seen == which) {
+                    t = repl;
+                    break;
+                }
+            }
+        }
         std::string out;
         for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
         return out;
@@ -925,6 +983,16 @@ void registerBuiltins(Interpreter& in) {
     });
     in.registerCommand("halt", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
     in.registerCommand("haltdef", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
+    in.registerCommand("break", [](Interpreter&, S& s, const std::string&) { s.breakLoop = true; });
+    in.registerCommand("continue", [](Interpreter&, S& s, const std::string&) { s.continueLoop = true; });
+    // /tokenize C text : split text by chr(C) into $1-$N for the current scope.
+    in.registerCommand("tokenize", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        std::size_t sp = args.find(' ');
+        if (sp == std::string::npos) return;
+        const char sep = static_cast<char>(std::atoi(args.substr(0, sp).c_str()));
+        s.params = splitTokens(args.substr(sp + 1), sep);
+    });
     // Hash table commands.
     in.registerCommand("hmake", [](Interpreter& i, S& s, const std::string& a) {
         std::string args = i.evaluate(a, s);

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Lurker Desktop
+GenericName=IRC Client
+Comment=Clean-room mIRC-compatible IRC client for Lurker
+Exec=lurker-desktop
+Icon=lurker-desktop
+Terminal=false
+Categories=Network;IRCClient;Chat;
+Keywords=IRC;Chat;mIRC;Lurker;MSL;
+StartupWMClass=lurker-desktop

@@ -44,6 +44,10 @@ public:
 
     void focusInput();
 
+    // Re-read Options ▸ Display (font, scrollback) and apply to this view, so
+    // theming changes take effect without reopening the window.
+    void applyDisplaySettings();
+
     // Supplies nick candidates (no sigils) for tab-completion; set by the owner.
     void setNickProvider(std::function<QStringList()> provider) { m_nickProvider = std::move(provider); }
 
