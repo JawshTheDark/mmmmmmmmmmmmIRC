@@ -248,7 +248,7 @@ void MainWindow::setupToolbar() {
     add(Glyph::LoadScript, tr("Load a script"), &MainWindow::promptLoadScript);
     m_toolbar->addSeparator();
     add(Glyph::DccSend, tr("DCC Send"), &MainWindow::showDccInfo);
-    add(Glyph::DccChat, tr("DCC Chat"), &MainWindow::showDccInfo);
+    add(Glyph::DccChat, tr("DCC Chat"), &MainWindow::startDccChat);
     add(Glyph::Logs, tr("Open logs folder"), &MainWindow::openLogsFolder);
     m_toolbar->addSeparator();
     add(Glyph::About, tr("About Lurker Desktop"), &MainWindow::showAbout);
@@ -377,6 +377,31 @@ void MainWindow::showAddressBook() {
     connect(joinBtn, &QPushButton::clicked, &dlg, joinSel);
     connect(list, &QListWidget::itemDoubleClicked, &dlg, joinSel);
     dlg.exec();
+}
+
+void MainWindow::startDccChat() {
+    if (!m_backend || !m_backend->isReady()) {
+        statusBar()->showMessage(tr("Connect to a server first"), 6000);
+        return;
+    }
+    if (!m_backend->supportsDccChat()) {  // raw bouncer: explain the proxy model
+        showDccInfo();
+        return;
+    }
+    int net = -1;
+    if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+    if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+    if (net < 0) {
+        statusBar()->showMessage(tr("No connected network"), 6000);
+        return;
+    }
+    bool ok = false;
+    const QString nick =
+        QInputDialog::getText(this, tr("DCC Chat"), tr("Nick to chat with:"), QLineEdit::Normal, QString(), &ok)
+            .trimmed();
+    if (!ok || nick.isEmpty()) return;
+    m_backend->startDccChat(net, nick);
+    statusBar()->showMessage(tr("Offering DCC chat to %1 (proxied through Lurker)...").arg(nick), 6000);
 }
 
 void MainWindow::showDccInfo() {

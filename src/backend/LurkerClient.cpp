@@ -97,6 +97,25 @@ void LurkerClient::fetchNetworksThenConnect() {
     });
 }
 
+void LurkerClient::startDccChat(int networkId, const QString& nick) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) + QStringLiteral("/api/dcc/chat"))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QJsonObject body{{QStringLiteral("networkId"), networkId}, {QStringLiteral("nick"), nick}};
+    QNetworkReply* reply = m_net->post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, networkId, nick] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            emit restError(tr("DCC chat with %1: %2").arg(nick, reply->errorString()));
+            return;
+        }
+        const QJsonObject o = QJsonDocument::fromJson(reply->readAll()).object();
+        const QString target = o.value(QStringLiteral("target")).toString(QStringLiteral("=") + nick);
+        emit statusText(tr("DCC chat offered to %1").arg(nick));
+        emit dccChatStarted(networkId, target);
+    });
+}
+
 void LurkerClient::applyTlsConfig() {
     if (!m_settings.tls) return;
     connect(m_ws, &QWebSocket::sslErrors, this, [this](const QList<QSslError>& errors) {

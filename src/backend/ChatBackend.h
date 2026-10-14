@@ -58,6 +58,13 @@ public:
     virtual void markRead(int net, const QString& target, qlonglong messageId) = 0;
     virtual void disconnectAll() = 0;
 
+    // DCC chat proxied through Lurker (default: unsupported, e.g. raw bouncer).
+    virtual bool supportsDccChat() const { return false; }
+    virtual void startDccChat(int networkId, const QString& nick) {
+        (void)networkId;
+        (void)nick;
+    }
+
 signals:
     void statusText(const QString& text);
     void networkUpdated(const lurker::backend::NetworkInfo& net);

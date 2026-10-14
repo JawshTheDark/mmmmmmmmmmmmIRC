@@ -32,6 +32,9 @@ IrcEventType typeFromString(const QString& t) {
 LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     connect(&m_client, &LurkerClient::statusText, this, &ChatBackend::statusText);
     connect(&m_client, &LurkerClient::restError, this, [this](const QString& t) { emit statusText(t); });
+    connect(&m_client, &LurkerClient::dccChatStarted, this, [this](int net, const QString& target) {
+        emit bufferOpened(net, target, static_cast<int>(BufferKind::Dm));
+    });
     connect(&m_client, &LurkerClient::networksReceived, this, [this](const QJsonArray& nets) {
         for (const QJsonValue& v : nets) {
             const QJsonObject o = v.toObject();

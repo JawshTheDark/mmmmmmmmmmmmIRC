@@ -43,6 +43,7 @@ public:
     void requestChannelList();    // /LIST on the active network
     void showAddressBook();       // favourite channels (add / remove / join)
     void showDccInfo();           // DCC status (transfers proxied through Lurker)
+    void startDccChat();          // offer a DCC chat (proxied through Lurker)
     void openLogsFolder();        // reveal the logging folder
     void showAbout();             // About box
     void promptLoadScript();      // file picker → loadScriptFile

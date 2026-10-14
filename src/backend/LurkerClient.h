@@ -62,6 +62,10 @@ public:
     void markRead(int networkId, const QString& target, qint64 messageId);
     void sendVerb(const QJsonObject& message);
 
+    // DCC chat through Lurker: POST /api/dcc/chat {networkId, nick}. The outcome
+    // lands in the "=nick" buffer over the WS; dccChatStarted fires on the 200.
+    void startDccChat(int networkId, const QString& nick);
+
 signals:
     void configReceived(const lurker::backend::LurkerConfig& config);
     void networksReceived(const QJsonArray& networks);
@@ -76,6 +80,7 @@ signals:
     void frameReceived(const QString& kind, const QJsonObject& frame);  // every frame
     void statusText(const QString& text);
     void restError(const QString& text);
+    void dccChatStarted(int networkId, const QString& target);  // "=nick" buffer to open
     void closed();
 
 private:

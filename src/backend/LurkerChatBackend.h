@@ -39,6 +39,8 @@ public:
     void requestHistory(int net, const QString& target) override;
     void markRead(int net, const QString& target, qlonglong messageId) override;
     void disconnectAll() override;
+    bool supportsDccChat() const override { return true; }
+    void startDccChat(int net, const QString& nick) override { m_client.startDccChat(net, nick); }
 
 private:
     struct Member {
