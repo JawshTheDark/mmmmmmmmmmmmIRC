@@ -105,6 +105,7 @@ private:
     void logLine(const Buffer* buffer, const QString& plainLine);  // append to the log file if enabled
     QString themeScope(int net, const QString& target) const;     // per-channel settings prefix
     void showChannelTheme(const QString& key);                    // per-channel theme override dialog
+    bool highlightMatch(int net, const QString& plainText) const;  // Options ▸ Highlight word/nick match
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
     void hydrateBuffer(Buffer* buffer);   // fetch backlog once

@@ -482,6 +482,22 @@ void MainWindow::logLine(const Buffer* buffer, const QString& plainLine) {
     f.write("\n");
 }
 
+bool MainWindow::highlightMatch(int net, const QString& plainText) const {
+    QSettings s;
+    if (!s.value(QStringLiteral("highlight/enabled"), true).toBool()) return false;
+    const QString lower = plainText.toLower();
+    if (s.value(QStringLiteral("highlight/onNick"), true).toBool()) {
+        const QString me = m_networkNicks.value(net).toLower();
+        if (!me.isEmpty() && lower.contains(me)) return true;
+    }
+    const QString words = s.value(QStringLiteral("highlight/words")).toString();
+    const QStringList list = words.split(QRegularExpression(QStringLiteral("[\\s,]+")), Qt::SkipEmptyParts);
+    for (const QString& w : list) {
+        if (lower.contains(w.toLower())) return true;
+    }
+    return false;
+}
+
 QString MainWindow::themeScope(int net, const QString& target) const {
     QString safe = target.toLower();
     safe.replace(QRegularExpression(QStringLiteral("[^a-z0-9]")), QStringLiteral("_"));
@@ -1010,6 +1026,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
     const QString nick = QString::fromStdString(event.nick);
     const QByteArray text = QByteArray::fromStdString(event.text);
     const QString target = QString::fromStdString(event.target);
+    const bool showJoins = QSettings().value(QStringLiteral("irc/showJoins"), true).toBool();
 
     switch (event.type) {
         case IrcEventType::Message:
@@ -1017,10 +1034,17 @@ void MainWindow::onEvent(const IrcEvent& event) {
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
             if (buf) {
                 const bool act = event.type == IrcEventType::Action;
-                buf->view->addMessage(ts, nick, text, act, event.self, event.highlight);
+                const QString plain = stripFormattingQt(text);
+                bool hl = event.highlight;
+                if (!hl && !event.self) hl = highlightMatch(net, plain);
+                buf->view->addMessage(ts, nick, text, act, event.self, hl);
                 noteMessage(buf, event.id);
-                logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, stripFormattingQt(text))
-                                 : QStringLiteral("<%1> %2").arg(nick, stripFormattingQt(text)));
+                logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, plain)
+                                 : QStringLiteral("<%1> %2").arg(nick, plain));
+                if (hl && !event.self && !bufferIsActive(*buf)) {
+                    if (QSettings().value(QStringLiteral("sound/beepHighlight"), true).toBool()) QApplication::beep();
+                    if (QSettings().value(QStringLiteral("highlight/flash"), true).toBool()) QApplication::alert(this);
+                }
             }
             break;
         }
@@ -1036,17 +1060,20 @@ void MainWindow::onEvent(const IrcEvent& event) {
         case IrcEventType::Join: {
             Buffer* buf = routeTarget(net, target, ChatView::Kind::Channel);
             if (buf) {
+                // Always announce our own join; others only when enabled.
                 if (event.self) buf->view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8());
-                else buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8());
+                else if (showJoins) buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8());
             }
             break;
         }
         case IrcEventType::Part:
+            if (!showJoins) break;
             if (Buffer* b = findBuffer(keyFor(net, target)))
                 b->view->addSystemLine(tr("%1 left%2").arg(nick, text.isEmpty() ? QString() :
                                            QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
             break;
         case IrcEventType::Quit:
+            if (!showJoins) break;
             if (Buffer* b = findBuffer(keyFor(net, target)))
                 b->view->addSystemLine(tr("%1 quit%2").arg(nick, text.isEmpty() ? QString() :
                                            QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
