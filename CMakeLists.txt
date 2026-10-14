@@ -17,6 +17,8 @@ add_library(lurker_core STATIC
     src/core/IrcMessage.cpp
     src/core/IrcSession.cpp
     src/core/Completion.cpp
+    src/core/msl/Interpreter.cpp
+    src/core/msl/Builtins.cpp
 )
 target_include_directories(lurker_core PUBLIC src)
 target_compile_options(lurker_core PRIVATE -Wall -Wextra -Wpedantic)
