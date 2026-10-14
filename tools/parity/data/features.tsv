@@ -13,7 +13,7 @@ Address Book	address_book	planned
 Agent Scripts	agents_scripting	planned			
 [ ] evaluation brackets	aliases	planned			
 ALIAS prefix	aliases	planned			
-Aliases	aliases	planned			
+Aliases	aliases	done		test_msl	
 Brackets	aliases	planned			
 Command Prefixes	aliases	planned			
 Comments	aliases	planned			
@@ -152,7 +152,7 @@ Highlight	highlight	planned
 How To Register	how_to_register	planned			
 Register	how_to_register	planned			
 Identd	identd	planned			
-Identifiers	identifiers	planned			
+Identifiers	identifiers	done		test_msl	
 &	if_then_else	planned			
 &&	if_then_else	planned			
 <	if_then_else	planned			
@@ -265,7 +265,7 @@ Quit Message	messages	planned
 Split long messages	messages	planned			
 Strip codes	messages	planned			
 Timestamp events	messages	planned			
-Commands	mirc_commands	planned			
+Commands	mirc_commands	done		test_msl	
 Do Not Disturb	mirc_commands	planned			
 mIRC Commands	mirc_commands	planned			
 Secure Connections	mirc_commands	planned			
@@ -317,12 +317,12 @@ Numeric events	raw_events	planned
 Raw events	raw_events	planned			
 Server messages	raw_events	planned			
 Regular Expressions	regular_expressions	planned			
-Events	remote	planned			
-Remote	remote	planned			
+Events	remote	partial		test_msl	
+Remote	remote	partial		test_msl	
 Remote Scripts	remote	planned			
 Scripts	remote	planned			
-Remote Commands	remote_commands	planned			
-Remote Identifiers	remote_identifiers	planned			
+Remote Commands	remote_commands	partial		test_msl	
+Remote Identifiers	remote_identifiers	partial		test_msl	
 DCC Get	send_receive_files	planned			
 DCC Resume	send_receive_files	planned			
 DCC Send	send_receive_files	planned			
@@ -377,7 +377,7 @@ Token Identifiers	token_identifiers	planned
 ^	variables	planned			
 Big Float	variables	planned			
 Local Variables	variables	planned			
-Variables	variables	planned			
+Variables	variables	done		test_msl	
 Voice Control	voice_commands	planned			
 Introduction	welcome_to_mirc	planned			
 mIRC Website	welcome_to_mirc	planned			

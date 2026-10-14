@@ -1,7 +1,7 @@
 name	status	since	help_page	corpus_uses	test	notes
 /abook	planned		address_book.html	0		
 /ajinvite	planned		mirc_commands.html	0		
-/alias	planned		mirc_commands.html	0		
+/alias	done		mirc_commands.html	0	test_msl	
 /aline	planned		custom_windows.html	96		
 /ame	planned		mirc_commands.html	3		
 /amsg	planned		mirc_commands.html	16		
@@ -10,7 +10,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /auser	planned		remote_commands.html	11		
 /autojoin	planned		mirc_commands.html	0		
 /avoice	planned		control.html	0		
-/away	planned		basic_irc_commands.html	13		
+/away	partial		basic_irc_commands.html	13	test_msl	
 /background	planned		mirc_commands.html	33		
 /ban	planned		mirc_commands.html	43		
 /bcopy	planned		binary_files.html	0		
@@ -54,8 +54,8 @@ name	status	since	help_page	corpus_uses	test	notes
 /dde	not-possible		dde.html	0		Windows DDE
 /ddeserver	not-possible		dde.html	0		Windows DDE
 /debug	planned		mirc_commands.html	0		
-/dec	planned		variables.html	121		
-/describe	planned		mirc_commands.html	3		
+/dec	done		variables.html	121	test_msl	
+/describe	done		mirc_commands.html	3	test_msl	
 /dialog	planned		dialogs.html	0		
 /did	planned		dialogs.html	3499		
 /didtok	planned		dialogs.html	12		
@@ -81,7 +81,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /drawsize	planned		picture_windows.html	0		
 /drawtext	planned		picture_windows.html	55		
 /ebeeps	planned		mirc_commands.html	0		
-/echo	planned		mirc_commands.html	1165		
+/echo	done		mirc_commands.html	1165	test_msl	
 /editbox	planned		mirc_commands.html	0		
 /emailaddr	planned		mirc_commands.html	0		
 /enable	planned		remote_commands.html	39		
@@ -118,8 +118,8 @@ name	status	since	help_page	corpus_uses	test	notes
 /gunload	not-possible		agents_scripting.html	0		Microsoft Agent
 /guser	planned		remote_commands.html	0		
 /hadd	planned		hash_tables.html	14		
-/halt	planned		aliases.html	0		
-/haltdef	planned		halting_text.html	0		
+/halt	done		aliases.html	0	test_msl	
+/haltdef	done		halting_text.html	0	test_msl	
 /hdec	planned		hash_tables.html	0		
 /hdel	planned		hash_tables.html	6		
 /help	planned		mirc_commands.html	5		
@@ -137,14 +137,14 @@ name	status	since	help_page	corpus_uses	test	notes
 /if	planned		if_then_else.html	0		
 /ignore	planned		control.html	44		
 /iline	planned		custom_windows.html	9		
-/inc	planned		variables.html	799		
-/invite	planned		basic_irc_commands.html	13		
+/inc	done		variables.html	799	test_msl	
+/invite	partial		basic_irc_commands.html	13	test_msl	
 /iuser	planned		remote_commands.html	1		
-/join	planned		basic_irc_commands.html	23		
-/kick	planned		basic_irc_commands.html	224		
+/join	partial		basic_irc_commands.html	23	test_msl	
+/kick	partial		basic_irc_commands.html	224	test_msl	
 /linesep	planned		mirc_commands.html	9		
 /links	planned		mirc_commands.html	0		
-/list	planned		basic_irc_commands.html	100		
+/list	partial		basic_irc_commands.html	100	test_msl	
 /load	planned		mirc_commands.html	8		
 /loadbuf	planned		mirc_commands.html	20		
 /localinfo	planned		mirc_commands.html	0		
@@ -152,22 +152,22 @@ name	status	since	help_page	corpus_uses	test	notes
 /logview	planned		mirc_commands.html	1		
 /markasread	planned	7.77	versions.txt	0		mark a window as read
 /mdi	planned		mirc_commands.html	0		
-/me	planned		basic_irc_commands.html	13		
+/me	done		basic_irc_commands.html	13	test_msl	
 /menubar	planned		mirc_commands.html	1		
 /mkdir	planned		mirc_commands.html	3		
 /mnick	planned		mirc_commands.html	0		
-/mode	planned		basic_irc_commands.html	219		
-/msg	planned		basic_irc_commands.html	3927		
+/mode	partial		basic_irc_commands.html	219	test_msl	
+/msg	done		basic_irc_commands.html	3927	test_msl	
 /msg nickserv	planned		servers.html	0		
-/nick	planned		basic_irc_commands.html	24		
+/nick	partial		basic_irc_commands.html	24	test_msl	
 /nickserv	planned		servers.html	136		
 /noop	planned		mirc_commands.html	0		
-/notice	planned		basic_irc_commands.html	156		
+/notice	partial		basic_irc_commands.html	156	test_msl	
 /notify	planned		notify_list.html	86		
 /omsg	planned		mirc_commands.html	0		
 /onotice	planned		mirc_commands.html	0		
 /parseline	planned		on_parseline.html	0		
-/part	planned		basic_irc_commands.html	9		
+/part	partial		basic_irc_commands.html	9	test_msl	
 /partall	planned		mirc_commands.html	0		
 /pdcc	planned		mirc_commands.html	5		
 /perform	planned		mirc_commands.html	0		
@@ -180,11 +180,11 @@ name	status	since	help_page	corpus_uses	test	notes
 /pvoice	planned		mirc_commands.html	0		
 /qme	planned		mirc_commands.html	0		
 /qmsg	planned		mirc_commands.html	0		
-/query	planned		basic_irc_commands.html	18		
+/query	partial		basic_irc_commands.html	18	test_msl	
 /queryrn	planned		mirc_commands.html	0		
 /quit	planned		basic_irc_commands.html	17		
-/quote	planned		mirc_commands.html	4		
-/raw	planned		mirc_commands.html	0		
+/quote	done		mirc_commands.html	4	test_msl	
+/raw	done		mirc_commands.html	0	test_msl	
 /reload	planned		mirc_commands.html	3		
 /remini	planned		mirc_commands.html	194		
 /remote	planned		remote_commands.html	7		
@@ -193,7 +193,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /renwin	planned		custom_windows.html	1		
 /reseterror	planned		aliases.html	0		
 /resetidle	planned		mirc_commands.html	2		
-/return	planned		aliases.html	0		
+/return	done		aliases.html	0	test_msl	
 /rlevel	planned		remote_commands.html	3		
 /rline	planned		custom_windows.html	4		
 /rmdir	planned		mirc_commands.html	0		
@@ -202,11 +202,11 @@ name	status	since	help_page	corpus_uses	test	notes
 /save	planned		mirc_commands.html	3		
 /savebuf	planned		mirc_commands.html	16		
 /saveini	planned		mirc_commands.html	0		
-/say	planned		mirc_commands.html	12		
+/say	done		mirc_commands.html	12	test_msl	
 /scid	planned		multimserver.html	149		
 /scon	planned		multimserver.html	20		
 /server	planned		mirc_commands.html	14		
-/set	planned		variables.html	2921		
+/set	done		variables.html	2921	test_msl	
 /setlayer	planned		mirc_commands.html	0		
 /showmirc	planned		mirc_commands.html	0		
 /signal	planned		signals.html	0		
@@ -228,7 +228,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /sreq	planned		mirc_commands.html	0		
 /strip	planned		mirc_commands.html	0		
 /switchbar	planned		mirc_commands.html	1		
-/timer	planned		mirc_commands.html	351		
+/timer	done		mirc_commands.html	351	test_msl	
 /timestamp	planned		mirc_commands.html	11		
 /tip	planned		tips.html	0		
 /tips	planned		tips.html	6		
@@ -236,23 +236,23 @@ name	status	since	help_page	corpus_uses	test	notes
 /tnick	planned		mirc_commands.html	0		
 /tokenize	planned		mirc_commands.html	30		
 /toolbar	planned		mirc_commands.html	1		
-/topic	planned		basic_irc_commands.html	1		
+/topic	partial		basic_irc_commands.html	1	test_msl	
 /tray	planned		tray.html	0		
 /treebar	planned		mirc_commands.html	0		
 /ulist	planned		remote_commands.html	0		
 /unload	planned		mirc_commands.html	25		
-/unset	planned		variables.html	943		
+/unset	done		variables.html	943	test_msl	
 /unsetall	planned		variables.html	0		
 /updatenl	planned		mirc_commands.html	0		
 /url	planned		mirc_commands.html	14		
 /uwho	planned		address_book.html	0		
-/var	planned		variables.html	0		
+/var	done		variables.html	0	test_msl	
 /vcadd	not-possible		voice_commands.html	0		Windows speech recognition
 /vcmd	not-possible		voice_commands.html	0		Windows speech recognition
 /vcrem	not-possible		voice_commands.html	0		Windows speech recognition
 /vol	planned		playing_sounds.html	3		
 /while	planned		aliases.html	0		
-/whois	planned		basic_irc_commands.html	15		
+/whois	partial		basic_irc_commands.html	15	test_msl	
 /window	planned		custom_windows.html	188		
 /winhelp	planned		mirc_commands.html	0		
 /write	planned		mirc_commands.html	225		
