@@ -11,6 +11,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <ctime>
 #include <random>
 #include <regex>
@@ -29,6 +30,47 @@ int argInt(const std::vector<std::string>& a, std::size_t i, int def = 0) {
     } catch (...) {
         return def;
     }
+}
+
+// Base64 ($encode/$decode with the m/MIME flag). Pure C++ so the core stays Qt-free.
+std::string base64Encode(const std::string& in) {
+    static const char* tbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    int val = 0, bits = -6;
+    for (unsigned char c : in) {
+        val = (val << 8) + c;
+        bits += 8;
+        while (bits >= 0) {
+            out.push_back(tbl[(val >> bits) & 0x3F]);
+            bits -= 6;
+        }
+    }
+    if (bits > -6) out.push_back(tbl[((val << 8) >> (bits + 8)) & 0x3F]);
+    while (out.size() % 4) out.push_back('=');
+    return out;
+}
+std::string base64Decode(const std::string& in) {
+    auto idx = [](char c) -> int {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '+') return 62;
+        if (c == '/') return 63;
+        return -1;
+    };
+    std::string out;
+    int val = 0, bits = -8;
+    for (char c : in) {
+        const int d = idx(c);
+        if (d < 0) continue;  // skip '=' and whitespace
+        val = (val << 6) + d;
+        bits += 6;
+        if (bits >= 0) {
+            out.push_back(static_cast<char>((val >> bits) & 0xFF));
+            bits -= 8;
+        }
+    }
+    return out;
 }
 
 std::string fmtNum(double v) {
@@ -282,6 +324,8 @@ void registerBuiltins(Interpreter& in) {
         return i.host().sockInfo(arg(a, 0), prop.empty() ? std::string("status") : prop);
     });
     in.registerIdent("prop", [](Interpreter&, S& s, const A&, const std::string&) { return s.prop; });
+    in.registerIdent("v1", [](Interpreter&, S& s, const A&, const std::string&) { return s.v1; });
+    in.registerIdent("v2", [](Interpreter&, S& s, const A&, const std::string&) { return s.v2; });
     // Dialog event context + control access.
     in.registerIdent("dname", [](Interpreter&, S& s, const A&, const std::string&) {
         return s.params.empty() ? s.target : s.params[0];
@@ -600,6 +644,88 @@ void registerBuiltins(Interpreter& in) {
             out.push_back(static_cast<char>(c));
         }
         return out;
+    });
+
+    // $min/$max over all numeric args.
+    in.registerIdent("min", [](Interpreter&, S&, const A& a, const std::string&) {
+        if (a.empty()) return std::string();
+        double m = 0;
+        bool first = true;
+        for (const auto& x : a) {
+            try {
+                double v = std::stod(x);
+                m = first ? v : std::min(m, v);
+                first = false;
+            } catch (...) {
+            }
+        }
+        return first ? std::string() : fmtNum(m);
+    });
+    in.registerIdent("max", [](Interpreter&, S&, const A& a, const std::string&) {
+        if (a.empty()) return std::string();
+        double m = 0;
+        bool first = true;
+        for (const auto& x : a) {
+            try {
+                double v = std::stod(x);
+                m = first ? v : std::max(m, v);
+                first = false;
+            } catch (...) {
+            }
+        }
+        return first ? std::string() : fmtNum(m);
+    });
+    // $encode(text,m) / $decode(text,m): base64 (the 'm'/MIME mode; the default too).
+    in.registerIdent("encode", [](Interpreter&, S&, const A& a, const std::string&) { return base64Encode(arg(a, 0)); });
+    in.registerIdent("decode", [](Interpreter&, S&, const A& a, const std::string&) { return base64Decode(arg(a, 0)); });
+    // $longip: dotted-quad <-> 32-bit integer.
+    in.registerIdent("longip", [](Interpreter&, S&, const A& a, const std::string&) {
+        const std::string s = arg(a, 0);
+        if (s.find('.') != std::string::npos) {
+            unsigned long parts[4] = {0, 0, 0, 0};
+            if (std::sscanf(s.c_str(), "%lu.%lu.%lu.%lu", &parts[0], &parts[1], &parts[2], &parts[3]) == 4)
+                return std::to_string((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]);
+            return std::string();
+        }
+        try {
+            unsigned long v = std::stoul(s);
+            return std::to_string((v >> 24) & 0xFF) + "." + std::to_string((v >> 16) & 0xFF) + "." +
+                   std::to_string((v >> 8) & 0xFF) + "." + std::to_string(v & 0xFF);
+        } catch (...) {
+            return std::string();
+        }
+    });
+    // $hfind(table,text,N,flags): Nth hash item (or data with W/R) matching text
+    // as a wildcard (default) or regex (r/R); N=0 → count of matches.
+    in.registerIdent("hfind", [](Interpreter& in2, S&, const A& a, const std::string& prop) {
+        const std::string table = arg(a, 0), pat = arg(a, 1);
+        const int which = argInt(a, 2, 1);
+        const std::string flags = arg(a, 3);
+        const bool regex = flags.find('r') != std::string::npos || flags.find('R') != std::string::npos;
+        const bool byData = flags.find('W') != std::string::npos || flags.find('R') != std::string::npos;
+        std::regex re;
+        bool reOk = false;
+        if (regex) {
+            try {
+                bool g = false;
+                re = compileRegex(pat, g);
+                reOk = true;
+            } catch (...) {
+                reOk = false;
+            }
+        }
+        const int count = in2.hashCount(table);
+        int seen = 0;
+        for (int k = 1; k <= count; ++k) {
+            const std::string item = in2.hashItemByIndex(table, k);
+            const std::string data = in2.hashDataByIndex(table, k);
+            const std::string& hay = byData ? data : item;
+            const bool m = regex ? (reOk && std::regex_search(hay, re)) : matchWild(pat, hay);
+            if (!m) continue;
+            ++seen;
+            if (which != 0 && seen == which) return prop == "data" ? data : item;
+        }
+        return which == 0 ? std::to_string(seen) : std::string();
     });
 
     // Path identifiers.

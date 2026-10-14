@@ -38,6 +38,8 @@ struct Scope {
     std::string address;  // nick!user@host
     std::string chan;     // channel the event is on
     std::string target;   // the window ($target): channel, query nick or @window
+    std::string v1;                               // $v1 / $v2: the operands of the
+    std::string v2;                               // most recent if/while comparison
     bool halted = false;                          // /halt stops the whole script
     bool returned = false;                        // /return stops the current alias
     bool breakLoop = false;                       // /break exits the innermost while

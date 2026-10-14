@@ -503,6 +503,27 @@ int main() {
         host.myChans.clear();
     }
 
+    // New identifiers: $min/$max, base64 $encode/$decode, $longip, $hfind, $v1/$v2.
+    {
+        CHECK_EQ(eval(in, "$min(3,7,1,9)"), std::string("1"));
+        CHECK_EQ(eval(in, "$max(3,7,1,9)"), std::string("9"));
+        CHECK_EQ(eval(in, "$encode(hello)"), std::string("aGVsbG8="));
+        CHECK_EQ(eval(in, "$decode(aGVsbG8=)"), std::string("hello"));
+        CHECK_EQ(eval(in, "$longip(1.2.3.4)"), std::string("16909060"));
+        CHECK_EQ(eval(in, "$longip(16909060)"), std::string("1.2.3.4"));
+        Scope s;
+        in.execute("hmake t 10 | hadd t apple red | hadd t apricot orange | hadd t banana yellow", s);
+        CHECK_EQ(eval(in, "$hfind(t,ap*,0,w)"), std::string("2"));
+        CHECK_EQ(eval(in, "$hfind(t,ap*,1,w)"), std::string("apple"));
+        CHECK_EQ(eval(in, "$hfind(t,ap*,2,w)"), std::string("apricot"));
+    }
+    {
+        host.echoed.clear();
+        Scope s;
+        in.execute("if (5 > 3) echo $v1 $v2", s);
+        CHECK_EQ(host.echoed.back(), std::string("5 3"));
+    }
+
     // Unbounded recursion is caught, not a crash (reports an error and stops).
     {
         host.errors.clear();

@@ -476,6 +476,8 @@ bool Interpreter::evalCondition(std::string_view expr, Scope& scope) {
         std::string b;
         for (std::size_t i = 2; i < clean.size(); ++i) b += (i > 2 ? " " : "") + clean[i];
         b = evaluate(b, scope);
+        scope.v1 = a;  // mIRC exposes the operands as $v1/$v2 after a comparison
+        scope.v2 = b;
         if (clean[1] == "isnum") return compare(a, "isnum", "");
         return compare(a, clean[1], b);
     }
