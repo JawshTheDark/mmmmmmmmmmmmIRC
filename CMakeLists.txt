@@ -15,6 +15,7 @@ add_library(lurker_core STATIC
     src/core/IrcFormat.cpp
     src/core/CommandParser.cpp
     src/core/IrcMessage.cpp
+    src/core/IrcSession.cpp
 )
 target_include_directories(lurker_core PUBLIC src)
 target_compile_options(lurker_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -25,6 +26,7 @@ add_subdirectory(tests)
 if(LURKER_BUILD_GUI)
     find_package(Qt6 6.4 QUIET COMPONENTS Widgets Network WebSockets)
     if(Qt6_FOUND)
+        add_subdirectory(src/backend)
         add_subdirectory(src/gui)
     else()
         message(STATUS "Qt 6 (Widgets, Network, WebSockets) not found: building core and tests only")

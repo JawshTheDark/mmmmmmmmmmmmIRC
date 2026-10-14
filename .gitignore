@@ -4,3 +4,6 @@ build-*/
 compile_commands.json
 CMakeUserPresets.json
 *.user
+
+# local credentials for dev probes — never commit
+.secrets/
