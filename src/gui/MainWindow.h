@@ -104,6 +104,7 @@ private:
     QHash<QString, Buffer> m_buffers;              // key -> buffer
     QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
     QHash<int, QString> m_networkNames;            // networkId -> display name
+    QHash<int, QString> m_networkNicks;            // networkId -> our nick (for $me)
     bool m_closing = false;
 
     GuiScriptHost m_scriptHost;

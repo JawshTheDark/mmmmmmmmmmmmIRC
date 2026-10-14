@@ -158,7 +158,7 @@ void MainWindow::setupScripting() {
         if (!b) return {};
         return {b->networkId, b->display.toStdString()};
     };
-    m_scriptHost.meFn = [](int) { return QString(); };  // filled once backends expose our nick per net
+    m_scriptHost.meFn = [this](int net) { return m_networkNicks.value(net); };
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };
@@ -557,6 +557,7 @@ void MainWindow::onStatusText(const QString& text) {
 
 void MainWindow::onNetworkUpdated(const NetworkInfo& info) {
     m_networkNames.insert(info.id, info.name.isEmpty() ? tr("Network %1").arg(info.id) : info.name);
+    if (!info.nick.isEmpty()) m_networkNicks.insert(info.id, info.nick);
     if (auto* node = m_networkNodes.value(info.id)) node->setText(0, m_networkNames.value(info.id));
     else networkNode(info.id)->setText(0, m_networkNames.value(info.id));
     // A per-network server buffer collects that network's server text.
