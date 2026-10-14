@@ -18,4 +18,7 @@ struct TextScheme {
 // Appends `utf8` at `cursor`, translating IRC formatting codes into character formats.
 void insertFormatted(QTextCursor& cursor, const QByteArray& utf8, const TextScheme& scheme);
 
+// `utf8` with all IRC formatting codes removed, as a QString (for topic bars, titles).
+QString stripFormattingQt(const QByteArray& utf8);
+
 }  // namespace lurker::gui

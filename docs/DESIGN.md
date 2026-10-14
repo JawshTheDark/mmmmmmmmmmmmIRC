@@ -66,6 +66,24 @@ rather than pretending.
 Both backends ride Lurker's documented protocols (`docs/CLIENT_PROTOCOL.md`, `docs/IRCV3.md`
 in the Lurker repo).
 
+### DCC through Lurker (not peer-to-peer)
+
+Classic mIRC DCC opens a direct TCP connection between the two clients, which fails behind NAT and
+can't span the user's devices. This client instead **routes DCC through Lurker** by default, so it
+works the way the rest of Lurker does — always-on, multi-device, no listening ports:
+
+- **Outgoing files** go through the bouncer's `soju.im/FILEHOST` capability (attach a file, get a
+  link Lurker hosts) or Lurker's `POST /api/uploads` / `/api/dcc` REST surface.
+- **Incoming DCC offers** are accepted and the bytes pulled from Lurker; progress arrives as
+  `dcc-transfer` frames (WS) or `upload-progress`.
+- **DCC chat** rides the same path as an ordinary query where Lurker mediates it.
+- Local **save** and **send** directories, auto-accept rules and size caps are client settings
+  (Options). This is the transport the scripted `/dcc` surface (Phase 2 WP 2.12) runs on, so
+  scripts see the usual identifiers, events and progress regardless of the wire underneath.
+
+A genuine peer-to-peer DCC mode may come later as an explicit, off-by-default option for direct
+transfers to non-Lurker users; it is not the primary path.
+
 ## What "100% parity" can and cannot mean on Linux
 
 Tracked as a checklist generated from the public mIRC command/identifier/event index, each row

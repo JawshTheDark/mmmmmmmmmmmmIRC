@@ -347,5 +347,27 @@ int main() {
         CHECK(!h.session->capEnabled("away-notify"));
     }
 
+    // CAP NEW after registration requests wanted caps and enables them on ACK.
+    // This is what the Lurker bouncer does when a bound network's caps appear
+    // (verified live: multi-prefix/chghost/extended-join arrive this way).
+    {
+        Harness h(config());
+        registerSession(h);
+        CHECK(!h.session->capEnabled("account-tag"));
+        const std::size_t before = h.sent.size();
+        h.feed(":srv CAP jawsh NEW :account-tag invite-notify");
+        bool requested = false;
+        for (std::size_t i = before; i < h.sent.size(); ++i) {
+            if (h.sent[i].find("CAP REQ") != std::string::npos &&
+                h.sent[i].find("account-tag") != std::string::npos) {
+                requested = true;
+            }
+        }
+        CHECK(requested);
+        h.feed(":srv CAP jawsh ACK :account-tag invite-notify");
+        CHECK(h.session->capEnabled("account-tag"));
+        CHECK(h.session->capEnabled("invite-notify"));
+    }
+
     return check::summary();
 }

@@ -4,11 +4,16 @@ qt_add_executable(lurker-desktop
     main.cpp
     MainWindow.cpp
     MainWindow.h
+    ChatView.cpp
+    ChatView.h
+    ConnectDialog.cpp
+    ConnectDialog.h
     FormattedText.cpp
     FormattedText.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core
+    lurker_backend
     Qt6::Widgets
     Qt6::Network
     Qt6::WebSockets

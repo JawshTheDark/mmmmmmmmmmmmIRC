@@ -5,6 +5,8 @@
 #include <QApplication>
 #include <QTimer>
 
+#include "backend/BouncerBackend.h"
+#include "gui/ConnectDialog.h"
 #include "gui/MainWindow.h"
 
 int main(int argc, char* argv[]) {
@@ -12,19 +14,28 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationName(QStringLiteral("lurker-desktop"));
     QApplication::setOrganizationName(QStringLiteral("lurker-desktop"));
 
+    const QStringList args = QCoreApplication::arguments();
     lurker::gui::MainWindow window;
-    window.printStatus("\x02Lurker Desktop\x02 " LURKER_DESKTOP_VERSION);
-    window.printStatus("Not connected yet: sign-in arrives with the Lurker backend.");
     window.show();
 
-    // --smoke-test: start, process one event loop pass, exit. Used to check the build runs.
-    // --screenshot=<file.png>: same, but save an image of the window first (works offscreen).
-    for (const QString& arg : QCoreApplication::arguments()) {
-        if (arg == QStringLiteral("--smoke-test")) {
-            QTimer::singleShot(0, &app, &QCoreApplication::quit);
-        } else if (arg.startsWith(QStringLiteral("--screenshot="))) {
-            const QString path = arg.section(QLatin1Char('='), 1);
-            QTimer::singleShot(200, &app, [&window, path] {
+    // --connect-dev: connect immediately from .secrets/dev-profile.json (local
+    // dev only). Lets a headless run produce a live screenshot.
+    if (args.contains(QStringLiteral("--connect-dev"))) {
+        lurker::backend::ConnectSettings settings;
+        if (lurker::gui::devProfileSettings(settings)) window.connectWith(settings);
+    }
+
+    // --smoke-test: quit after one event-loop pass.
+    if (args.contains(QStringLiteral("--smoke-test"))) {
+        QTimer::singleShot(0, &app, &QCoreApplication::quit);
+    }
+    // --screenshot=<file>[,<delayMs>]: save a PNG of the window, then quit.
+    for (const QString& arg : args) {
+        if (arg.startsWith(QStringLiteral("--screenshot="))) {
+            const QString spec = arg.section(QLatin1Char('='), 1);
+            const QString path = spec.section(QLatin1Char(','), 0, 0);
+            const int delayMs = spec.contains(QLatin1Char(',')) ? spec.section(QLatin1Char(','), 1, 1).toInt() : 300;
+            QTimer::singleShot(delayMs, &app, [&window, path] {
                 window.grab().save(path);
                 QCoreApplication::quit();
             });

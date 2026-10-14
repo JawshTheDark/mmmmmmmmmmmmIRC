@@ -47,4 +47,10 @@ void insertFormatted(QTextCursor& cursor, const QByteArray& utf8, const TextSche
     }
 }
 
+QString stripFormattingQt(const QByteArray& utf8) {
+    const std::string stripped =
+        stripFormatting(std::string_view(utf8.constData(), static_cast<std::size_t>(utf8.size())));
+    return QString::fromUtf8(stripped.data(), static_cast<qsizetype>(stripped.size()));
+}
+
 }  // namespace lurker::gui

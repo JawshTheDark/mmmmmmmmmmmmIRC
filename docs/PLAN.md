@@ -85,6 +85,13 @@ switchbar, status window), build/test harness, `--screenshot` flag, parity tooli
 Exit gate: the owner uses it daily against their Lurker server through **both** backends; an
 imported mIRC folder shows the same servers, channels and options.
 
+Progress (2026-10-14): **1.1 partial** (internal event model `core/IrcEvent` + `Backend` via
+`BouncerBackend`; the formal `Host` interface is still to be extracted), **1.2 done** (bouncer
+backend verified live against chat.irc.so:1025 — SASL, CAP incl. CAP NEW, ISUPPORT, channels/
+members, reconnect, cert pinning), **1.3 done at a basic level** (status/channel/query ChatViews
+with nicklist, topic bar, per-window input, send via the command parser; tab-completion, key
+bindings, scrollback caps and URL hotlinks remain). 1.4–1.7 not started.
+
 | WP | Scope | Deliverables | Exit criteria |
 |---|---|---|---|
 | 1.1 Host + Backend interfaces | `core/Host.h`, `core/Backend.h`, internal event model (one struct per IRC event with raw line attached when available) | headers, fake Host for tests | engine-side code compiles with no Qt |
@@ -114,7 +121,7 @@ corpus C **loads** (parses, dialogs render, windows open) with only DLL-backed f
 | 2.9 Picture windows | `/window -p`, `/drawpic /drawtext /drawrect /drawline /drawdot /drawfill /drawcopy /drawscroll /drawsave /drawreplace /drawrot /drawsize`, `$pic() $rgb $color $inrect $inellipse $inpoly $inroundrect $width $height`, mouse/`sclick`/`dclick`/`rclick`/`uclick`/`drop`/`leave` hooks, `$mouse` | corpus C's graph/bars windows draw |
 | 2.10 Sound and media | `/splay` (wav/mp3/ogg/flac via QtMultimedia; `-q -p -s -c -w -m -l`…), `/sound` (CTCP SOUND), `/beep`, `/vol`, `$sound() $vol $insong $inwave $inmp3 $inmidi $findfile(mp3)`, `on MP3END/WAVEEND/MIDIEND/PLAYEND/NOSOUND`, sound requests options | corpus C's 126 `/splay` calls work; MIDI is `substitute` until Phase 6 |
 | 2.11 Popups and menus | `popups.ini` sections (status, channel, query, nicklist, menubar) and `menu` blocks in scripts: nesting (`.`), separators, `$submenu`, `$1`-nick lists, `$snick`, dynamic items; `/popup`? n/a; keyboard accelerators | corpus A's popups.ini (93 lines) renders identically |
-| 2.12 DCC and file server scripting | `/dcc send/get/chat/fserve/trust/ignore/nick`, passive DCC, resume, DCC server, `$send() $get() $chat() $fserve() $dccport $sendfile?`, `on CHAT/SERV/FILESENT/FILERCVD/SENDFAIL/GETFAIL/DCCSERVER`, `/msg =nick`, `$dccignore`, folders/file-type options | corpus B's `/dcc` paths (20 uses) and corpus C's fserve load; a real DCC send/get works peer-to-peer |
+| 2.12 DCC and file server scripting | `/dcc send/get/chat/fserve/trust/ignore/nick`, passive DCC, resume, DCC server, `$send() $get() $chat() $fserve() $dccport $sendfile?`, `on CHAT/SERV/FILESENT/FILERCVD/SENDFAIL/GETFAIL/DCCSERVER`, `/msg =nick`, `$dccignore`, folders/file-type options. **DCC is routed through Lurker, not peer-to-peer** (see §DCC below): a scripted `/dcc send` uploads via the bouncer's `soju.im/FILEHOST` / Lurker's `/api/dcc`, and an incoming transfer is pulled from Lurker; the scripting surface (identifiers, events, progress) is preserved over that transport. A true peer-to-peer fallback is a later option, off by default. | corpus B's `/dcc` paths (20 uses) and corpus C's fserve load; a scripted send/get round-trips through Lurker |
 | 2.13 The long tail | everything still `planned` after 2.1–2.12: `/clipboard $cb /tip $tip /tray /toolbar $toolbar /font /color (colours model) /background /flash /showmirc /titlebar /echo (every switch) /linesep /timestamp $timestamp /editbox $editbox on INPUT/TABCOMP/CHAR/KEYDOWN/KEYUP $keyval $keychar /hotlink on HOTLINK /abook $abook /notify $notify /ignore $ignore /protect /ajinvite /ban masks $banmask /ban -a /uwho $uwho? /whois $whois? /url $url $urlget /log $log /perform /anick /emailaddr /fullname /nick /away $away $awaymsg $awaytime /exit /load /unload $appstate $appactive /speak (substitute) /registry (substitute)…` | matrix: commands/identifiers/events ≥ 99% done or not-possible |
 
 ### Phase 3 — Full UI and options parity
@@ -140,7 +147,7 @@ Exit gate: everything Lurker offers that mIRC never had is reachable without lea
 | 4.1 History and search | server history (`chathistory` on the bouncer; `history` frames on WS) with scroll-up loading; `GET /api/search` window; highlights and bookmarks lists |
 | 4.2 Sync | read state (`read-state`, `mark-read`, draft/read-marker), drafts, favorites, pins, nick notes, settings registry editor (every advertised setting by type) |
 | 4.3 Rich IRCv3 UI | reactions (+draft/react) under lines, replies with quoted parent, typing indicators, peer presence in queries, multiline messages, `account-tag`/`chghost` rendering, link/media previews when the server has `linkPreviews` |
-| 4.4 Uploads | paste/drag image → `POST /api/uploads` with progress token; size/dimension limits from the snapshot |
+| 4.4 Uploads and DCC through Lurker | paste/drag image → `POST /api/uploads` with progress token; size/dimension limits from the snapshot. **DCC proxied through Lurker**, configurable in Options: outgoing files go through the bouncer's `soju.im/FILEHOST` (attach → link) or Lurker's `/api/dcc` so transfers work behind NAT and across devices without opening listening ports; incoming DCC offers are accepted and fetched from Lurker; progress via `dcc-transfer` frames / `upload-progress`. The local save/send directories are client settings. This is the transport the scripted `/dcc` surface (WP 2.12) runs on. |
 | 4.5 Notifications | `notify` flag → desktop notifications (freedesktop), sounds, tray; no push |
 | 4.6 Account and admin | sign-in flows (self-hosted token, OAuth PKCE, hosted lurker.chat), paused-account state, `account-state`, network CRUD via REST with Lurker-only fields (SASL, CertFP generate/import/export, autoconnect, connect commands) |
 | 4.7 Optional: E2E (RPE2E) | per-channel opt-in, key export/import, lock icon, `FLAG_SECURE`-style no-logging |
