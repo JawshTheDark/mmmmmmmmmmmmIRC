@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cmath>
 #include <random>
+#include <regex>
 #include <string>
 
 #include "core/msl/Interpreter.h"
@@ -111,6 +112,27 @@ struct Calc {
 std::mt19937& rng() {
     static std::mt19937 gen{std::random_device{}()};
     return gen;
+}
+
+// Parse an mIRC-style regex argument: optional /pattern/flags, returning the
+// pattern and the std::regex flags plus whether the g (global) flag was set.
+std::regex compileRegex(const std::string& raw, bool& global) {
+    std::string pat = raw;
+    auto flags = std::regex::ECMAScript;
+    global = false;
+    if (pat.size() >= 2 && pat.front() == '/') {
+        const std::size_t close = pat.rfind('/');
+        if (close > 0) {
+            const std::string mods = pat.substr(close + 1);
+            pat = pat.substr(1, close - 1);
+            for (char c : mods) {
+                if (c == 'i' || c == 'I') flags |= std::regex::icase;
+                else if (c == 'm' || c == 'M') flags |= std::regex::multiline;
+                else if (c == 'g' || c == 'G') global = true;
+            }
+        }
+    }
+    return std::regex(pat, flags);
 }
 
 }  // namespace
@@ -331,6 +353,57 @@ void registerBuiltins(Interpreter& in) {
     });
     in.registerIdent("isalias", [](Interpreter& i, S&, const A& a, const std::string&) {
         return i.aliasDefined(arg(a, 0)) ? std::string("$true") : std::string("$false");
+    });
+
+    // Regex: $regex([name],text,pattern) → match count; captures go to $regml.
+    in.registerIdent("regex", [](Interpreter& in2, S&, const A& a, const std::string&) {
+        std::string name = "default", text, pat;
+        if (a.size() >= 3) {
+            name = a[0];
+            text = a[1];
+            pat = a[2];
+        } else if (a.size() == 2) {
+            text = a[0];
+            pat = a[1];
+        } else {
+            return std::string("0");
+        }
+        std::vector<std::string> groups;
+        int matches = 0;
+        try {
+            bool global = false;
+            std::regex re = compileRegex(pat, global);
+            auto begin = std::sregex_iterator(text.begin(), text.end(), re);
+            auto end = std::sregex_iterator();
+            for (auto it = begin; it != end; ++it) {
+                ++matches;
+                const std::smatch& m = *it;
+                for (std::size_t g = 1; g < m.size(); ++g) groups.push_back(m[g].str());
+                if (!global) break;
+            }
+        } catch (...) {
+            in2.regexStore(name, {});
+            return std::string("0");
+        }
+        in2.regexStore(name, std::move(groups));
+        return std::to_string(matches);
+    });
+    in.registerIdent("regml", [](Interpreter& in2, S&, const A& a, const std::string&) {
+        if (a.size() >= 2) return in2.regmlGet(a[0], argInt(a, 1));
+        return in2.regmlGet("default", argInt(a, 0));
+    });
+    in.registerIdent("regsub", [](Interpreter&, S&, const A& a, const std::string&) {
+        // $regsub(text, pattern, subst) → replaced text (ECMAScript $1 refs).
+        if (a.size() < 3) return arg(a, 0);
+        try {
+            bool global = false;
+            std::regex re = compileRegex(arg(a, 1), global);
+            return std::regex_replace(arg(a, 0), re, arg(a, 2),
+                                      global ? std::regex_constants::format_default
+                                             : std::regex_constants::format_first_only);
+        } catch (...) {
+            return arg(a, 0);
+        }
     });
 
     // Hash tables.

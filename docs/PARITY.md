@@ -7,11 +7,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
 | Commands | 23 | 235 | 9.8% | 23 |
-| Identifiers | 42 | 406 | 10.3% | 15 |
+| Identifiers | 45 | 406 | 11.1% | 15 |
 | Events | 5 | 84 | 6.0% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **80** | **1129** | **7.1%** | |
+| **Total** | **83** | **1129** | **7.4%** | |
 
 ## Commands
 
@@ -295,7 +295,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (364)
+### planned (361)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -427,7 +427,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$mnick` | 1 |  | nick_address_identifiers.html |  |  |
 | `$numeric` | 1 |  | remote_identifiers.html |  |  |
 | `$portfree` | 1 |  | sockets.html |  |  |
-| `$regex` | 1 |  | regular_expressions.html |  |  |
 | `$sorttok` | 1 |  | token_identifiers.html |  |  |
 | `$abook` | 0 |  | file_directory_identifiers.html |  |  |
 | `$acos` | 0 |  | text_number_identifiers.html |  |  |
@@ -602,9 +601,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$rawbytes` | 0 |  | remote_identifiers.html |  |  |
 | `$rawmsg` | 0 |  | remote_identifiers.html |  |  |
 | `$regerrstr` | 0 |  | regular_expressions.html |  |  |
-| `$regml` | 0 |  | regular_expressions.html |  |  |
 | `$regmlex` | 0 |  | regular_expressions.html |  |  |
-| `$regsub` | 0 |  | regular_expressions.html |  |  |
 | `$regsubex` | 0 |  | regular_expressions.html |  |  |
 | `$remote` | 0 |  | remote_identifiers.html |  |  |
 | `$replacex` | 0 |  | text_number_identifiers.html |  |  |
@@ -664,7 +661,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (42)
+### done (45)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -701,6 +698,9 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$puttok` | 5 |  | token_identifiers.html | test_msl |  |
 | `$qt` | 0 |  | text_number_identifiers.html | test_msl |  |
 | `$rand` | 118 |  | text_number_identifiers.html | test_msl |  |
+| `$regex` | 1 |  | regular_expressions.html | test_msl |  |
+| `$regml` | 0 |  | regular_expressions.html | test_msl |  |
+| `$regsub` | 0 |  | regular_expressions.html | test_msl |  |
 | `$remove` | 83 |  | text_number_identifiers.html | test_msl |  |
 | `$remtok` | 49 |  | token_identifiers.html | test_msl |  |
 | `$replace` | 321 |  | text_number_identifiers.html | test_msl |  |

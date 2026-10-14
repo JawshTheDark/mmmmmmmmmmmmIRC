@@ -309,10 +309,10 @@ $read	planned		file_directory_identifiers.html	343
 $readini	planned		file_directory_identifiers.html	429		
 $readn	planned		file_directory_identifiers.html	8		
 $regerrstr	planned		regular_expressions.html	0		
-$regex	planned		regular_expressions.html	1		
-$regml	planned		regular_expressions.html	0		
+$regex	done		regular_expressions.html	1	test_msl	
+$regml	done		regular_expressions.html	0	test_msl	
 $regmlex	planned		regular_expressions.html	0		
-$regsub	planned		regular_expressions.html	0		
+$regsub	done		regular_expressions.html	0	test_msl	
 $regsubex	planned		regular_expressions.html	0		
 $remote	planned		remote_identifiers.html	0		
 $remove	done		text_number_identifiers.html	83	test_msl	

@@ -143,6 +143,21 @@ std::string Interpreter::hashDataByIndex(const std::string& table, int n) const 
     return tit->second.items[n - 1].second;
 }
 
+// --- regex capture store ------------------------------------------------
+
+void Interpreter::regexStore(const std::string& name, std::vector<std::string> groups) {
+    m_regml[name] = std::move(groups);
+}
+std::string Interpreter::regmlGet(const std::string& name, int n) const {
+    const auto it = m_regml.find(name);
+    if (it == m_regml.end() || n < 1 || n > static_cast<int>(it->second.size())) return {};
+    return it->second[n - 1];
+}
+int Interpreter::regmlCount(const std::string& name) const {
+    const auto it = m_regml.find(name);
+    return it == m_regml.end() ? 0 : static_cast<int>(it->second.size());
+}
+
 // --- expression evaluation ----------------------------------------------
 
 std::string Interpreter::evalParam(std::string_view token, Scope& scope) const {
@@ -206,16 +221,25 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
             continue;
         }
         if (c == '[') {
-            // Bracket grouping: evaluate the inside first (higher precedence).
+            // Bracket grouping forces evaluation of the inside first, but only
+            // when there is something to evaluate ($ or %). Plain brackets like
+            // a regex "[a-z]" are left literal (matches practical mIRC use).
             int depth = 1;
             std::size_t j = i + 1;
             for (; j < n && depth; ++j) {
                 if (text[j] == '[') ++depth;
                 else if (text[j] == ']') --depth;
             }
-            const std::string inner(text.substr(i + 1, j - i - 2));
-            out += evaluate(inner, scope);
-            i = j;
+            if (depth == 0) {
+                const std::string inner(text.substr(i + 1, j - i - 2));
+                if (inner.find('$') != std::string::npos || inner.find('%') != std::string::npos) {
+                    out += evaluate(inner, scope);
+                    i = j;
+                    continue;
+                }
+            }
+            out += c;  // literal '['
+            ++i;
             continue;
         }
         if (c == '$') {

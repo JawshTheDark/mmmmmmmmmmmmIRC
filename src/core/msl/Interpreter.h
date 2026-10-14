@@ -105,6 +105,11 @@ public:
     std::string hashDataByIndex(const std::string& table, int n) const;   // $hget(t,N).data
     bool aliasDefined(const std::string& name) const { return m_aliases.count(name) != 0; }
 
+    // Regex capture store ($regex fills it, $regml reads it), keyed by name.
+    void regexStore(const std::string& name, std::vector<std::string> groups);
+    std::string regmlGet(const std::string& name, int n) const;
+    int regmlCount(const std::string& name) const;
+
     std::string getVariable(const std::string& name, const Scope& scope) const;
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);
     void unsetVariable(const std::string& name, Scope& scope);
@@ -135,6 +140,7 @@ private:
         std::map<std::string, std::size_t, CiLess> index;        // folded item -> position
     };
     std::map<std::string, HashTable, CiLess> m_hash;
+    std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.

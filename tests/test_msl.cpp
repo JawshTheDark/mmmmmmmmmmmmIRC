@@ -94,6 +94,9 @@ int main() {
     // Nested identifiers and brackets.
     CHECK_EQ(eval(in, "$len($str(a,4))"), std::string("4"));
     CHECK_EQ(eval(in, "$calc($len(abc) + 2)"), std::string("5"));
+    // [ ] evaluates only when it contains $/% (so regex [a-z] stays literal).
+    CHECK_EQ(eval(in, "x[$calc(2+3)]y"), std::string("x5y"));
+    CHECK_EQ(eval(in, "[a-z]+"), std::string("[a-z]+"));
 
     // $me from the host.
     CHECK_EQ(eval(in, "$me"), std::string("jawsh"));
@@ -269,6 +272,23 @@ int main() {
         CHECK_EQ(eval(in, "$hget(mytable,1).item"), std::string("bob"));
         in.execute("hfree mytable", s);
         CHECK_EQ(eval(in, "$hget(mytable)"), std::string("0"));
+    }
+
+    // Regex: match count and captures.
+    {
+        CHECK_EQ(eval(in, "$regex(hello123world,(\\d+))"), std::string("1"));
+        CHECK_EQ(eval(in, "$regml(1)"), std::string("123"));
+        // Named, global: capture all matches' groups.
+        CHECK_EQ(eval(in, "$regex(nums,a1 b2 c3,/([a-z])(\\d)/g)"), std::string("3"));
+        CHECK_EQ(eval(in, "$regml(nums,1)"), std::string("a"));
+        CHECK_EQ(eval(in, "$regml(nums,2)"), std::string("1"));
+        CHECK_EQ(eval(in, "$regml(nums,3)"), std::string("b"));
+        // Case-insensitive flag.
+        CHECK_EQ(eval(in, "$regex(FOO,/foo/i)"), std::string("1"));
+        // No match.
+        CHECK_EQ(eval(in, "$regex(abc,\\d+)"), std::string("0"));
+        // $regsub replacement.
+        CHECK_EQ(eval(in, "$regsub(a1b2c3,/\\d/g,#)"), std::string("a#b#c#"));
     }
 
     // $isalias.
