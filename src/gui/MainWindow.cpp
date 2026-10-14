@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QDockWidget>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QMdiArea>
 #include <QMdiSubWindow>
@@ -27,6 +28,7 @@
 #include "gui/ConnectDialog.h"
 #include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
+#include "gui/ScriptEditor.h"
 #include "gui/ScriptSockets.h"
 #include "gui/Theme.h"
 
@@ -89,6 +91,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (m_backend) m_backend->disconnectAll();
     });
     m_disconnectAction->setEnabled(false);
+    file->addSeparator();
+    file->addAction(tr("&Load Script..."), this, [this] {
+        const QString path = QFileDialog::getOpenFileName(this, tr("Load MSL script"), m_scriptHost.baseDir,
+                                                          tr("mIRC scripts (*.mrc);;All files (*)"));
+        if (!path.isEmpty()) loadScriptFile(path);
+    });
+    file->addAction(tr("&Scripts Editor..."), this, &MainWindow::openScriptEditor);
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
 
@@ -267,31 +276,43 @@ void MainWindow::loadScriptFile(const QString& path) {
     QFileInfo info(path);
     // A script's own folder becomes the base for its relative file paths (mIRC $mircdir).
     m_scriptHost.baseDir = info.isDir() ? info.absoluteFilePath() : info.absolutePath();
+    QStringList toLoad;
     if (info.isDir()) {
-        int files = 0;
-        for (const QFileInfo& fi : QDir(path).entryInfoList({QStringLiteral("*.mrc")}, QDir::Files, QDir::Name)) {
-            QFile f(fi.absoluteFilePath());
-            if (f.open(QIODevice::ReadOnly)) {
-                m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
-                ++files;
-            }
-        }
-        onStatusText(tr("Loaded %1 script file(s): %2 aliases, %3 event handlers")
-                         .arg(files)
-                         .arg(m_msl->aliasCount())
-                         .arg(m_msl->eventHandlerCount()));
-        return;
+        for (const QFileInfo& fi : QDir(path).entryInfoList({QStringLiteral("*.mrc")}, QDir::Files, QDir::Name))
+            toLoad << fi.absoluteFilePath();
+    } else {
+        toLoad << info.absoluteFilePath();
     }
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly)) {
-        onStatusText(tr("Could not load script: %1").arg(path));
-        return;
+    for (const QString& file : toLoad) {
+        QFile f(file);
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+        if (!m_scriptFiles.contains(file)) m_scriptFiles << file;
     }
-    m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
-    onStatusText(tr("Loaded %1: %2 aliases, %3 event handlers")
-                     .arg(info.fileName())
-                     .arg(m_msl->aliasCount())
-                     .arg(m_msl->eventHandlerCount()));
+    onStatusText(tr("Loaded %1 file(s) — %2").arg(toLoad.size()).arg(scriptSummary()));
+}
+
+QString MainWindow::scriptSummary() const {
+    return m_msl ? tr("%1 aliases, %2 event handlers").arg(m_msl->aliasCount()).arg(m_msl->eventHandlerCount())
+                 : QString();
+}
+
+void MainWindow::reloadScripts() {
+    if (!m_msl) return;
+    m_msl->clearScripts();
+    const QStringList files = m_scriptFiles;
+    for (const QString& file : files) {
+        QFile f(file);
+        if (f.open(QIODevice::ReadOnly)) m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+    }
+    onStatusText(tr("Reloaded scripts — %1").arg(scriptSummary()));
+}
+
+void MainWindow::openScriptEditor() {
+    auto* ed = new ScriptEditor(this, [this] { return m_scriptFiles; }, [this] { reloadScripts(); },
+                                [this] { return scriptSummary(); });
+    ed->setAttribute(Qt::WA_DeleteOnClose);
+    ed->show();
 }
 
 void MainWindow::simulateMessage(int net, const QString& nick, const QString& target, const QString& text) {

@@ -40,6 +40,10 @@ public:
     // Run an MSL line in the active (or status) window — used by // input and --msl.
     void runScript(const QString& line);
     void loadScriptFile(const QString& path);
+    void reloadScripts();        // clear + reload all tracked script files
+    void openScriptEditor();     // Scripts Editor window
+    QStringList scriptFiles() const { return m_scriptFiles; }
+    QString scriptSummary() const;  // "N aliases, N events, N dialogs"
     // Dev: inject a synthetic incoming message (renders + fires on TEXT).
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
 
@@ -105,6 +109,7 @@ private:
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
     class ScriptSockets* m_sockets = nullptr;
+    QStringList m_scriptFiles;  // loaded .mrc paths, for the editor + reload
     QHash<QString, class ScriptDialog*> m_dialogs;  // open script dialogs by instance name
     QHash<QString, class QTimer*> m_scriptTimers;   // /timer instances by name
     int m_timerSeq = 0;

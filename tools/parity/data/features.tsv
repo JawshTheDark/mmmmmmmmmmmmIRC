@@ -320,7 +320,7 @@ Regular Expressions	regular_expressions	planned
 Events	remote	partial		test_msl	
 Remote	remote	partial		test_msl	
 Remote Scripts	remote	planned			
-Scripts	remote	planned			
+Scripts	remote	done			
 Remote Commands	remote_commands	partial		test_msl	
 Remote Identifiers	remote_identifiers	partial		test_msl	
 DCC Get	send_receive_files	planned			

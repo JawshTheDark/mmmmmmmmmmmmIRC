@@ -10,8 +10,8 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Identifiers | 81 | 406 | 20.0% | 15 |
 | Events | 10 | 84 | 11.9% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
-| Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **144** | **1129** | **12.8%** | |
+| Features, options and UI | 5 | 390 | 1.3% | 0 |
+| **Total** | **145** | **1129** | **12.8%** | |
 
 ## Commands
 
@@ -867,7 +867,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Features, options and UI
 
-### planned (382)
+### planned (381)
 
 | Item | Group | Since | Test | Notes |
 |---|---|---|---|---|
@@ -1171,7 +1171,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Saving Positions | system_menu |  |  |  |
 | SCLICK event | picture_windows |  |  |  |
 | SCRAM-SHA-256 | servers |  |  |  |
-| Scripts | remote |  |  |  |
 | Scripts Editor find/replace: Count option, escape, remembered settings | changelog-7.73-7.85 | 7.77 |  |  |
 | Secure Connections | mirc_commands |  |  |  |
 | Send | dcc |  |  |  |
@@ -1263,11 +1262,12 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Remote Commands | remote_commands |  | test_msl |  |
 | Remote Identifiers | remote_identifiers |  | test_msl |  |
 
-### done (4)
+### done (5)
 
 | Item | Group | Since | Test | Notes |
 |---|---|---|---|---|
 | Aliases | aliases |  | test_msl |  |
 | Identifiers | identifiers |  | test_msl |  |
 | Commands | mirc_commands |  | test_msl |  |
+| Scripts | remote |  |  |  |
 | Variables | variables |  | test_msl |  |

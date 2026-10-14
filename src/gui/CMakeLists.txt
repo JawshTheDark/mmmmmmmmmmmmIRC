@@ -19,6 +19,8 @@ qt_add_executable(lurker-desktop
     PictureWindow.h
     ScriptSockets.cpp
     ScriptSockets.h
+    ScriptEditor.cpp
+    ScriptEditor.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core

@@ -93,6 +93,8 @@ int main(int argc, char* argv[]) {
         } else if (arg.startsWith(QStringLiteral("--script="))) {
             const QString path = arg.section(QLatin1Char('='), 1);
             QTimer::singleShot(200, &window, [&window, path] { window.loadScriptFile(path); });
+        } else if (arg == QStringLiteral("--scripteditor")) {
+            QTimer::singleShot(600, &window, [&window] { window.openScriptEditor(); });
         } else if (arg.startsWith(QStringLiteral("--simulate="))) {
             const QStringList f = arg.section(QLatin1Char('='), 1).split(QLatin1Char('|'));
             if (f.size() >= 4) {
