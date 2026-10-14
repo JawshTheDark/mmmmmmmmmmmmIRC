@@ -120,7 +120,7 @@ input history on Up/Down, 5000-line scrollback cap, clickable URL hotlinks — c
 dialog, Alt+N window switch, etc.) — deferred to Phase 3.4.
 
 **1.4 done, integrated into the GUI.** Auth: the Lurker WS/REST protocol needs a *minted session
-token* (`POST /api/auth/login/token`, web password `REDACTED`) — the API token is bouncer + `/mcp`
+token* (`POST /api/auth/login/token`, the account's web password) — the API token is bouncer + `/mcp`
 only. `backend/LurkerClient` does config, token mint, networks, the WS connect, the
 snapshot/backlog/history/irc/read-state/send-result frame dispatch, the resume cursor (system-buffer
 ids excluded), and send/history/mark-read verbs (`lurker-ws-probe` verifies it: all 4 networks / 34
