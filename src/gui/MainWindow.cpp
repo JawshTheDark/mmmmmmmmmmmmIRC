@@ -130,6 +130,20 @@ MainWindow::Buffer& MainWindow::ensureBuffer(ChatView::Kind kind, const QString&
     b.switchAction->setCheckable(true);
     m_switchGroup->addAction(b.switchAction);
 
+    if (kind == ChatView::Kind::Channel) {
+        const QString disp = display;
+        b.view->setNickProvider([this, disp]() -> QStringList {
+            QStringList out;
+            if (m_backend && m_backend->session()) {
+                if (const lurker::ChannelState* chan = m_backend->session()->channel(disp.toStdString())) {
+                    for (const auto& [_, member] : chan->members) out << QString::fromStdString(member.nick);
+                    out.sort(Qt::CaseInsensitive);
+                }
+            }
+            return out;
+        });
+    }
+
     const QString key_ = key;
     connect(b.switchAction, &QAction::triggered, this, [this, key_] {
         if (Buffer* buf = findBuffer(key_)) {

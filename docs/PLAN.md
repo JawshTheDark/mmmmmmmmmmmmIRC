@@ -88,9 +88,20 @@ imported mIRC folder shows the same servers, channels and options.
 Progress (2026-10-14): **1.1 partial** (internal event model `core/IrcEvent` + `Backend` via
 `BouncerBackend`; the formal `Host` interface is still to be extracted), **1.2 done** (bouncer
 backend verified live against chat.irc.so:1025 — SASL, CAP incl. CAP NEW, ISUPPORT, channels/
-members, reconnect, cert pinning), **1.3 done at a basic level** (status/channel/query ChatViews
-with nicklist, topic bar, per-window input, send via the command parser; tab-completion, key
-bindings, scrollback caps and URL hotlinks remain). 1.4–1.7 not started.
+members, reconnect, cert pinning), **1.3 done** (status/channel/query ChatViews with nicklist,
+topic bar, per-window input, send via the command parser; tab-completion of nicks and commands,
+input history on Up/Down, 5000-line scrollback cap, clickable URL hotlinks — completion logic in
+`core/Completion` with tests). Remaining 1.3 nicety: full mIRC key-binding set (Ctrl+K colour
+dialog, Alt+N window switch, etc.) — deferred to Phase 3.4.
+
+**1.4 blocked on a credential:** the Lurker WebSocket/REST protocol auth (`/ws`, `/api/*`) needs a
+*minted session token* (`POST /api/auth/login/token` with the web password) or *OAuth PKCE*. The
+API token we have is scoped to the bouncer + `/mcp` and returns 401 on `/ws` and `/api/*` (verified
+2026-10-14). Options to unblock: (a) the correct web-login password, or (b) implement OAuth PKCE
+(the recommended third-party path, no password handling) and have the owner approve in a browser.
+The bouncer already provides core chat **and** `draft/chathistory` scrollback, so the WS backend is
+additive (Lurker search, cross-device read-state, reactions/replies UI, uploads, settings). 1.5–1.7
+not started.
 
 | WP | Scope | Deliverables | Exit criteria |
 |---|---|---|---|

@@ -6,6 +6,7 @@
 
 #include <QFontDatabase>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -14,6 +15,8 @@
 #include <QTextBrowser>
 #include <QVBoxLayout>
 
+#include "core/CommandParser.h"
+#include "core/Completion.h"
 #include "gui/FormattedText.h"
 
 namespace lurker::gui {
@@ -36,6 +39,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     m_messages = new QTextBrowser(this);
     m_messages->setOpenExternalLinks(true);
     m_messages->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_messages->document()->setMaximumBlockCount(5000);  // scrollback cap
 
     if (kind == Kind::Channel) {
         auto* split = new QSplitter(Qt::Horizontal, this);
@@ -65,12 +69,89 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     m_input->setPlaceholderText(kind == Kind::Status ? tr("Type a command, e.g. /join #channel")
                                                      : tr("Message, or /command"));
     outer->addWidget(m_input);
+    m_input->installEventFilter(this);
     connect(m_input, &QLineEdit::returnPressed, this, [this] {
         const QString text = m_input->text();
         if (text.isEmpty()) return;
+        if (m_history.isEmpty() || m_history.last() != text) m_history.append(text);
+        m_historyIndex = -1;
+        m_compIndex = -1;
         m_input->clear();
         emit lineEntered(text);
     });
+}
+
+bool ChatView::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_input && event->type() == QEvent::KeyPress) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        switch (key->key()) {
+            case Qt::Key_Tab:
+                doTabCompletion();
+                return true;
+            case Qt::Key_Up:
+                recallHistory(-1);
+                return true;
+            case Qt::Key_Down:
+                recallHistory(+1);
+                return true;
+            default:
+                m_compIndex = -1;  // any other key ends a completion cycle
+                break;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void ChatView::recallHistory(int direction) {
+    if (m_history.isEmpty()) return;
+    if (m_historyIndex < 0) {
+        if (direction > 0) return;  // Down with no active recall does nothing
+        m_historyDraft = m_input->text();
+        m_historyIndex = m_history.size();
+    }
+    m_historyIndex += direction;
+    if (m_historyIndex >= m_history.size()) {
+        m_historyIndex = -1;
+        m_input->setText(m_historyDraft);
+    } else {
+        if (m_historyIndex < 0) m_historyIndex = 0;
+        m_input->setText(m_history.at(m_historyIndex));
+    }
+    m_input->end(false);
+}
+
+void ChatView::doTabCompletion() {
+    // Continue an active cycle when the box still holds our last completion.
+    if (m_compIndex >= 0 && !m_compTexts.isEmpty() && m_input->text() == m_compApplied) {
+        m_compIndex = (m_compIndex + 1) % m_compTexts.size();
+    } else {
+        const std::string text = m_input->text().toStdString();
+        const auto cursor = static_cast<std::size_t>(m_input->cursorPosition());
+        const lurker::WordSpan word = lurker::wordBeforeCursor(text, cursor);
+        const std::string prefix = text.substr(word.start, word.length());
+        if (prefix.empty()) return;
+
+        std::vector<std::string> pool;
+        std::string startSuffix = ": ", midSuffix = " ";
+        if (prefix.front() == '/') {
+            pool = lurker::knownCommands();
+            startSuffix = midSuffix = " ";  // commands never take the "nick: " form
+        } else if (m_nickProvider) {
+            for (const QString& n : m_nickProvider()) pool.push_back(n.toStdString());
+        }
+        const auto completions = lurker::buildCompletions(text, cursor, pool, startSuffix, midSuffix);
+        m_compTexts.clear();
+        m_compCursors.clear();
+        for (const auto& c : completions) {
+            m_compTexts << QString::fromStdString(c.text);
+            m_compCursors << static_cast<int>(c.cursor);
+        }
+        if (m_compTexts.isEmpty()) return;
+        m_compIndex = 0;
+    }
+    m_input->setText(m_compTexts.at(m_compIndex));
+    m_input->setCursorPosition(m_compCursors.at(m_compIndex));
+    m_compApplied = m_input->text();
 }
 
 void ChatView::appendBlock() {

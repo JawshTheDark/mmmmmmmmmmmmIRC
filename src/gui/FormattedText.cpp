@@ -13,6 +13,34 @@ namespace lurker::gui {
 
 namespace {
 
+// Inserts `text` under `base`, turning http(s):// runs into clickable anchors.
+void insertRunWithLinks(QTextCursor& cursor, const QString& text, const QTextCharFormat& base, const QColor& linkColor) {
+    int i = 0;
+    const int n = text.size();
+    while (i < n) {
+        int http = text.indexOf(QStringLiteral("http://"), i, Qt::CaseInsensitive);
+        int https = text.indexOf(QStringLiteral("https://"), i, Qt::CaseInsensitive);
+        int start = (http < 0) ? https : (https < 0 ? http : qMin(http, https));
+        if (start < 0) {
+            cursor.insertText(text.mid(i), base);
+            return;
+        }
+        if (start > i) cursor.insertText(text.mid(i, start - i), base);
+        int end = start;
+        while (end < n && !text.at(end).isSpace()) ++end;
+        // Don't swallow trailing sentence punctuation or a closing bracket.
+        while (end > start && QStringLiteral(".,;:!?)]}>\"'").contains(text.at(end - 1))) --end;
+        const QString url = text.mid(start, end - start);
+        QTextCharFormat link = base;
+        link.setAnchor(true);
+        link.setAnchorHref(url);
+        link.setForeground(linkColor);
+        link.setFontUnderline(true);
+        cursor.insertText(url, link);
+        i = end;
+    }
+}
+
 QColor resolve(const Color& c, const QColor& fallback) {
     switch (c.kind) {
         case Color::Kind::Default:
@@ -43,7 +71,9 @@ void insertFormatted(QTextCursor& cursor, const QByteArray& utf8, const TextSche
         fmt.setFontUnderline(s.underline);
         fmt.setFontStrikeOut(s.strike);
         if (s.mono) fmt.setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-        cursor.insertText(QString::fromUtf8(span.text.data(), static_cast<qsizetype>(span.text.size())), fmt);
+        const QString runText = QString::fromUtf8(span.text.data(), static_cast<qsizetype>(span.text.size()));
+        insertRunWithLinks(cursor, runText, fmt, scheme.foreground.lightness() > 128 ? QColor(0x6c, 0xa0, 0xff)
+                                                                                     : QColor(0x1a, 0x5f, 0xb4));
     }
 }
 

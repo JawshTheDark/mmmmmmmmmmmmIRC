@@ -65,6 +65,10 @@ ParseResult parseInput(std::string_view line, const ParseContext& ctx);
 // One line per supported command, for /help.
 std::string helpText();
 
+// The slash commands this parser recognizes (each with its leading '/'),
+// for tab-completion. Sorted. Does not include network-passthrough commands.
+const std::vector<std::string>& knownCommands();
+
 // True when `name` starts with one of `chanTypes`.
 bool isChannelName(std::string_view name, std::string_view chanTypes);
 

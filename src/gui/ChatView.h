@@ -7,11 +7,15 @@
 // serves status, channel and query buffers; the kind decides which parts show.
 #pragma once
 
+#include <QStringList>
 #include <QWidget>
+#include <functional>
 
+class QEvent;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QObject;
 class QTextBrowser;
 
 namespace lurker::gui {
@@ -39,18 +43,37 @@ public:
 
     void focusInput();
 
+    // Supplies nick candidates (no sigils) for tab-completion; set by the owner.
+    void setNickProvider(std::function<QStringList()> provider) { m_nickProvider = std::move(provider); }
+
 signals:
     void lineEntered(const QString& text);
     void nickActivated(const QString& nick);  // double-click in the nicklist
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
     void appendBlock();
+    void recallHistory(int direction);  // -1 older, +1 newer
+    void doTabCompletion();
 
     Kind m_kind;
     QLabel* m_topicBar = nullptr;
     QTextBrowser* m_messages = nullptr;
     QListWidget* m_nicklist = nullptr;
     QLineEdit* m_input = nullptr;
+
+    std::function<QStringList()> m_nickProvider;
+
+    QStringList m_history;          // sent lines, oldest first
+    int m_historyIndex = -1;       // -1 = not recalling; else index into m_history
+    QString m_historyDraft;        // what was typed before recall began
+
+    QStringList m_compTexts;        // candidate replacement lines, current cycle
+    QList<int> m_compCursors;       // caret positions parallel to m_compTexts
+    int m_compIndex = -1;
+    QString m_compApplied;          // the last completion we put in the box
 };
 
 }  // namespace lurker::gui

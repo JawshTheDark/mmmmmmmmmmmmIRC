@@ -377,4 +377,19 @@ std::string helpText() {
            "  //text sends a message that begins with a slash. Unknown /commands are sent to the server as-is.";
 }
 
+const std::vector<std::string>& knownCommands() {
+    static const std::vector<std::string> kCommands = [] {
+        std::vector<std::string> c = {
+            "/me",      "/describe", "/msg",      "/notice",  "/query",   "/join",    "/part",
+            "/leave",   "/close",    "/topic",    "/kick",    "/mode",    "/op",      "/deop",
+            "/voice",   "/devoice",  "/nick",     "/away",    "/back",    "/whois",   "/invite",
+            "/ctcp",    "/ping",     "/version",  "/time",    "/list",    "/raw",     "/quote",
+            "/ns",      "/nickserv", "/cs",       "/chanserv", "/identify", "/clear",  "/help",
+        };
+        std::sort(c.begin(), c.end());
+        return c;
+    }();
+    return kCommands;
+}
+
 }  // namespace lurker
