@@ -19,6 +19,7 @@
 #include <QStatusBar>
 #include <QToolBar>
 #include <QTreeWidget>
+#include <QTimer>
 #include <QTreeWidgetItem>
 
 #include "core/CommandParser.h"
@@ -156,6 +157,25 @@ void MainWindow::setupScripting() {
         if (!dlg) return prop == QLatin1String("isopen") ? QStringLiteral("0") : QString();
         if (prop == QLatin1String("isopen")) return QStringLiteral("1");
         return dlg->query(id, prop);
+    };
+    m_scriptHost.startTimerFn = [this](const QString& name, int repeat, double interval, const QString& cmd) -> QString {
+        QString id = name.isEmpty() ? QStringLiteral("_t%1").arg(++m_timerSeq) : name;
+        if (QTimer* old = m_scriptTimers.take(id)) old->deleteLater();
+        auto* t = new QTimer(this);
+        t->setInterval(static_cast<int>(interval * 1000.0 + 0.5));
+        auto remaining = std::make_shared<int>(repeat);  // 0 = infinite
+        connect(t, &QTimer::timeout, this, [this, id, cmd, remaining] {
+            runScript(cmd);
+            if (*remaining > 0 && --*remaining == 0) {
+                if (QTimer* tt = m_scriptTimers.take(id)) tt->deleteLater();
+            }
+        });
+        m_scriptTimers.insert(id, t);
+        t->start();
+        return id;
+    };
+    m_scriptHost.stopTimerFn = [this](const QString& name) {
+        if (QTimer* t = m_scriptTimers.take(name)) t->deleteLater();
     };
     m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
 }

@@ -31,6 +31,8 @@ public:
     std::function<void(const QString&)> closeDialogFn;
     std::function<void(const QString&, int, const QString&, const QString&)> didCommandFn;
     std::function<QString(const QString&, int, const QString&)> didQueryFn;
+    std::function<QString(const QString&, int, double, const QString&)> startTimerFn;
+    std::function<void(const QString&)> stopTimerFn;
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -49,8 +51,14 @@ public:
     }
     std::string me(int net) const override { return meFn ? meFn(net).toStdString() : std::string(); }
     long long unixTime() const override { return static_cast<long long>(::time(nullptr)); }
-    std::string startTimer(const std::string&, int, double, const std::string&) override { return {}; }
-    void stopTimer(const std::string&) override {}
+    std::string startTimer(const std::string& name, int repeat, double interval, const std::string& cmd) override {
+        return startTimerFn ? startTimerFn(QString::fromStdString(name), repeat, interval, QString::fromStdString(cmd))
+                                  .toStdString()
+                            : std::string();
+    }
+    void stopTimer(const std::string& name) override {
+        if (stopTimerFn) stopTimerFn(QString::fromStdString(name));
+    }
     void scriptError(const std::string& text) override {
         if (errorFn) errorFn(QString::fromStdString(text));
     }

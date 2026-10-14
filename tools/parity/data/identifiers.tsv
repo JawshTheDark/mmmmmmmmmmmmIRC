@@ -19,7 +19,7 @@ $aop	planned		control.html	0
 $appactive	planned		window_identifiers.html	4		
 $appstate	planned		window_identifiers.html	1		
 $asc	done		text_number_identifiers.html	10	test_msl	
-$asctime	planned		time_date_identifiers.html	50		
+$asctime	done		time_date_identifiers.html	50	test_msl	
 $asin	planned		text_number_identifiers.html	0		
 $atan	planned		text_number_identifiers.html	0		
 $atan2	planned		text_number_identifiers.html	0		
@@ -76,7 +76,7 @@ $ctime	done		time_date_identifiers.html	37	test_msl
 $ctimer	planned		time_date_identifiers.html	0		
 $ctrlenter	planned		on_input.html	0		
 $darkmode	planned	7.79	versions.txt	0		dark mode state
-$date	planned		time_date_identifiers.html	18		
+$date	done		time_date_identifiers.html	18	test_msl	
 $day	planned		time_date_identifiers.html	0		
 $daylight	planned		time_date_identifiers.html	0		
 $dbuh	planned		dialogs.html	0		
@@ -381,8 +381,8 @@ $target	done		remote_identifiers.html	2	test_msl
 $tempfn	planned		file_directory_identifiers.html	0		
 $ticks	planned		time_date_identifiers.html	17		
 $ticksqpc	planned		time_date_identifiers.html	0		
-$time	planned		time_date_identifiers.html	72		
-$timer	planned		time_date_identifiers.html	32		
+$time	done		time_date_identifiers.html	72	test_msl	
+$timer	done		time_date_identifiers.html	32	test_msl	
 $timestamp	planned		time_date_identifiers.html	11		
 $timestampfmt	planned		time_date_identifiers.html	0		
 $timezone	planned		time_date_identifiers.html	0		

@@ -31,7 +31,11 @@ struct FakeHost : Host {
     ScriptTarget activeTarget() const override { return active; }
     std::string me(int) const override { return "jawsh"; }
     long long unixTime() const override { return now; }
-    std::string startTimer(const std::string&, int, double, const std::string&) override { return "timer1"; }
+    std::vector<std::string> timers;  // "repeat\tinterval\tcommand"
+    std::string startTimer(const std::string&, int repeat, double interval, const std::string& cmd) override {
+        timers.push_back(std::to_string(repeat) + "\t" + std::to_string(interval) + "\t" + cmd);
+        return "timer1";
+    }
     void stopTimer(const std::string&) override {}
     void scriptError(const std::string& t) override { errors.push_back(t); }
 
@@ -338,6 +342,21 @@ int main() {
         CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,theme)"), std::string("dark"));
         CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,nick)"), std::string("jawsh"));
     }
+
+    // /timer passes repeat, interval and the (raw, unevaluated) command to the host.
+    {
+        host.timers.clear();
+        Scope s;
+        in.execute("timer 3 0.5 echo tick %count", s);
+        CHECK_EQ(host.timers.size(), 1u);
+        CHECK(host.timers[0].rfind("3\t", 0) == 0);
+        CHECK(host.timers[0].find("echo tick %count") != std::string::npos);
+    }
+
+    // Time identifiers are non-empty and formatted.
+    CHECK(!eval(in, "$time").empty());
+    CHECK(!eval(in, "$date").empty());
+    CHECK(eval(in, "$asctime(0)").find(":") != std::string::npos);  // formatted (year is tz-dependent)
 
     // halt stops the rest of the script.
     {

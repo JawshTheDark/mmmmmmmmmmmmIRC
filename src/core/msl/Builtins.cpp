@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <ctime>
 #include <random>
 #include <regex>
 #include <string>
@@ -570,6 +571,23 @@ void registerBuiltins(Interpreter& in) {
     // --- time ---
     in.registerIdent("ctime", [](Interpreter& i, S&, const A&, const std::string&) {
         return std::to_string(i.host().unixTime());
+    });
+    auto fmtTime = [](long long t, const char* fmt) {
+        std::time_t tt = static_cast<std::time_t>(t);
+        char buf[64] = {0};
+        std::strftime(buf, sizeof buf, fmt, std::localtime(&tt));
+        return std::string(buf);
+    };
+    in.registerIdent("time", [fmtTime](Interpreter& i, S&, const A& a, const std::string&) {
+        return fmtTime(a.empty() ? i.host().unixTime() : [&] { try { return (long long)std::stoll(a[0]); } catch (...) { return i.host().unixTime(); } }(), "%H:%M:%S");
+    });
+    in.registerIdent("date", [fmtTime](Interpreter& i, S&, const A& a, const std::string&) {
+        return fmtTime(a.empty() ? i.host().unixTime() : [&] { try { return (long long)std::stoll(a[0]); } catch (...) { return i.host().unixTime(); } }(), "%m/%d/%Y");
+    });
+    in.registerIdent("asctime", [fmtTime](Interpreter&, S&, const A& a, const std::string&) {
+        long long t = 0;
+        try { t = std::stoll(arg(a, 0)); } catch (...) {}
+        return fmtTime(t, "%a %b %d %H:%M:%S %Y");
     });
 
     // --- files and INI ---

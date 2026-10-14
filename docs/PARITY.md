@@ -7,11 +7,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
 | Commands | 30 | 235 | 12.8% | 23 |
-| Identifiers | 58 | 406 | 14.3% | 15 |
+| Identifiers | 62 | 406 | 15.3% | 15 |
 | Events | 6 | 84 | 7.1% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **104** | **1129** | **9.2%** | |
+| **Total** | **108** | **1129** | **9.6%** | |
 
 ## Commands
 
@@ -295,7 +295,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (348)
+### planned (344)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -310,7 +310,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$opnick` | 78 |  | on_opodeop.html |  |  |
 | `$sock` | 74 |  | sockets.html |  |  |
 | `$strip` | 74 |  | text_number_identifiers.html |  |  |
-| `$time` | 72 |  | time_date_identifiers.html |  |  |
 | `$sline` | 69 |  | custom_windows.html |  |  |
 | `$wildsite` | 69 |  | remote_identifiers.html |  |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html |  | substitute: no 8.3 names on Linux; returns the long name |
@@ -321,7 +320,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$sockerr` | 55 |  | sockets.html |  |  |
 | `$isid` | 51 |  | other_identifiers.html |  |  |
 | `$send` | 51 |  | window_identifiers.html |  |  |
-| `$asctime` | 50 |  | time_date_identifiers.html |  |  |
 | `$comchan` | 50 |  | nick_address_identifiers.html |  |  |
 | `$nopath` | 46 |  | file_directory_identifiers.html |  |  |
 | `$ifmatch` | 45 |  | other_identifiers.html |  |  |
@@ -337,7 +335,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$uptime` | 35 |  | time_date_identifiers.html |  |  |
 | `$eval` | 34 |  | other_identifiers.html |  |  |
 | `$sockname` | 34 |  | sockets.html |  |  |
-| `$timer` | 32 |  | time_date_identifiers.html |  |  |
 | `$snick` | 29 |  | nick_address_identifiers.html |  |  |
 | `$ulist` | 28 |  | remote_identifiers.html |  |  |
 | `$ialchan` | 25 |  | nick_address_identifiers.html |  |  |
@@ -348,7 +345,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$cr` | 20 |  | other_identifiers.html |  |  |
 | `$knick` | 19 |  | on_kick.html |  |  |
 | `$query` | 19 |  | window_identifiers.html |  |  |
-| `$date` | 18 |  | time_date_identifiers.html |  |  |
 | `$input` | 18 |  | other_identifiers.html |  |  |
 | `$ticks` | 17 |  | time_date_identifiers.html |  |  |
 | `$level` | 16 |  | nick_address_identifiers.html |  |  |
@@ -648,7 +644,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (58)
+### done (62)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -657,11 +653,13 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$address` | 251 |  | remote_identifiers.html | test_msl |  |
 | `$addtok` | 56 |  | token_identifiers.html | test_msl |  |
 | `$asc` | 10 |  | text_number_identifiers.html | test_msl |  |
+| `$asctime` | 50 |  | time_date_identifiers.html | test_msl |  |
 | `$calc` | 1709 |  | text_number_identifiers.html | test_msl |  |
 | `$chan` | 1300 |  | remote_identifiers.html | test_msl |  |
 | `$chr` | 804 |  | text_number_identifiers.html | test_msl |  |
 | `$count` | 53 |  | text_number_identifiers.html | test_msl |  |
 | `$ctime` | 37 |  | time_date_identifiers.html | test_msl |  |
+| `$date` | 18 |  | time_date_identifiers.html | test_msl |  |
 | `$devent` | 60 |  | dialogs.html | demo_dialog.mrc |  |
 | `$dialog` | 323 |  | dialogs.html | demo_dialog.mrc |  |
 | `$did` | 2799 |  | dialogs.html | demo_dialog.mrc |  |
@@ -709,6 +707,8 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$site` | 36 |  | remote_identifiers.html | test_msl |  |
 | `$str` | 49 |  | text_number_identifiers.html | test_msl |  |
 | `$target` | 2 |  | remote_identifiers.html | test_msl |  |
+| `$time` | 72 |  | time_date_identifiers.html | test_msl |  |
+| `$timer` | 32 |  | time_date_identifiers.html | test_msl |  |
 | `$upper` | 48 |  | text_number_identifiers.html | test_msl |  |
 
 ### not-possible (15)
