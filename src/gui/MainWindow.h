@@ -32,6 +32,8 @@ public:
     void showConnectDialog();
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
     void useBackend(lurker::backend::ChatBackend* backend);
+    // Open (creating if needed) and focus a conversation; also used by dev flags.
+    void openConversation(int net, const QString& target);
 
 private:
     struct Buffer {
@@ -44,6 +46,7 @@ private:
         QString display;        // channel/nick as shown
         QString key;            // "net\x1ffoldedtarget"
         QStringList memberNicks; // current nicklist (no sigils), for tab-completion
+        bool hydrated = false;   // history has been requested for this buffer
     };
 
     QString keyFor(int net, const QString& target) const;
@@ -62,6 +65,8 @@ private:
     void onTopicChanged(int net, const QString& target, const QByteArray& topic);
     void onInput(Buffer* buffer, const QString& text);
     void closeBuffer(Buffer* buffer);
+    void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
+    void hydrateBuffer(Buffer* buffer);   // fetch backlog once
 
     Buffer* routeTarget(int net, const QString& target, ChatView::Kind fallback);
     QString timestampFor(const std::string& isoTime) const;

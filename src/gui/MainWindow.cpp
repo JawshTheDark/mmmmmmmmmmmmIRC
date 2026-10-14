@@ -55,10 +55,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     addDockWidget(Qt::LeftDockWidgetArea, treeDock);
     connect(m_treebar, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem* item, int) {
         for (auto& b : m_buffers) {
-            if (b.treeItem == item && b.sub) {
-                if (b.sub->isMinimized()) b.sub->showNormal();
-                m_mdi->setActiveSubWindow(b.sub);
-                b.view->focusInput();
+            if (b.treeItem == item) {
+                activateBuffer(&b);
+                break;
             }
         }
     });
@@ -163,19 +162,13 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
 
     const QString key_ = key;
     connect(b.switchAction, &QAction::triggered, this, [this, key_] {
-        if (Buffer* buf = findBuffer(key_)) {
-            if (buf->sub->isMinimized()) buf->sub->showNormal();
-            m_mdi->setActiveSubWindow(buf->sub);
-            buf->view->focusInput();
-        }
+        if (Buffer* buf = findBuffer(key_)) activateBuffer(buf);
     });
     connect(b.view, &ChatView::lineEntered, this, [this, key_](const QString& text) {
         if (Buffer* buf = findBuffer(key_)) onInput(buf, text);
     });
     connect(b.view, &ChatView::nickActivated, this, [this, net](const QString& nick) {
-        Buffer& q = ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick));
-        m_mdi->setActiveSubWindow(q.sub);
-        q.view->focusInput();
+        activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick)));
     });
     connect(b.sub, &QObject::destroyed, this, [this, key_](QObject*) {
         if (m_closing) return;
@@ -216,6 +209,29 @@ void MainWindow::useBackend(ChatBackend* backend) {
 
 void MainWindow::closeBuffer(Buffer* buffer) {
     if (buffer && buffer->key != statusKey() && buffer->sub) buffer->sub->close();
+}
+
+void MainWindow::openConversation(int net, const QString& target) {
+    const ChatView::Kind kind = looksLikeChannel(target) ? ChatView::Kind::Channel : ChatView::Kind::Query;
+    activateBuffer(&ensureBuffer(net, kind, target, keyFor(net, target)));
+}
+
+void MainWindow::activateBuffer(Buffer* buffer) {
+    if (!buffer || !buffer->sub) return;
+    if (buffer->sub->isMinimized()) buffer->sub->showNormal();
+    m_mdi->setActiveSubWindow(buffer->sub);
+    buffer->view->focusInput();
+    hydrateBuffer(buffer);
+}
+
+void MainWindow::hydrateBuffer(Buffer* buffer) {
+    // Fetch backlog the first time a conversation buffer is viewed: the snapshot
+    // only ships shells, so content arrives on demand (CLIENT_PROTOCOL §4.3).
+    if (!buffer || buffer->hydrated) return;
+    if (buffer->kind == ChatView::Kind::Status) return;
+    if (!m_backend || !m_backend->isReady()) return;
+    buffer->hydrated = true;
+    m_backend->requestHistory(buffer->networkId, buffer->display);
 }
 
 QString MainWindow::timestampFor(const std::string& isoTime) const {
@@ -383,13 +399,9 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
             case ActionKind::Back: m_backend->clearAway(net); break;
             case ActionKind::Ctcp: m_backend->sendCtcp(net, target, QString::fromStdString(a.ctcpType), QString::fromStdString(a.text)); break;
             case ActionKind::ListChannels: m_backend->sendRaw(net, QStringLiteral("LIST")); break;
-            case ActionKind::OpenBuffer: {
-                Buffer& q = ensureBuffer(net, ChatView::Kind::Query, target, keyFor(net, target));
-                m_backend->requestHistory(net, target);
-                m_mdi->setActiveSubWindow(q.sub);
-                q.view->focusInput();
+            case ActionKind::OpenBuffer:
+                activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, target, keyFor(net, target)));
                 break;
-            }
             case ActionKind::CloseBuffer: closeBuffer(buffer); break;
             case ActionKind::LocalClear: buffer->view->addSystemLine(tr("(cleared)").toUtf8()); break;
             case ActionKind::LocalHelp: buffer->view->addSystemLine(QByteArray::fromStdString(lurker::helpText())); break;

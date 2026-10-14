@@ -62,6 +62,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // --open=NET/TARGET: after connecting, open and hydrate that conversation
+    // (dev aid so a headless run can show a channel's backlog).
+    for (const QString& arg : args) {
+        if (arg.startsWith(QStringLiteral("--open="))) {
+            const QString spec = arg.section(QLatin1Char('='), 1);
+            const int net = spec.section(QLatin1Char('/'), 0, 0).toInt();
+            const QString target = spec.section(QLatin1Char('/'), 1);
+            QTimer::singleShot(8000, &window, [&window, net, target] { window.openConversation(net, target); });
+        }
+    }
+
     if (args.contains(QStringLiteral("--smoke-test"))) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
     }
