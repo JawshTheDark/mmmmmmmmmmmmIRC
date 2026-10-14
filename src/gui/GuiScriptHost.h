@@ -41,6 +41,9 @@ public:
     std::function<void(const QString&)> sockCloseFn;
     std::function<QString(const QString&, bool&)> sockReadLineFn;
     std::function<QString(const QString&, const QString&)> sockInfoFn;
+    std::function<QStringList(int, const QString&)> channelNicksFn;  // $nick(#,N)
+    std::function<QStringList(int)> myChannelsFn;                    // $chan(N)
+    std::function<bool(int, const QString&, const QString&)> isOnFn; // $comchan / $ison
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -58,6 +61,21 @@ public:
         return activeFn ? activeFn() : lurker::msl::ScriptTarget{};
     }
     std::string me(int net) const override { return meFn ? meFn(net).toStdString() : std::string(); }
+    std::vector<std::string> channelNicks(int net, const std::string& chan) const override {
+        std::vector<std::string> out;
+        if (channelNicksFn)
+            for (const QString& n : channelNicksFn(net, QString::fromStdString(chan))) out.push_back(n.toStdString());
+        return out;
+    }
+    std::vector<std::string> myChannels(int net) const override {
+        std::vector<std::string> out;
+        if (myChannelsFn)
+            for (const QString& c : myChannelsFn(net)) out.push_back(c.toStdString());
+        return out;
+    }
+    bool isOn(int net, const std::string& chan, const std::string& nick) const override {
+        return isOnFn ? isOnFn(net, QString::fromStdString(chan), QString::fromStdString(nick)) : false;
+    }
     long long unixTime() const override { return static_cast<long long>(::time(nullptr)); }
     std::string startTimer(const std::string& name, int repeat, double interval, const std::string& cmd) override {
         return startTimerFn ? startTimerFn(QString::fromStdString(name), repeat, interval, QString::fromStdString(cmd))

@@ -589,6 +589,23 @@ void MainWindow::setupScripting() {
         return {b->networkId, b->display.toStdString()};
     };
     m_scriptHost.meFn = [this](int net) { return m_networkNicks.value(net); };
+    m_scriptHost.channelNicksFn = [this](int net, const QString& chan) -> QStringList {
+        Buffer* b = findBuffer(keyFor(net, chan));
+        return b ? b->memberNicks : QStringList();
+    };
+    m_scriptHost.myChannelsFn = [this](int net) -> QStringList {
+        QStringList chans;
+        for (auto& b : m_buffers)
+            if (b.networkId == net && b.kind == ChatView::Kind::Channel) chans << b.display;
+        return chans;
+    };
+    m_scriptHost.isOnFn = [this](int net, const QString& chan, const QString& nick) -> bool {
+        Buffer* b = findBuffer(keyFor(net, chan));
+        if (!b) return false;
+        for (const QString& n : b->memberNicks)
+            if (n.compare(nick, Qt::CaseInsensitive) == 0) return true;
+        return false;
+    };
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };

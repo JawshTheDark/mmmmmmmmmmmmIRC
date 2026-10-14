@@ -246,8 +246,23 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("me", [](Interpreter& i, S&, const A&, const std::string&) {
         return i.host().me(i.host().activeTarget().networkId);
     });
-    in.registerIdent("chan", [](Interpreter& i, S& s, const A&, const std::string&) {
-        return s.chan.empty() ? i.host().activeTarget().window : s.chan;
+    in.registerIdent("chan", [](Interpreter& i, S& s, const A& a, const std::string&) {
+        // $chan (event/active channel), $chan(0) count, $chan(N) Nth channel,
+        // $chan(#x) the channel if we're on it.
+        if (a.empty() || a[0].empty())
+            return s.chan.empty() ? i.host().activeTarget().window : s.chan;
+        const int net = i.host().activeTarget().networkId;
+        const auto chans = i.host().myChannels(net);
+        const std::string& spec = a[0];
+        bool numeric = spec.find_first_not_of("0123456789") == std::string::npos;
+        if (numeric) {
+            int n = argInt(a, 0);
+            if (n == 0) return std::to_string(chans.size());
+            return (n >= 1 && n <= static_cast<int>(chans.size())) ? chans[n - 1] : std::string();
+        }
+        for (const auto& c : chans)
+            if (toLowerAscii(c) == toLowerAscii(spec)) return c;  // on it → echo name
+        return std::string();
     });
     in.registerIdent("active", [](Interpreter& i, S&, const A&, const std::string&) {
         return i.host().activeTarget().window;
@@ -285,7 +300,32 @@ void registerBuiltins(Interpreter& in) {
         return in2.host().didQuery(a[0], 0, prop.empty() ? std::string("isopen") : prop);
     });
     // Event context: set while an on-handler runs.
-    in.registerIdent("nick", [](Interpreter&, S& s, const A&, const std::string&) { return s.nick; });
+    // $nick (event nick) or $nick(#chan,N): N=0 → count, N≥1 → Nth nick.
+    in.registerIdent("nick", [](Interpreter& i, S& s, const A& a, const std::string&) {
+        if (a.size() < 2) return s.nick;
+        const int net = i.host().activeTarget().networkId;
+        const auto nicks = i.host().channelNicks(net, a[0]);
+        int n = argInt(a, 1);
+        if (n == 0) return std::to_string(nicks.size());
+        return (n >= 1 && n <= static_cast<int>(nicks.size())) ? nicks[n - 1] : std::string();
+    });
+    // $comchan(nick,N): channels you share with nick; N=0 → count.
+    in.registerIdent("comchan", [](Interpreter& i, S&, const A& a, const std::string&) {
+        if (a.empty()) return std::string();
+        const int net = i.host().activeTarget().networkId;
+        std::vector<std::string> common;
+        for (const auto& c : i.host().myChannels(net))
+            if (i.host().isOn(net, c, a[0])) common.push_back(c);
+        int n = argInt(a, 1);
+        if (n == 0) return std::to_string(common.size());
+        return (n >= 1 && n <= static_cast<int>(common.size())) ? common[n - 1] : std::string();
+    });
+    // $ison(#chan,nick): $true if nick is on the channel.
+    in.registerIdent("ison", [](Interpreter& i, S&, const A& a, const std::string&) {
+        if (a.size() < 2) return std::string("$false");
+        const int net = i.host().activeTarget().networkId;
+        return i.host().isOn(net, a[0], a[1]) ? std::string("$true") : std::string("$false");
+    });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
         return s.target.empty() ? i.host().activeTarget().window : s.target;
     });

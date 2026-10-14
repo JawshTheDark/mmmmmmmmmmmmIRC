@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -19,6 +20,15 @@ struct FakeHost : Host {
     std::vector<std::string> errors;
     ScriptTarget active{1, "#test"};
     long long now = 1000;
+
+    // IRC state for $nick(#,N) / $chan(N) / $comchan / $ison.
+    std::vector<std::string> chanNicks;
+    std::vector<std::string> myChans;
+    std::vector<std::string> channelNicks(int, const std::string&) const override { return chanNicks; }
+    std::vector<std::string> myChannels(int) const override { return myChans; }
+    bool isOn(int, const std::string&, const std::string& nick) const override {
+        return std::find(chanNicks.begin(), chanNicks.end(), nick) != chanNicks.end();
+    }
 
     void echo(const ScriptTarget&, const std::string& t) override { echoed.push_back(t); }
     void sendMessage(int, const std::string& target, const std::string& text) override {
@@ -451,6 +461,21 @@ int main() {
         s.locals["b"] = "%c";
         s.locals["c"] = "deep";
         CHECK_EQ(in.evaluate("$(%a,3)", s), std::string("deep"));
+    }
+
+    // IRC-state identifiers: $nick(#,N), $chan(N), $comchan, $ison.
+    {
+        host.chanNicks = {"alice", "bob", "carol"};
+        host.myChans = {"#a", "#b"};
+        CHECK_EQ(eval(in, "$nick(#test,0)"), std::string("3"));   // count
+        CHECK_EQ(eval(in, "$nick(#test,2)"), std::string("bob"));  // Nth
+        CHECK_EQ(eval(in, "$chan(0)"), std::string("2"));
+        CHECK_EQ(eval(in, "$chan(2)"), std::string("#b"));
+        CHECK_EQ(eval(in, "$ison(#test,bob)"), std::string("$true"));
+        CHECK_EQ(eval(in, "$ison(#test,dave)"), std::string("$false"));
+        CHECK_EQ(eval(in, "$comchan(bob,0)"), std::string("2"));
+        host.chanNicks.clear();
+        host.myChans.clear();
     }
 
     // Unbounded recursion is caught, not a crash (reports an error and stops).

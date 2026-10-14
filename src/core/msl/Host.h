@@ -39,6 +39,28 @@ public:
     virtual ScriptTarget activeTarget() const = 0;
     virtual std::string me(int networkId) const = 0;  // $me
 
+    // IRC state queries for identifiers like $nick(#,N), $chan(N), $comchan,
+    // $ison. Defaults are empty so non-GUI/test hosts need not implement them;
+    // the GUI answers from its live member/buffer state.
+    //   nicks on a channel, in nicklist order (sigils stripped) — $nick(#,N)
+    virtual std::vector<std::string> channelNicks(int networkId, const std::string& channel) const {
+        (void)networkId;
+        (void)channel;
+        return {};
+    }
+    //   channels we are currently in on this network — $chan(N)
+    virtual std::vector<std::string> myChannels(int networkId) const {
+        (void)networkId;
+        return {};
+    }
+    //   is `nick` present on `channel`? — used by $comchan / $ison
+    virtual bool isOn(int networkId, const std::string& channel, const std::string& nick) const {
+        (void)networkId;
+        (void)channel;
+        (void)nick;
+        return false;
+    }
+
     // Wall-clock, overridable in tests ($ctime, $time, timers).
     virtual long long unixTime() const = 0;
 
