@@ -15,6 +15,7 @@
 
 #include "backend/LurkerChatBackend.h"
 #include "gui/MainWindow.h"
+#include "gui/OptionsDialog.h"
 #include "gui/Theme.h"
 
 namespace {
@@ -93,6 +94,11 @@ int main(int argc, char* argv[]) {
         } else if (arg.startsWith(QStringLiteral("--script="))) {
             const QString path = arg.section(QLatin1Char('='), 1);
             QTimer::singleShot(200, &window, [&window, path] { window.loadScriptFile(path); });
+        } else if (arg == QStringLiteral("--options")) {
+            QTimer::singleShot(500, &window, [&window] {
+                lurker::gui::OptionsDialog* d = new lurker::gui::OptionsDialog(&window);
+                d->setAttribute(Qt::WA_DeleteOnClose); d->show();
+            });
         } else if (arg == QStringLiteral("--scripteditor")) {
             QTimer::singleShot(600, &window, [&window] { window.openScriptEditor(); });
         } else if (arg.startsWith(QStringLiteral("--simulate="))) {

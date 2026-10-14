@@ -28,6 +28,7 @@
 #include "gui/ConnectDialog.h"
 #include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
+#include "gui/OptionsDialog.h"
 #include "gui/ScriptEditor.h"
 #include "gui/ScriptSockets.h"
 #include "gui/Theme.h"
@@ -98,6 +99,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (!path.isEmpty()) loadScriptFile(path);
     });
     file->addAction(tr("&Scripts Editor..."), this, &MainWindow::openScriptEditor);
+    file->addAction(tr("&Options..."), QKeySequence(QStringLiteral("Alt+O")), this, [this] {
+        OptionsDialog(this).exec();
+    });
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
 
