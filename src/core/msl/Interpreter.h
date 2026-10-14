@@ -35,6 +35,7 @@ struct Scope {
     std::string prop;                             // $prop when an alias is called as an identifier
     // Event context ($nick, $chan, ... during an on-event).
     std::string nick;
+    std::string newnick;  // $newnick during on NICK
     std::string address;  // nick!user@host
     std::string chan;     // channel the event is on
     std::string target;   // the window ($target): channel, query nick or @window

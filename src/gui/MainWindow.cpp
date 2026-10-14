@@ -827,12 +827,17 @@ void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
         case IrcEventType::Join: name = QStringLiteral("JOIN"); subject = target; break;
         case IrcEventType::Part: name = QStringLiteral("PART"); subject = target; break;
         case IrcEventType::Kick: name = QStringLiteral("KICK"); subject = target; break;
+        case IrcEventType::Quit: name = QStringLiteral("QUIT"); break;
+        case IrcEventType::NickChange: name = QStringLiteral("NICK"); subject = QString::fromStdString(event.arg); break;
+        case IrcEventType::Mode: name = QStringLiteral("MODE"); subject = target; break;
+        case IrcEventType::Topic: name = QStringLiteral("TOPIC"); subject = target; break;
         default: return;
     }
     if (event.self || !m_msl->hasEvent(name.toStdString())) return;
 
     lurker::msl::Scope scope;
     scope.nick = event.nick;
+    if (event.type == IrcEventType::NickChange) scope.newnick = event.arg;
     scope.address = event.user.empty() ? event.nick : event.nick + "!" + event.user + "@" + event.host;
     const bool isChan = looksLikeChannel(target);
     scope.chan = isChan ? target.toStdString() : std::string();

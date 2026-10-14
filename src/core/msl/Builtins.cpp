@@ -345,6 +345,7 @@ void registerBuiltins(Interpreter& in) {
     });
     // Event context: set while an on-handler runs.
     // $nick (event nick) or $nick(#chan,N): N=0 → count, N≥1 → Nth nick.
+    in.registerIdent("newnick", [](Interpreter&, S& s, const A&, const std::string&) { return s.newnick; });
     in.registerIdent("nick", [](Interpreter& i, S& s, const A& a, const std::string&) {
         if (a.size() < 2) return s.nick;
         const int net = i.host().activeTarget().networkId;

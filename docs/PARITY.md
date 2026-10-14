@@ -8,10 +8,10 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 |---|---:|---:|---:|---:|
 | Commands | 63 | 235 | 26.8% | 23 |
 | Identifiers | 93 | 406 | 22.9% | 15 |
-| Events | 10 | 84 | 11.9% | 2 |
+| Events | 14 | 84 | 16.7% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 25 | 390 | 6.4% | 0 |
-| **Total** | **197** | **1129** | **17.4%** | |
+| **Total** | **201** | **1129** | **17.8%** | |
 
 ## Commands
 
@@ -802,17 +802,13 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `UDPREAD` | 0 |  | sockets.html |  |  |
 | `WAVEEND` | 0 |  | on_midiend.html |  |  |
 
-### partial (5)
+### partial (1)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `MODE` | 1 |  | on_mode.html | test_msl |  |
-| `NICK` | 8 |  | on_nick.html | test_msl |  |
 | `NOTICE` | 17 |  | on_text.html | test_msl |  |
-| `QUIT` | 6 |  | on_quit.html | test_msl |  |
-| `TOPIC` | 1 |  | on_topic.html | test_msl |  |
 
-### done (10)
+### done (14)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -820,12 +816,16 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `DIALOG` | 315 |  | dialogs.html | demo_dialog.mrc |  |
 | `JOIN` | 18 |  | on_joinopart.html | test_msl |  |
 | `KICK` | 13 |  | on_kick.html | test_msl |  |
+| `MODE` | 1 |  | on_mode.html | test_msl |  |
+| `NICK` | 8 |  | on_nick.html | test_msl |  |
 | `PART` | 7 |  | on_joinopart.html | test_msl |  |
+| `QUIT` | 6 |  | on_quit.html | test_msl |  |
 | `SIGNAL` | 0 |  | signals.html | test_msl |  |
 | `SOCKCLOSE` | 9 |  | sockets.html | test_msl |  |
 | `SOCKOPEN` | 31 |  | sockets.html | test_msl |  |
 | `SOCKREAD` | 13 |  | sockets.html | test_msl |  |
 | `TEXT` | 43 |  | on_text.html | test_msl |  |
+| `TOPIC` | 1 |  | on_topic.html | test_msl |  |
 
 ### not-possible (2)
 

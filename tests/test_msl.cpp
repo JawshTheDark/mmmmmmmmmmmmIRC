@@ -524,6 +524,17 @@ int main() {
         CHECK_EQ(host.echoed.back(), std::string("5 3"));
     }
 
+    // on NICK fires with $nick (old) and $newnick (new).
+    {
+        host.echoed.clear();
+        in.loadScript("on *:NICK:{ echo $nick is now $newnick }\n");
+        Scope s;
+        s.nick = "oldguy";
+        s.newnick = "newguy";
+        in.raiseEvent("NICK", "newguy", s);
+        CHECK_EQ(host.echoed.back(), std::string("oldguy is now newguy"));
+    }
+
     // Unbounded recursion is caught, not a crash (reports an error and stops).
     {
         host.errors.clear();

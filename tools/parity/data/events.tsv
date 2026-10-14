@@ -37,9 +37,9 @@ KICK	done		on_kick.html	13	test_msl
 LOAD	planned		on_loadostart.html	23		
 LOGON	planned		on_logon.html	0		
 MIDIEND	planned		on_midiend.html	0		
-MODE	partial		on_mode.html	1	test_msl	
+MODE	done		on_mode.html	1	test_msl	
 MP3END	planned		on_midiend.html	0		
-NICK	partial		on_nick.html	8	test_msl	
+NICK	done		on_nick.html	8	test_msl	
 NOSOUND	planned		on_nosound.html	0		
 NOTICE	partial		on_text.html	17	test_msl	
 NOTIFY	planned		on_notifyounotify.html	4		
@@ -51,7 +51,7 @@ PART	done		on_joinopart.html	7	test_msl
 PING	planned		on_pingopong.html	0		
 PLAYEND	planned		on_playend.html	0		
 PONG	planned		on_pingopong.html	0		
-QUIT	partial		on_quit.html	6	test_msl	
+QUIT	done		on_quit.html	6	test_msl	
 RAW	planned		raw_events.html	114		
 RAWMODE	planned		on_opodeop.html	0		
 SENDFAIL	planned		on_filesentofilercvd.html	3		
@@ -75,7 +75,7 @@ SOCKWRITE	planned		sockets.html	0
 START	planned		on_loadostart.html	16		
 TABCOMP	planned		on_tabcomp.html	0		
 TEXT	done		on_text.html	43	test_msl	
-TOPIC	partial		on_topic.html	1	test_msl	
+TOPIC	done		on_topic.html	1	test_msl	
 UDPREAD	planned		sockets.html	0		
 UNBAN	planned		on_banounban.html	2		
 UNLOAD	planned		on_unload.html	4		
