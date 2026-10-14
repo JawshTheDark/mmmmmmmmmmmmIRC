@@ -742,6 +742,10 @@ void Interpreter::loadScript(std::string_view text) {
             const std::string name = firstWord(rest);
             std::string inlineBody = trimmed(rest.substr(std::min(name.size(), rest.size())));
             defineAlias(name, body.empty() ? inlineBody : body);
+        } else if (kw == "dialog") {
+            std::string rest = trimmed(header.substr(6));
+            const std::string name = firstWord(rest);
+            if (!name.empty()) m_dialogs[name] = parseDialogTable(name, body);
         } else if (kw == "on") {
             // on <level>:<EVENT>:<p1>:<p2>: { body }
             std::vector<std::string> fields = splitTokens(header.substr(0, header.size()), ':');
@@ -750,6 +754,11 @@ void Interpreter::loadScript(std::string_view text) {
                 EventHandler h;
                 h.level = trimmed(fields[0].substr(2));  // after "on"
                 const std::string event = toLowerAscii(trimmed(fields[1]));
+                for (std::size_t fi = 2; fi < fields.size(); ++fi) {
+                    std::string f = trimmed(fields[fi]);
+                    if (fi + 1 == fields.size() && f.empty()) break;  // trailing empty before '{'
+                    h.fields.push_back(f);
+                }
                 if (fields.size() >= 4) {
                     h.match = trimmed(fields[2]);
                     h.target = trimmed(fields[3]);
@@ -791,6 +800,29 @@ void Interpreter::raiseEvent(const std::string& event, const std::string& subjec
             scope.halted = true;
             break;
         }
+    }
+}
+
+const DialogTable* Interpreter::dialogTable(const std::string& name) const {
+    const auto it = m_dialogs.find(name);
+    return it == m_dialogs.end() ? nullptr : &it->second;
+}
+
+void Interpreter::raiseDialogEvent(const std::string& dialogName, const std::string& devent, int id) {
+    const auto it = m_events.find("dialog");
+    if (it == m_events.end()) return;
+    const std::string idStr = std::to_string(id);
+    for (const EventHandler& h : it->second) {
+        // fields are [name, event, id] (id optional).
+        if (h.fields.size() < 2) continue;
+        if (!matchWild(h.fields[0], dialogName)) continue;
+        if (!matchWild(h.fields[1], devent)) continue;
+        if (h.fields.size() >= 3 && !h.fields[2].empty() && h.fields[2] != "*" && h.fields[2] != idStr) continue;
+        Scope scope;
+        scope.event = "DIALOG";
+        scope.target = dialogName;
+        scope.params = {dialogName, devent, idStr};
+        execute(h.body, scope);
     }
 }
 

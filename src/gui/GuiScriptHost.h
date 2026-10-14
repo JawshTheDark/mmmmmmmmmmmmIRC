@@ -24,6 +24,10 @@ public:
     std::function<lurker::msl::ScriptTarget()> activeFn;
     std::function<QString(int)> meFn;
     std::function<void(const QString&)> errorFn;
+    std::function<void(const QString&, const lurker::msl::DialogTable&, bool)> openDialogFn;
+    std::function<void(const QString&)> closeDialogFn;
+    std::function<void(const QString&, int, const QString&, const QString&)> didCommandFn;
+    std::function<QString(const QString&, int, const QString&)> didQueryFn;
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -46,6 +50,20 @@ public:
     void stopTimer(const std::string&) override {}
     void scriptError(const std::string& text) override {
         if (errorFn) errorFn(QString::fromStdString(text));
+    }
+    void openDialog(const std::string& instance, const lurker::msl::DialogTable& table, bool modal) override {
+        if (openDialogFn) openDialogFn(QString::fromStdString(instance), table, modal);
+    }
+    void closeDialog(const std::string& instance) override {
+        if (closeDialogFn) closeDialogFn(QString::fromStdString(instance));
+    }
+    void didCommand(const std::string& instance, int id, const std::string& sw, const std::string& text) override {
+        if (didCommandFn)
+            didCommandFn(QString::fromStdString(instance), id, QString::fromStdString(sw), QString::fromStdString(text));
+    }
+    std::string didQuery(const std::string& instance, int id, const std::string& prop) const override {
+        return didQueryFn ? didQueryFn(QString::fromStdString(instance), id, QString::fromStdString(prop)).toStdString()
+                          : std::string();
     }
 };
 

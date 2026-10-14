@@ -104,6 +104,7 @@ private:
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
+    QHash<QString, class ScriptDialog*> m_dialogs;  // open script dialogs by instance name
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;
 };

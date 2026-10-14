@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <QApplication>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -102,7 +103,15 @@ int main(int argc, char* argv[]) {
             const QString path = spec.section(QLatin1Char(','), 0, 0);
             const int delayMs = spec.contains(QLatin1Char(',')) ? spec.section(QLatin1Char(','), 1, 1).toInt() : 300;
             QTimer::singleShot(delayMs, &app, [&window, path] {
-                window.grab().save(path);
+                // Prefer a visible script dialog if one is open, else the window.
+                QWidget* target = &window;
+                for (QWidget* w : QApplication::topLevelWidgets()) {
+                    if (w != &window && w->isVisible() && qobject_cast<QDialog*>(w)) {
+                        target = w;
+                        break;
+                    }
+                }
+                target->grab().save(path);
                 QCoreApplication::quit();
             });
         }

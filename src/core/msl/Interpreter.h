@@ -49,6 +49,7 @@ struct EventHandler {
     std::string level = "*";
     std::string match = "*";   // wildcard matched against the event's subject text
     std::string target;        // "#", "?", "@", "*", "" or a specific name
+    std::vector<std::string> fields;  // all colon-fields after the EVENT (for on DIALOG etc)
     std::string body;
 };
 
@@ -75,7 +76,10 @@ public:
     // text its match wildcard is tested against (e.g. the message for TEXT).
     // `scope` carries $nick/$chan/$target/$1-; the handler body runs in it.
     void raiseEvent(const std::string& event, const std::string& subject, Scope& scope);
+    // Fire on DIALOG:<name>:<event>:<id> handlers (sclick, init, edit, close, ...).
+    void raiseDialogEvent(const std::string& dialogName, const std::string& devent, int id);
     bool hasEvent(const std::string& event) const;
+    const DialogTable* dialogTable(const std::string& name) const;
     std::size_t aliasCount() const { return m_aliases.size(); }
     std::size_t eventKindCount() const { return m_events.size(); }
     std::size_t eventHandlerCount() const;
@@ -141,6 +145,7 @@ private:
     };
     std::map<std::string, HashTable, CiLess> m_hash;
     std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
+    std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.

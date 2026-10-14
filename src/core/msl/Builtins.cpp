@@ -162,6 +162,23 @@ void registerBuiltins(Interpreter& in) {
     });
     in.registerIdent("event", [](Interpreter&, S& s, const A&, const std::string&) { return s.event; });
     in.registerIdent("prop", [](Interpreter&, S& s, const A&, const std::string&) { return s.prop; });
+    // Dialog event context + control access.
+    in.registerIdent("dname", [](Interpreter&, S& s, const A&, const std::string&) {
+        return s.params.empty() ? s.target : s.params[0];
+    });
+    in.registerIdent("devent", [](Interpreter&, S& s, const A&, const std::string&) {
+        return s.params.size() >= 2 ? s.params[1] : std::string();
+    });
+    in.registerIdent("did", [](Interpreter& in2, S& s, const A& a, const std::string& prop) {
+        if (a.empty()) return s.params.size() >= 3 ? s.params[2] : std::string();  // triggering id
+        const std::string name = a[0];
+        const int id = a.size() >= 2 ? argInt(a, 1) : 0;
+        return in2.host().didQuery(name, id, prop);
+    });
+    in.registerIdent("dialog", [](Interpreter& in2, S&, const A& a, const std::string& prop) {
+        if (a.empty()) return std::string();
+        return in2.host().didQuery(a[0], 0, prop.empty() ? std::string("isopen") : prop);
+    });
     // Event context: set while an on-handler runs.
     in.registerIdent("nick", [](Interpreter&, S& s, const A&, const std::string&) { return s.nick; });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
@@ -640,6 +657,38 @@ void registerBuiltins(Interpreter& in) {
     };
     in.registerCommand("hinc", hincdec(true));
     in.registerCommand("hdec", hincdec(false));
+
+    // Dialogs.
+    in.registerCommand("dialog", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        auto toks = splitTokens(args, ' ');
+        std::size_t idx = 0;
+        std::string sw;
+        if (!toks.empty() && !toks[0].empty() && toks[0][0] == '-') sw = toks[idx++];
+        if (idx >= toks.size()) return;
+        const std::string name = toks[idx++];
+        const std::string table = idx < toks.size() ? toks[idx] : name;
+        if (sw.find('c') != std::string::npos) {
+            i.host().closeDialog(name);
+            return;
+        }
+        if (const DialogTable* t = i.dialogTable(table)) i.host().openDialog(name, *t, sw.find('o') != std::string::npos);
+    });
+    in.registerCommand("did", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        auto toks = splitTokens(args, ' ');
+        std::size_t idx = 0;
+        std::string sw;
+        if (!toks.empty() && !toks[0].empty() && toks[0][0] == '-') sw = toks[idx++].substr(1);
+        if (idx + 1 >= toks.size()) return;
+        const std::string name = toks[idx++];
+        const int id = [&] { try { return std::stoi(toks[idx]); } catch (...) { return 0; } }();
+        ++idx;
+        // Remaining tokens are the text/argument (a leading line number is kept in it).
+        std::string text;
+        for (std::size_t k = idx; k < toks.size(); ++k) text += (k > idx ? " " : "") + toks[k];
+        i.host().didCommand(name, id, sw, text);
+    });
 
     in.registerCommand("alias", [](Interpreter& i, S&, const std::string& args) {
         // /alias [-l] <name> <command...>  (the -l local flag is accepted, no-op here)

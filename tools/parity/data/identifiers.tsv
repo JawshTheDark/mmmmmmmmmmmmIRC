@@ -89,9 +89,9 @@ $debug	planned		mirc_commands.html	0
 $decode	planned		text_number_identifiers.html	13		
 $decompress	planned		text_number_identifiers.html	0		
 $deltok	planned		token_identifiers.html	24		
-$devent	planned		dialogs.html	60		
-$dialog	planned		dialogs.html	323		
-$did	planned		dialogs.html	2799		
+$devent	done		dialogs.html	60	demo_dialog.mrc	
+$dialog	done		dialogs.html	323	demo_dialog.mrc	
+$did	done		dialogs.html	2799	demo_dialog.mrc	
 $didreg	planned		dialogs.html	0		
 $didtok	planned		dialogs.html	7		
 $didwm	planned		dialogs.html	5		
@@ -99,7 +99,7 @@ $disk	planned		file_directory_identifiers.html	14
 $dlevel	planned		remote_identifiers.html	0		
 $dll	not-possible		other_identifiers.html	50		Win32 DLL plugins (see Phase 6 Wine bridge)
 $dllcall	not-possible		dll.html	0		Win32 DLL plugins
-$dname	planned		dialogs.html	1512		
+$dname	done		dialogs.html	1512	demo_dialog.mrc	
 $dns	planned		on_dns.html	4		
 $donotdisturb	planned		mirc_commands.html	0		
 $dqwindow	planned		window_identifiers.html	0		

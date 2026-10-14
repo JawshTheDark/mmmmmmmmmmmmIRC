@@ -56,8 +56,8 @@ name	status	since	help_page	corpus_uses	test	notes
 /debug	planned		mirc_commands.html	0		
 /dec	done		variables.html	121	test_msl	
 /describe	done		mirc_commands.html	3	test_msl	
-/dialog	planned		dialogs.html	0		
-/did	planned		dialogs.html	3499		
+/dialog	done		dialogs.html	0	demo_dialog.mrc	
+/did	done		dialogs.html	3499	demo_dialog.mrc	
 /didtok	planned		dialogs.html	12		
 /disable	planned		remote_commands.html	29		
 /disconnect	planned		mirc_commands.html	5		

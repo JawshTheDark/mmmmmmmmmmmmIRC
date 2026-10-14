@@ -18,7 +18,7 @@ DEHELP	planned		on_opodeop.html	2
 DEOP	planned		on_opodeop.html	10		
 DEOWNER	planned		on_opodeop.html	0		
 DEVOICE	planned		on_opodeop.html	6		
-DIALOG	planned		dialogs.html	315		
+DIALOG	done		dialogs.html	315	demo_dialog.mrc	
 DISCONNECT	planned		on_connect.html	9		
 DNS	planned		on_dns.html	1		
 ERROR	planned		on_error.html	0		

@@ -19,6 +19,7 @@ add_library(lurker_core STATIC
     src/core/Completion.cpp
     src/core/msl/Interpreter.cpp
     src/core/msl/Builtins.cpp
+    src/core/msl/Dialog.cpp
 )
 target_include_directories(lurker_core PUBLIC src)
 target_compile_options(lurker_core PRIVATE -Wall -Wextra -Wpedantic)

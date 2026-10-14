@@ -22,6 +22,7 @@
 
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
+#include "gui/ScriptDialog.h"
 
 namespace lurker::gui {
 
@@ -124,6 +125,33 @@ void MainWindow::setupScripting() {
     m_scriptHost.meFn = [](int) { return QString(); };  // filled once backends expose our nick per net
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
+    };
+    m_scriptHost.openDialogFn = [this](const QString& instance, const lurker::msl::DialogTable& table, bool modal) {
+        if (ScriptDialog* existing = m_dialogs.value(instance)) {
+            existing->raise();
+            existing->activateWindow();
+            return;
+        }
+        auto* dlg = new ScriptDialog(table, instance, [this, instance](const QString& devent, int id) {
+            if (m_msl) m_msl->raiseDialogEvent(instance.toStdString(), devent.toStdString(), id);
+        });
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+        connect(dlg, &QObject::destroyed, this, [this, instance](QObject*) { m_dialogs.remove(instance); });
+        m_dialogs.insert(instance, dlg);
+        if (modal) dlg->open();
+        else dlg->show();
+    };
+    m_scriptHost.closeDialogFn = [this](const QString& instance) {
+        if (ScriptDialog* dlg = m_dialogs.value(instance)) dlg->close();
+    };
+    m_scriptHost.didCommandFn = [this](const QString& instance, int id, const QString& sw, const QString& text) {
+        if (ScriptDialog* dlg = m_dialogs.value(instance)) dlg->applyDid(id, sw, text);
+    };
+    m_scriptHost.didQueryFn = [this](const QString& instance, int id, const QString& prop) -> QString {
+        ScriptDialog* dlg = m_dialogs.value(instance);
+        if (!dlg) return prop == QLatin1String("isopen") ? QStringLiteral("0") : QString();
+        if (prop == QLatin1String("isopen")) return QStringLiteral("1");
+        return dlg->query(id, prop);
     };
     m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
 }

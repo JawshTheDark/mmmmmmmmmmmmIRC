@@ -6,20 +6,19 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 23 | 235 | 9.8% | 23 |
-| Identifiers | 45 | 406 | 11.1% | 15 |
-| Events | 5 | 84 | 6.0% | 2 |
+| Commands | 25 | 235 | 10.6% | 23 |
+| Identifiers | 49 | 406 | 12.1% | 15 |
+| Events | 6 | 84 | 7.1% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **83** | **1129** | **7.4%** | |
+| **Total** | **90** | **1129** | **8.0%** | |
 
 ## Commands
 
-### planned (200)
+### planned (198)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `/did` | 3499 |  | dialogs.html |  |  |
 | `/writeini` | 1854 |  | mirc_commands.html |  |  |
 | `/write` | 225 |  | mirc_commands.html |  |  |
 | `/remini` | 194 |  | mirc_commands.html |  |  |
@@ -150,7 +149,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/dcc trust` | 0 |  | dcc.html |  |  |
 | `/dccserver` | 0 |  | dcc.html |  |  |
 | `/debug` | 0 |  | mirc_commands.html |  |  |
-| `/dialog` | 0 |  | dialogs.html |  |  |
 | `/dlevel` | 0 |  | remote_commands.html |  |  |
 | `/donotdisturb` | 0 |  | mirc_commands.html |  |  |
 | `/dqwindow` | 0 |  | mirc_commands.html |  |  |
@@ -237,13 +235,15 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (23)
+### done (25)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `/alias` | 0 |  | mirc_commands.html | test_msl |  |
 | `/dec` | 121 |  | variables.html | test_msl |  |
 | `/describe` | 3 |  | mirc_commands.html | test_msl |  |
+| `/dialog` | 0 |  | dialogs.html | demo_dialog.mrc |  |
+| `/did` | 3499 |  | dialogs.html | demo_dialog.mrc |  |
 | `/echo` | 1165 |  | mirc_commands.html | test_msl |  |
 | `/hadd` | 14 |  | hash_tables.html | test_msl |  |
 | `/halt` | 0 |  | aliases.html | test_msl |  |
@@ -295,16 +295,13 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (361)
+### planned (357)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `$did` | 2799 |  | dialogs.html |  |  |
-| `$dname` | 1512 |  | dialogs.html |  |  |
 | `$color` | 903 |  | other_identifiers.html |  |  |
 | `$readini` | 429 |  | file_directory_identifiers.html |  |  |
 | `$read` | 343 |  | file_directory_identifiers.html |  |  |
-| `$dialog` | 323 |  | dialogs.html |  |  |
 | `$findfile` | 199 |  | file_directory_identifiers.html |  |  |
 | `$window` | 169 |  | custom_windows.html |  |  |
 | `$duration` | 138 |  | time_date_identifiers.html |  |  |
@@ -324,7 +321,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$wildsite` | 69 |  | remote_identifiers.html |  |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html |  | substitute: no 8.3 names on Linux; returns the long name |
 | `$vnick` | 64 |  | on_opodeop.html |  |  |
-| `$devent` | 60 |  | dialogs.html |  |  |
 | `$style` | 60 |  | popups.html |  |  |
 | `$crlf` | 58 |  | other_identifiers.html |  |  |
 | `$rgb` | 58 |  | picture_windows.html |  |  |
@@ -661,7 +657,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (45)
+### done (49)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -675,6 +671,10 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$chr` | 804 |  | text_number_identifiers.html | test_msl |  |
 | `$count` | 53 |  | text_number_identifiers.html | test_msl |  |
 | `$ctime` | 37 |  | time_date_identifiers.html | test_msl |  |
+| `$devent` | 60 |  | dialogs.html | demo_dialog.mrc |  |
+| `$dialog` | 323 |  | dialogs.html | demo_dialog.mrc |  |
+| `$did` | 2799 |  | dialogs.html | demo_dialog.mrc |  |
+| `$dname` | 1512 |  | dialogs.html | demo_dialog.mrc |  |
 | `$event` | 0 |  | remote_identifiers.html | test_msl |  |
 | `$findtok` | 7 |  | token_identifiers.html | test_msl |  |
 | `$gettok` | 563 |  | token_identifiers.html | test_msl |  |
@@ -733,11 +733,10 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Events
 
-### planned (74)
+### planned (73)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `DIALOG` | 315 |  | dialogs.html |  |  |
 | `RAW` | 114 |  | raw_events.html |  |  |
 | `SOCKOPEN` | 31 |  | sockets.html |  |  |
 | `LOAD` | 23 |  | on_loadostart.html |  |  |
@@ -822,11 +821,12 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `QUIT` | 6 |  | on_quit.html | test_msl |  |
 | `TOPIC` | 1 |  | on_topic.html | test_msl |  |
 
-### done (5)
+### done (6)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `ACTION` | 13 |  | on_text.html | test_msl |  |
+| `DIALOG` | 315 |  | dialogs.html | demo_dialog.mrc |  |
 | `JOIN` | 18 |  | on_joinopart.html | test_msl |  |
 | `KICK` | 13 |  | on_kick.html | test_msl |  |
 | `PART` | 7 |  | on_joinopart.html | test_msl |  |

@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include "core/msl/Dialog.h"
+
 namespace lurker::msl {
 
 // The "active" context a script runs in: which window/target it affects by
@@ -47,6 +49,28 @@ public:
 
     // A line the engine wants surfaced to the user as an error (* /cmd: ...).
     virtual void scriptError(const std::string& text) = 0;
+
+    // Dialogs (/dialog, /did, $did). Default no-ops so non-GUI hosts ignore them;
+    // the GUI renders a real dialog from the table and reports control events.
+    virtual void openDialog(const std::string& instance, const DialogTable& table, bool modal) {
+        (void)instance;
+        (void)table;
+        (void)modal;
+    }
+    virtual void closeDialog(const std::string& instance) { (void)instance; }
+    virtual void didCommand(const std::string& instance, int id, const std::string& switches,
+                            const std::string& text) {
+        (void)instance;
+        (void)id;
+        (void)switches;
+        (void)text;
+    }
+    virtual std::string didQuery(const std::string& instance, int id, const std::string& prop) const {
+        (void)instance;
+        (void)id;
+        (void)prop;
+        return {};
+    }
 };
 
 }  // namespace lurker::msl
