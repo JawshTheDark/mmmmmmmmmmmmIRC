@@ -12,6 +12,7 @@ of `mirc.exe` recorded in this project's chat history is explicitly excluded.
 | Slash commands (`src/core/CommandParser`) | Lurker `docs/CLIENT_PROTOCOL.md` §6 and §12; general IRC command names (RFC 2812) |
 | IRC session state machine (`src/core/IrcSession`) | https://modern.ircdocs.horse (registration, numerics, CTCP, ISUPPORT); https://ircv3.net/specs/extensions/capability-negotiation and .../sasl-3.1 (CAP 302, SASL PLAIN); RFC 1459 §2.2 casemapping |
 | Bouncer backend / attach protocol (`src/backend/BouncerBackend`) | Lurker `docs/IRCV3.md` (downstream caps), `docs/SELF_HOSTING.md` (bouncer attach, PASS/SASL credential forms, TLS cert pinning); soju bouncer-networks behaviour as documented there |
+| Lurker WS/REST client (`src/backend/LurkerClient`) | Lurker `docs/CLIENT_PROTOCOL.md` §3 (auth/token mint), §4 (WS upgrade, snapshot burst, resume `?since`), §5 (data model), §6 (verbs), §7 (frames); `docs/OAUTH.md` for the future PKCE path |
 | Parity matrix (`tools/parity/data`) | names only, from the index of mIRC's help file (`mirc.hhk`, 7.72) and the public changelog https://www.mirc.com/versions.txt (7.73–7.85). The help text itself is consulted per work package and listed on that row below. |
 | Lurker backends | Lurker `docs/CLIENT_PROTOCOL.md`, `docs/IRCV3.md`, `docs/OAUTH.md` |
 

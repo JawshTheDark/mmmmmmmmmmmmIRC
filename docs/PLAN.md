@@ -94,14 +94,16 @@ input history on Up/Down, 5000-line scrollback cap, clickable URL hotlinks — c
 `core/Completion` with tests). Remaining 1.3 nicety: full mIRC key-binding set (Ctrl+K colour
 dialog, Alt+N window switch, etc.) — deferred to Phase 3.4.
 
-**1.4 blocked on a credential:** the Lurker WebSocket/REST protocol auth (`/ws`, `/api/*`) needs a
-*minted session token* (`POST /api/auth/login/token` with the web password) or *OAuth PKCE*. The
-API token we have is scoped to the bouncer + `/mcp` and returns 401 on `/ws` and `/api/*` (verified
-2026-10-14). Options to unblock: (a) the correct web-login password, or (b) implement OAuth PKCE
-(the recommended third-party path, no password handling) and have the owner approve in a browser.
-The bouncer already provides core chat **and** `draft/chathistory` scrollback, so the WS backend is
-additive (Lurker search, cross-device read-state, reactions/replies UI, uploads, settings). 1.5–1.7
-not started.
+**1.4 backend done, GUI integration pending.** Auth resolved: the Lurker WS/REST protocol needs a
+*minted session token* (`POST /api/auth/login/token`, web password) — the API token is bouncer +
+`/mcp` only (401 on `/ws`/`/api/*`). `backend/LurkerClient` does config, token mint, networks, the
+WS connect, the snapshot/backlog/history/irc/read-state/send-result frame dispatch, the resume
+cursor (system-buffer ids excluded), and send/history/mark-read verbs. Verified live via
+`lurker-ws-probe`: one snapshot delivered **all 4 networks / 34 channels** at once (cursor
+4,369,048, 200 MB upload cap). What remains for 1.4/1.5: feed `LurkerClient` into the GUI as a
+second backend behind a shared interface, with the treebar grouped by network (the WS gives every
+network at once, unlike the bouncer's one-per-connection). OAuth PKCE (no-password path) is still
+worth adding later for distribution. 1.5–1.7 otherwise not started.
 
 | WP | Scope | Deliverables | Exit criteria |
 |---|---|---|---|
