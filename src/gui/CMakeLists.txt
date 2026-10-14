@@ -15,6 +15,8 @@ qt_add_executable(lurker-desktop
     ScriptDialog.h
     Theme.cpp
     Theme.h
+    PictureWindow.cpp
+    PictureWindow.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core

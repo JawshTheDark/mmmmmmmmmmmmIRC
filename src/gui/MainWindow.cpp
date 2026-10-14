@@ -25,6 +25,7 @@
 
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
+#include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
 #include "gui/Theme.h"
 
@@ -196,12 +197,22 @@ void MainWindow::setupScripting() {
     m_scriptHost.stopTimerFn = [this](const QString& name) {
         if (QTimer* t = m_scriptTimers.take(name)) t->deleteLater();
     };
-    m_scriptHost.openWindowFn = [this](const QString& name, const QString&) {
+    m_scriptHost.openWindowFn = [this](const QString& name, const QString& sw) {
+        if (sw.contains('p')) {
+            PictureWindow* pw = ensurePictureWindow(name);
+            if (auto* sub = qobject_cast<QMdiSubWindow*>(pw->parentWidget())) {
+                if (sub->isMinimized()) sub->showNormal();
+            }
+            return;
+        }
         Buffer& b = ensureBuffer(-1, ChatView::Kind::Status, name, keyFor(-1, name));
         if (b.sub && b.sub->isMinimized()) b.sub->showNormal();
     };
     m_scriptHost.clearWindowFn = [this](const QString& name) {
         if (Buffer* b = findBuffer(keyFor(-1, name))) b->view->clearMessages();
+    };
+    m_scriptHost.drawOpFn = [this](const QString& win, const QString& op, const QStringList& args) {
+        ensurePictureWindow(win)->drawOp(op, args);
     };
     m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
 }
@@ -429,6 +440,22 @@ void MainWindow::useBackend(ChatBackend* backend) {
 
 void MainWindow::closeBuffer(Buffer* buffer) {
     if (buffer && buffer->key != statusKey() && buffer->sub) buffer->sub->close();
+}
+
+PictureWindow* MainWindow::ensurePictureWindow(const QString& name) {
+    if (PictureWindow* existing = m_pictureWindows.value(name)) return existing;
+    auto* pw = new PictureWindow;
+    auto* sub = m_mdi->addSubWindow(pw);
+    sub->setWindowTitle(name);
+    sub->setAttribute(Qt::WA_DeleteOnClose);
+    sub->resize(580, 400);
+    sub->move(40, 40);
+    sub->show();
+    m_pictureWindows.insert(name, pw);
+    connect(sub, &QObject::destroyed, this, [this, name](QObject*) {
+        if (!m_closing) m_pictureWindows.remove(name);
+    });
+    return pw;
 }
 
 void MainWindow::openConversation(int net, const QString& target) {

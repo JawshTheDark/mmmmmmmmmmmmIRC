@@ -6,16 +6,16 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 33 | 235 | 14.0% | 23 |
+| Commands | 38 | 235 | 16.2% | 23 |
 | Identifiers | 76 | 406 | 18.7% | 15 |
 | Events | 6 | 84 | 7.1% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **125** | **1129** | **11.1%** | |
+| **Total** | **130** | **1129** | **11.5%** | |
 
 ## Commands
 
-### planned (190)
+### planned (185)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -28,19 +28,16 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/sockwrite` | 95 |  | sockets.html |  |  |
 | `/run` | 93 |  | mirc_commands.html |  | substitute: xdg-open / direct exec; Windows programs via Wine when configured |
 | `/notify` | 86 |  | notify_list.html |  |  |
-| `/drawtext` | 55 |  | picture_windows.html |  |  |
 | `/beep` | 50 |  | mirc_commands.html |  |  |
 | `/ignore` | 44 |  | control.html |  |  |
 | `/ban` | 43 |  | mirc_commands.html |  |  |
 | `/sockclose` | 40 |  | sockets.html |  |  |
 | `/enable` | 39 |  | remote_commands.html |  |  |
 | `/sockopen` | 39 |  | sockets.html |  |  |
-| `/drawrect` | 37 |  | picture_windows.html |  |  |
 | `/filter` | 35 |  | mirc_commands.html |  |  |
 | `/background` | 33 |  | mirc_commands.html |  |  |
 | `/tokenize` | 30 |  | mirc_commands.html |  |  |
 | `/disable` | 29 |  | remote_commands.html |  |  |
-| `/drawfill` | 29 |  | picture_windows.html |  |  |
 | `/drawpic` | 29 |  | picture_windows.html |  |  |
 | `/titlebar` | 29 |  | mirc_commands.html |  |  |
 | `/drawsave` | 25 |  | picture_windows.html |  |  |
@@ -92,7 +89,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/vol` | 3 |  | playing_sounds.html |  |  |
 | `/bread` | 2 |  | binary_files.html |  |  |
 | `/ctcpreply` | 2 |  | mirc_commands.html |  |  |
-| `/drawdot` | 2 |  | picture_windows.html |  |  |
 | `/flash` | 2 |  | mirc_commands.html |  |  |
 | `/flood` | 2 |  | flood.html |  |  |
 | `/font` | 2 |  | mirc_commands.html |  |  |
@@ -101,7 +97,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/clearall` | 1 |  | mirc_commands.html |  |  |
 | `/creq` | 1 |  | mirc_commands.html |  |  |
 | `/ctcps` | 1 |  | remote_commands.html |  |  |
-| `/drawline` | 1 |  | picture_windows.html |  |  |
 | `/flist` | 1 |  | file_handling.html |  |  |
 | `/hload` | 1 |  | hash_tables.html |  |  |
 | `/hop` | 1 |  | mirc_commands.html |  |  |
@@ -227,7 +222,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (33)
+### done (38)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -238,6 +233,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/describe` | 3 |  | mirc_commands.html | test_msl |  |
 | `/dialog` | 0 |  | dialogs.html | demo_dialog.mrc |  |
 | `/did` | 3499 |  | dialogs.html | demo_dialog.mrc |  |
+| `/drawdot` | 2 |  | picture_windows.html | msl-picwin |  |
+| `/drawfill` | 29 |  | picture_windows.html | msl-picwin |  |
+| `/drawline` | 1 |  | picture_windows.html | msl-picwin |  |
+| `/drawrect` | 37 |  | picture_windows.html | msl-picwin |  |
+| `/drawtext` | 55 |  | picture_windows.html | msl-picwin |  |
 | `/echo` | 1165 |  | mirc_commands.html | test_msl |  |
 | `/hadd` | 14 |  | hash_tables.html | test_msl |  |
 | `/halt` | 0 |  | aliases.html | test_msl |  |

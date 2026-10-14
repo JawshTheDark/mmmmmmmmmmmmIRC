@@ -1007,6 +1007,25 @@ void registerBuiltins(Interpreter& in) {
         i.host().removePath(i.evaluate(a, s));
     });
 
+    // Picture-window drawing. Each /draw* passes op + the params after @window.
+    auto drawCmd = [](const std::string& op) {
+        return [op](Interpreter& i, S& s, const std::string& a) {
+            std::string args = i.evaluate(a, s);
+            if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+            auto toks = splitTokens(args, ' ');
+            if (toks.empty()) return;
+            const std::string win = toks[0];
+            std::vector<std::string> rest(toks.begin() + 1, toks.end());
+            i.host().drawOp(win, op, rest);
+        };
+    };
+    in.registerCommand("drawrect", drawCmd("rect"));
+    in.registerCommand("drawtext", drawCmd("text"));
+    in.registerCommand("drawline", drawCmd("line"));
+    in.registerCommand("drawdot", drawCmd("dot"));
+    in.registerCommand("drawfill", drawCmd("fill"));
+    in.registerCommand("cleardraw", drawCmd("clear"));
+
     // Dialogs.
     in.registerCommand("dialog", [](Interpreter& i, S& s, const std::string& a) {
         std::string args = i.evaluate(a, s);

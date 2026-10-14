@@ -115,6 +115,14 @@ public:
         (void)switches;
     }
     virtual void clearWindow(const std::string& name) { (void)name; }
+
+    // Picture-window drawing (/drawrect, /drawtext, ...). op is rect/text/line/
+    // dot/fill/clear; args are the command params after the window name.
+    virtual void drawOp(const std::string& window, const std::string& op, const std::vector<std::string>& args) {
+        (void)window;
+        (void)op;
+        (void)args;
+    }
 };
 
 }  // namespace lurker::msl

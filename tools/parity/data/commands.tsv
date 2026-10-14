@@ -69,17 +69,17 @@ name	status	since	help_page	corpus_uses	test	notes
 /dqwindow	planned		mirc_commands.html	0		
 /drawcopy	planned		picture_windows.html	12		
 /drawdll	not-possible	7.83	versions.txt	0		Win32 DLL plugins
-/drawdot	planned		picture_windows.html	2		
-/drawfill	planned		picture_windows.html	29		
-/drawline	planned		picture_windows.html	1		
+/drawdot	done		picture_windows.html	2	msl-picwin	
+/drawfill	done		picture_windows.html	29	msl-picwin	
+/drawline	done		picture_windows.html	1	msl-picwin	
 /drawpic	planned		picture_windows.html	29		
-/drawrect	planned		picture_windows.html	37		
+/drawrect	done		picture_windows.html	37	msl-picwin	
 /drawreplace	planned		picture_windows.html	0		
 /drawrot	planned		picture_windows.html	0		
 /drawsave	planned		picture_windows.html	25		
 /drawscroll	planned		picture_windows.html	0		
 /drawsize	planned		picture_windows.html	0		
-/drawtext	planned		picture_windows.html	55		
+/drawtext	done		picture_windows.html	55	msl-picwin	
 /ebeeps	planned		mirc_commands.html	0		
 /echo	done		mirc_commands.html	1165	test_msl	
 /editbox	planned		mirc_commands.html	0		
