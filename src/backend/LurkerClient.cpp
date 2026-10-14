@@ -23,6 +23,10 @@ QString normalizeHex(QString s) { return s.remove(QLatin1Char(':')).toLower(); }
 
 LurkerClient::LurkerClient(QObject* parent) : QObject(parent) {
     m_net = new QNetworkAccessManager(this);
+    m_reconnectTimer.setSingleShot(true);
+    connect(&m_reconnectTimer, &QTimer::timeout, this, [this] {
+        if (!m_userClosed) openWebSocket();  // resumes from m_cursor via ?since
+    });
 }
 
 LurkerClient::~LurkerClient() { disconnect(); }
@@ -53,6 +57,8 @@ void LurkerClient::fetchConfig(const QString& host, bool tls) {
 
 void LurkerClient::connectToLurker(const LurkerConnectSettings& settings) {
     m_settings = settings;
+    m_userClosed = false;
+    m_reconnectDelay = 2;
     if (m_settings.token.isEmpty()) mintTokenThenContinue();
     else fetchNetworksThenConnect();
 }
@@ -113,10 +119,14 @@ void LurkerClient::openWebSocket() {
     if (m_cursor > 0) query += QStringLiteral("&since=%1").arg(m_cursor);
     url.setQuery(query);
 
+    if (m_ws) {
+        m_ws->disconnect(this);
+        m_ws->deleteLater();
+    }
     m_ws = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
     applyTlsConfig();
     connect(m_ws, &QWebSocket::textMessageReceived, this, &LurkerClient::onTextFrame);
-    connect(m_ws, &QWebSocket::disconnected, this, [this] { emit closed(); });
+    connect(m_ws, &QWebSocket::disconnected, this, &LurkerClient::handleWsClosed);
     connect(m_ws, &QWebSocket::errorOccurred, this,
             [this](QAbstractSocket::SocketError) { emit statusText(tr("WS error: %1").arg(m_ws->errorString())); });
 
@@ -127,9 +137,18 @@ void LurkerClient::openWebSocket() {
     m_ws->open(req);
 }
 
+void LurkerClient::handleWsClosed() {
+    emit closed();
+    if (m_userClosed) return;
+    emit statusText(tr("Connection lost. Reconnecting in %1 s...").arg(m_reconnectDelay));
+    m_reconnectTimer.start(m_reconnectDelay * 1000);
+    m_reconnectDelay = qMin(m_reconnectDelay * 2, 30);
+}
+
 void LurkerClient::onTextFrame(const QString& text) {
     if (m_firstFrame) {
         m_firstFrame = false;
+        m_reconnectDelay = 2;  // a good connection resets the backoff
         emit connected();
     }
     const QJsonObject frame = QJsonDocument::fromJson(text.toUtf8()).object();
@@ -202,6 +221,8 @@ void LurkerClient::markRead(int networkId, const QString& target, qint64 message
 }
 
 void LurkerClient::disconnect() {
+    m_userClosed = true;
+    m_reconnectTimer.stop();
     if (m_ws) {
         m_ws->disconnect(this);
         m_ws->close();

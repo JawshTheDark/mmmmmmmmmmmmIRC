@@ -54,7 +54,8 @@ struct IrcEvent {
     std::string account; // IRCv3 account (account-tag / extended-join), "" = none/unknown
     std::string msgid;   // IRCv3 msgid tag, "" = none
     std::string time;    // IRCv3 server-time tag (ISO 8601), "" = none
-    bool self = false;   // the source is this connection's user
+    bool self = false;       // the source is this connection's user
+    bool highlight = false;  // this line mentions you (Lurker's `matched`)
     int numeric = -1;    // the numeric when the line was one, else -1
     IrcMessage raw;      // the parsed line as received (empty for synthetic events)
 };

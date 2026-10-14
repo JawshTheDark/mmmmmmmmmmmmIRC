@@ -207,6 +207,7 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
     out.target = target.toStdString();
     out.text = ev.value("text").toString().toStdString();
     out.self = ev.value("self").toBool();
+    out.highlight = ev.value("matched").toBool();
     out.time = ev.value("time").toString().toStdString();
     if (ev.contains("msgid")) out.msgid = ev.value("msgid").toString().toStdString();
     if (type == IrcEventType::NickChange) out.arg = ev.value("newNick").toString().toStdString();

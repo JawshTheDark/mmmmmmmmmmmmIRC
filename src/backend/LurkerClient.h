@@ -14,6 +14,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 class QNetworkAccessManager;
 class QWebSocket;
@@ -85,12 +86,17 @@ private:
     void onTextFrame(const QString& text);
     void applyTlsConfig();
 
+    void handleWsClosed();
+
     QNetworkAccessManager* m_net = nullptr;
     QWebSocket* m_ws = nullptr;
     LurkerConnectSettings m_settings;
     qint64 m_cursor = 0;      // highest persisted message id seen (resume cursor)
     bool m_firstFrame = true;
     quint64 m_clientIdSeq = 0;
+    QTimer m_reconnectTimer;
+    int m_reconnectDelay = 2;   // seconds, doubles up to 30
+    bool m_userClosed = false;  // true after an explicit disconnect()
 };
 
 }  // namespace lurker::backend

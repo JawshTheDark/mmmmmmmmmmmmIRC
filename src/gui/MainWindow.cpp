@@ -313,7 +313,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
         case IrcEventType::Action: {
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
             if (buf) {
-                buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self);
+                buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self, event.highlight);
                 noteMessage(buf, event.id);
             }
             break;
