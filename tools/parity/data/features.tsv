@@ -9,7 +9,7 @@ Named Levels	access_levels	planned
 Prefixes	access_levels	planned			
 Remote Levels	access_levels	planned			
 User List	access_levels	planned			
-Address Book	address_book	planned			
+Address Book	address_book	done		manual	
 Agent Scripts	agents_scripting	planned			
 [ ] evaluation brackets	aliases	planned			
 ALIAS prefix	aliases	planned			
@@ -30,8 +30,8 @@ Catcher	catcher	planned
 Chat Links	catcher	planned			
 Email Catcher	catcher	planned			
 URL Catcher	catcher	planned			
-Changing Colors	change_colors	planned			
-Colors Dialog	change_colors	planned			
+Changing Colors	change_colors	done		manual	
+Colors Dialog	change_colors	done		manual	
 $dialog().mapw/.maph	changelog-7.73-7.85	planned	7.73		
 $encode/$decode 'v' switch (Z85)	changelog-7.73-7.85	planned	7.73		
 $encode/$decode 'x' switch (percent-encoding)	changelog-7.73-7.85	planned	7.77		
@@ -101,7 +101,7 @@ Ctcp Events	ctcp_events	planned
 Custom Windows	custom_windows	planned			
 Chat	dcc	planned			
 DCC	dcc	planned			
-DCC Chat	dcc	planned			
+DCC Chat	dcc	done		manual	
 DCC Fileserver	dcc	planned			
 DCC Options	dcc	planned			
 DCC Packet Size	dcc	planned			
@@ -122,9 +122,9 @@ DIALOG prefix	dialogs	planned
 Dialogs	dialogs	planned			
 Display	display	planned			
 Menubar	display	planned			
-Switchbar	display	planned			
-Toolbar	display	planned			
-Treebar	display	planned			
+Switchbar	display	done		manual	
+Toolbar	display	done		manual	
+Treebar	display	done		manual	
 Automatic editbox	display_options	planned			
 Desktop Windows	display_options	planned			
 Editbox size	display_options	planned			
@@ -147,8 +147,8 @@ Flood	flood	planned
 Halting default text	halting_text	planned			
 Hash tables	hash_tables	planned			
 Help Menu	help_menu	planned			
-Flash	highlight	planned			
-Highlight	highlight	planned			
+Flash	highlight	done		manual	
+Highlight	highlight	done		manual	
 How To Register	how_to_register	planned			
 Register	how_to_register	planned			
 Identd	identd	planned			
@@ -197,9 +197,9 @@ Ping Pong	irc_options	planned
 Show nicks on join	irc_options	planned			
 Show user addresses	irc_options	planned			
 Skip MOTD on connect	irc_options	planned			
-Channels List	join_a_channel	planned			
+Channels List	join_a_channel	done		manual	
 Creating channels	join_a_channel	planned			
-Favorites folder	join_a_channel	planned			
+Favorites folder	join_a_channel	done		manual	
 Join a channel	join_a_channel	planned			
 List Channels	join_a_channel	planned			
 Alt+1...9	key_combinations	planned			
@@ -252,19 +252,19 @@ Limit Channels	lock	planned
 Lock	lock	planned			
 Password	lock	planned			
 Lock log files	logging	planned			
-Logging	logging	planned			
+Logging	logging	done		manual	
 Merge log files	logging	planned			
 Reload logs	logging	planned			
-Timestamp logs	logging	planned			
+Timestamp logs	logging	done		manual	
 Trim log files	logging	planned			
-View log files	logging	planned			
+View log files	logging	done		manual	
 Long File Names	long_file_names	planned			
 Ctcp finger reply	messages	planned			
 Messages	messages	planned			
 Quit Message	messages	planned			
 Split long messages	messages	planned			
 Strip codes	messages	planned			
-Timestamp events	messages	planned			
+Timestamp events	messages	done		manual	
 Commands	mirc_commands	done		test_msl	
 Do Not Disturb	mirc_commands	planned			
 mIRC Commands	mirc_commands	planned			
@@ -275,7 +275,7 @@ Double-Click	mouse	planned
 Mouse	mouse	planned			
 Internal Ban List	nick_address_identifiers	planned			
 Nick and Address Identifiers	nick_address_identifiers	planned			
-Nick Colors	nick_colors	planned			
+Nick Colors	nick_colors	done		manual	
 Notify List	notify_list	planned			
 =$nick	on_chatoserv	planned			
 on MP3END	on_midiend	planned			
@@ -349,21 +349,21 @@ Navigation clicks	sounds	planned
 Sounds	sounds	planned			
 Speak Text	speech	planned			
 Speech	speech	planned			
-Background	system_menu	planned			
+Background	system_menu	done		manual	
 Beeping	system_menu	planned			
 Buffer	system_menu	planned			
-Changing Fonts	system_menu	planned			
+Changing Fonts	system_menu	done		manual	
 Desktop	system_menu	planned			
 Editbox	system_menu	planned			
 Flashing	system_menu	planned			
-Font	system_menu	planned			
+Font	system_menu	done		manual	
 Nicklist	system_menu	planned			
 On Top	system_menu	planned			
 Position	system_menu	planned			
 Saving Positions	system_menu	planned			
 Spacing	system_menu	planned			
 System Menu	system_menu	planned			
-Timestamp	system_menu	planned			
+Timestamp	system_menu	done		manual	
 Track URLs	system_menu	planned			
 Text Copy and Paste	text_copy_paste	planned			
 Text and Number Identifiers	text_number_identifiers	planned			

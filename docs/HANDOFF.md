@@ -2,7 +2,7 @@
 
 For a person or agent picking this up. A cross-platform (Linux + Windows) mIRC-style IRC client for
 Lurker, C++20 + Qt 6, MPL-2.0, clean-room. Entry points: [CLAUDE.md](../CLAUDE.md) (rules),
-[docs/PLAN.md](PLAN.md) (phases), [docs/PARITY.md](PARITY.md) (scoreboard, ~148/1129 done).
+[docs/PLAN.md](PLAN.md) (phases), [docs/PARITY.md](PARITY.md) (scoreboard, ~197/1129 done).
 
 ## Run it
 

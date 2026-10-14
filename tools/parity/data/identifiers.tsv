@@ -58,7 +58,7 @@ $codepage	planned		other_identifiers.html	0
 $color	planned		other_identifiers.html	903		
 $com	not-possible		com_objects.html	0		COM/ActiveX
 $comcall	not-possible		com_objects.html	0		COM/ActiveX
-$comchan	planned		nick_address_identifiers.html	50		
+$comchan	done		nick_address_identifiers.html	50	test_msl	
 $comchar	planned		other_identifiers.html	0		
 $comerr	not-possible		com_objects.html	0		COM/ActiveX
 $compact	planned		window_identifiers.html	0		
@@ -86,7 +86,7 @@ $dccport	planned		other_identifiers.html	0
 $dde	not-possible		dde.html	0		Windows DDE
 $ddename	not-possible		dde.html	0		Windows DDE
 $debug	planned		mirc_commands.html	0		
-$decode	planned		text_number_identifiers.html	13		
+$decode	done		text_number_identifiers.html	13	test_msl	
 $decompress	planned		text_number_identifiers.html	0		
 $deltok	done		token_identifiers.html	24	test_msl	
 $devent	done		dialogs.html	60	demo_dialog.mrc	
@@ -107,7 +107,7 @@ $duration	done		time_date_identifiers.html	138	test_msl
 $ebeeps	planned		other_identifiers.html	0		
 $editbox	planned		other_identifiers.html	0		
 $emailaddr	planned		other_identifiers.html	0		
-$encode	planned		text_number_identifiers.html	0		
+$encode	done		text_number_identifiers.html	0	test_msl	
 $envvar	planned		other_identifiers.html	0		
 $error	planned		aliases.html	7		
 $eval	planned		other_identifiers.html	34		
@@ -149,7 +149,7 @@ $group	planned		remote_identifiers.html	11
 $halted	planned		halting_text.html	0		
 $hash	planned		other_identifiers.html	0		
 $height	planned		picture_windows.html	0		
-$hfind	planned		hash_tables.html	0		
+$hfind	done		hash_tables.html	0	test_msl	
 $hget	done		hash_tables.html	51	test_msl	
 $highlight	planned		other_identifiers.html	0		
 $hmac	planned		other_identifiers.html	0		
@@ -222,14 +222,14 @@ $logdir	planned		file_directory_identifiers.html	2
 $logstamp	planned		time_date_identifiers.html	0		
 $logstampfmt	planned		time_date_identifiers.html	0		
 $longfn	done		file_directory_identifiers.html	4	test_msl	substitute: returns the path unchanged
-$longip	planned		text_number_identifiers.html	0		
+$longip	done		text_number_identifiers.html	0	test_msl	
 $lower	done		text_number_identifiers.html	4	test_msl	
 $ltimer	planned		mirc_commands.html	0		
 $maddress	planned		remote_identifiers.html	0		
 $mask	done		nick_address_identifiers.html	22	test_msl	
 $matchkey	planned		remote_identifiers.html	0		
 $matchtok	planned		token_identifiers.html	0		
-$max	planned		text_number_identifiers.html	21		
+$max	done		text_number_identifiers.html	21	test_msl	
 $maxlenl	planned		other_identifiers.html	0		
 $maxlenm	planned		other_identifiers.html	0		
 $maxlens	planned		other_identifiers.html	0		
@@ -241,7 +241,7 @@ $menucontext	planned		popups.html	0
 $menutype	planned		popups.html	0		
 $mid	done		text_number_identifiers.html	133	test_msl	
 $mididir	planned		file_directory_identifiers.html	0		
-$min	planned		text_number_identifiers.html	8		
+$min	done		text_number_identifiers.html	8	test_msl	
 $mircdir	planned		file_directory_identifiers.html	8		
 $mircexe	planned		file_directory_identifiers.html	1		
 $mircini	planned		file_directory_identifiers.html	1		
@@ -319,7 +319,7 @@ $remove	done		text_number_identifiers.html	83	test_msl
 $remtok	done		token_identifiers.html	49	test_msl	
 $replace	done		text_number_identifiers.html	321	test_msl	
 $replacex	planned		text_number_identifiers.html	0		
-$reptok	planned		token_identifiers.html	3		
+$reptok	done		token_identifiers.html	3	test_msl	
 $result	planned		other_identifiers.html	3		
 $rgb	planned		picture_windows.html	58		
 $right	done		text_number_identifiers.html	406	test_msl	
@@ -403,8 +403,8 @@ $urlget	planned		other_identifiers.html	0
 $usermode	planned		other_identifiers.html	13		
 $utfdecode	planned		text_number_identifiers.html	0		
 $utfencode	planned		text_number_identifiers.html	0		
-$v1	planned		if_then_else.html	0		
-$v2	planned		if_then_else.html	0		
+$v1	done		if_then_else.html	0	test_msl	
+$v2	done		if_then_else.html	0	test_msl	
 $var	planned		variables.html	0		
 $vcmd	not-possible		voice_commands.html	0		Windows speech recognition
 $vcmdstat	not-possible		voice_commands.html	0		Windows speech recognition
@@ -415,7 +415,7 @@ $vol	planned		playing_sounds.html	6
 $wid	planned		window_identifiers.html	0		
 $width	planned		picture_windows.html	0		
 $wildsite	planned		remote_identifiers.html	69		
-$wildtok	planned		token_identifiers.html	0		
+$wildtok	done		token_identifiers.html	0	test_msl	
 $window	planned		custom_windows.html	169		
 $wrap	planned		text_number_identifiers.html	0		
 $xor	planned		text_number_identifiers.html	0		
