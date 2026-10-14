@@ -39,6 +39,9 @@ public:
     void openConversation(int net, const QString& target);
     // Run an MSL line in the active (or status) window — used by // input and --msl.
     void runScript(const QString& line);
+    void loadScriptFile(const QString& path);
+    // Dev: inject a synthetic incoming message (renders + fires on TEXT).
+    void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
 
 private:
     struct Buffer {
@@ -77,6 +80,7 @@ private:
     void setupScripting();
     Buffer* activeBuffer();
     void echoToWindow(int net, const QString& window, const QString& text);
+    void dispatchScriptEvent(const lurker::IrcEvent& event);
     void onInput(Buffer* buffer, const QString& text);
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
@@ -100,6 +104,8 @@ private:
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
+    lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
+    bool m_inEvent = false;
 };
 
 }  // namespace lurker::gui

@@ -132,13 +132,23 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("me", [](Interpreter& i, S&, const A&, const std::string&) {
         return i.host().me(i.host().activeTarget().networkId);
     });
-    in.registerIdent("chan", [](Interpreter& i, S&, const A&, const std::string&) {
-        return i.host().activeTarget().window;
+    in.registerIdent("chan", [](Interpreter& i, S& s, const A&, const std::string&) {
+        return s.chan.empty() ? i.host().activeTarget().window : s.chan;
     });
     in.registerIdent("active", [](Interpreter& i, S&, const A&, const std::string&) {
         return i.host().activeTarget().window;
     });
     in.registerIdent("event", [](Interpreter&, S& s, const A&, const std::string&) { return s.event; });
+    // Event context: set while an on-handler runs.
+    in.registerIdent("nick", [](Interpreter&, S& s, const A&, const std::string&) { return s.nick; });
+    in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
+        return s.target.empty() ? i.host().activeTarget().window : s.target;
+    });
+    in.registerIdent("address", [](Interpreter&, S& s, const A&, const std::string&) { return s.address; });
+    in.registerIdent("site", [](Interpreter&, S& s, const A&, const std::string&) {
+        const std::size_t at = s.address.find('@');
+        return at == std::string::npos ? std::string() : s.address.substr(at + 1);
+    });
 
     // --- text/number ---
     in.registerIdent("len", [](Interpreter&, S&, const A& a, const std::string&) {

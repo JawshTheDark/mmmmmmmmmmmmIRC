@@ -9,6 +9,8 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QDockWidget>
+#include <QFile>
+#include <QFileInfo>
 #include <QMdiArea>
 #include <QMdiSubWindow>
 #include <QMenuBar>
@@ -113,6 +115,7 @@ void MainWindow::setupScripting() {
         if (m_backend && m_backend->isReady()) m_backend->sendRaw(net, line);
     };
     m_scriptHost.activeFn = [this]() -> lurker::msl::ScriptTarget {
+        if (m_inEvent) return m_eventContext;  // during an on-event, "active" is the event's target
         Buffer* b = activeBuffer();
         if (!b) return {};
         return {b->networkId, b->display.toStdString()};
@@ -146,6 +149,59 @@ void MainWindow::runScript(const QString& line) {
     if (!m_msl) return;
     lurker::msl::Scope scope;
     m_msl->execute(line.toStdString(), scope);
+}
+
+void MainWindow::loadScriptFile(const QString& path) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        onStatusText(tr("Could not load script: %1").arg(path));
+        return;
+    }
+    if (m_msl) m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+    onStatusText(tr("Loaded script %1").arg(QFileInfo(path).fileName()));
+}
+
+void MainWindow::simulateMessage(int net, const QString& nick, const QString& target, const QString& text) {
+    lurker::IrcEvent ev;
+    ev.type = IrcEventType::Message;
+    ev.networkId = net;
+    ev.nick = nick.toStdString();
+    ev.user = "user";
+    ev.host = "host";
+    ev.target = target.toStdString();
+    ev.text = text.toStdString();
+    onEvent(ev);
+}
+
+void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
+    if (!m_msl) return;
+    QString name;
+    QString subject = QString::fromStdString(event.text);
+    const QString target = QString::fromStdString(event.target);
+    switch (event.type) {
+        case IrcEventType::Message: name = QStringLiteral("TEXT"); break;
+        case IrcEventType::Action: name = QStringLiteral("ACTION"); break;
+        case IrcEventType::Notice: name = QStringLiteral("NOTICE"); break;
+        case IrcEventType::Join: name = QStringLiteral("JOIN"); subject = target; break;
+        case IrcEventType::Part: name = QStringLiteral("PART"); subject = target; break;
+        case IrcEventType::Kick: name = QStringLiteral("KICK"); subject = target; break;
+        default: return;
+    }
+    if (event.self || !m_msl->hasEvent(name.toStdString())) return;
+
+    lurker::msl::Scope scope;
+    scope.nick = event.nick;
+    scope.address = event.user.empty() ? event.nick : event.nick + "!" + event.user + "@" + event.host;
+    const bool isChan = looksLikeChannel(target);
+    scope.chan = isChan ? target.toStdString() : std::string();
+    scope.target = isChan ? target.toStdString() : event.nick;
+    for (const QString& w : QString::fromStdString(event.text).split(QLatin1Char(' '), Qt::SkipEmptyParts))
+        scope.params.push_back(w.toStdString());
+
+    m_eventContext = {event.networkId, scope.target};
+    m_inEvent = true;
+    m_msl->raiseEvent(name.toStdString(), subject.toStdString(), scope);
+    m_inEvent = false;
 }
 
 MainWindow::~MainWindow() {
@@ -431,6 +487,9 @@ void MainWindow::onEvent(const IrcEvent& event) {
         default:
             break;
     }
+
+    // Fire MSL remote events (on TEXT / ACTION / JOIN / ...) after rendering.
+    dispatchScriptEvent(event);
 }
 
 void MainWindow::onMembersReplaced(int net, const QString& target, const QList<DisplayMember>& members) {

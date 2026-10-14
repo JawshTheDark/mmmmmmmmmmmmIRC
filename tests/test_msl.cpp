@@ -189,6 +189,43 @@ int main() {
         CHECK(!in.evalCondition("!(%a == 5)", s));
     }
 
+    // Remote scripts: load aliases and on-events, then fire an event.
+    {
+        host.echoed.clear();
+        host.sent.clear();
+        in.loadScript(
+            "alias ping { echo pong to $1 }\n"
+            "on *:TEXT:!hello*:#: { msg $chan hi $nick }\n"
+            "on *:TEXT:*badword*:#: { echo [filter] $nick said a bad word | halt }\n");
+        CHECK(in.hasEvent("text"));
+
+        // A matching channel message triggers the reply.
+        Scope ev;
+        ev.nick = "bob";
+        ev.chan = "#test";
+        ev.target = "#test";
+        ev.params = {"!hello", "there"};
+        in.raiseEvent("TEXT", "!hello there", ev);
+        CHECK_EQ(host.sent.size(), 1u);
+        CHECK_EQ(host.sent[0], std::string("#test\thi bob"));
+
+        // A non-matching message does nothing.
+        host.sent.clear();
+        Scope ev2;
+        ev2.nick = "carol";
+        ev2.chan = "#test";
+        ev2.target = "#test";
+        in.raiseEvent("TEXT", "just chatting", ev2);
+        CHECK_EQ(host.sent.size(), 0u);
+
+        // The loaded alias works.
+        CHECK(in.hasAlias("ping"));
+        host.echoed.clear();
+        CHECK_EQ(in.callAlias("ping", {"dave"}), std::string());
+        CHECK_EQ(host.echoed.size(), 1u);
+        CHECK_EQ(host.echoed[0], std::string("pong to dave"));
+    }
+
     // halt stops the rest of the script.
     {
         host.echoed.clear();

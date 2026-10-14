@@ -74,10 +74,22 @@ int main(int argc, char* argv[]) {
     }
 
     // --msl=<script>: run an MSL script in the status window (demo/dev). Repeatable.
+    // --script=<path>: load a remote .mrc. --simulate=net|nick|target|text: inject a message.
     for (const QString& arg : args) {
         if (arg.startsWith(QStringLiteral("--msl="))) {
             const QString script = arg.section(QLatin1Char('='), 1);
             QTimer::singleShot(300, &window, [&window, script] { window.runScript(script); });
+        } else if (arg.startsWith(QStringLiteral("--script="))) {
+            const QString path = arg.section(QLatin1Char('='), 1);
+            QTimer::singleShot(200, &window, [&window, path] { window.loadScriptFile(path); });
+        } else if (arg.startsWith(QStringLiteral("--simulate="))) {
+            const QStringList f = arg.section(QLatin1Char('='), 1).split(QLatin1Char('|'));
+            if (f.size() >= 4) {
+                QTimer::singleShot(400, &window, [&window, f] {
+                    window.simulateMessage(f[0].toInt(), f[1], f[2], f.mid(3).join(QLatin1Char('|')));
+                    window.openConversation(f[0].toInt(), f[2]);
+                });
+            }
         }
     }
 

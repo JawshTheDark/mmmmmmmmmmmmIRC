@@ -249,28 +249,6 @@ bool asNumber(const std::string& s, double& out) {
     }
 }
 
-bool wildMatch(std::string_view pat, std::string_view str) {
-    // '*' and '?' glob, case-insensitive (mIRC iswm).
-    std::size_t p = 0, s = 0, star = std::string::npos, mark = 0;
-    auto lc = [](char c) { return (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c; };
-    while (s < str.size()) {
-        if (p < pat.size() && (pat[p] == '?' || lc(pat[p]) == lc(str[s]))) {
-            ++p;
-            ++s;
-        } else if (p < pat.size() && pat[p] == '*') {
-            star = p++;
-            mark = s;
-        } else if (star != std::string::npos) {
-            p = star + 1;
-            s = ++mark;
-        } else {
-            return false;
-        }
-    }
-    while (p < pat.size() && pat[p] == '*') ++p;
-    return p == pat.size();
-}
-
 bool compare(const std::string& a, const std::string& op, const std::string& b) {
     double na, nb;
     const bool numeric = asNumber(a, na) && asNumber(b, nb);
@@ -284,8 +262,8 @@ bool compare(const std::string& a, const std::string& op, const std::string& b) 
     if (op == "//") return nb != 0 && std::fmod(na, nb) == 0;  // a is a multiple of b
     if (op == "isin") return toLowerAscii(b).find(toLowerAscii(a)) != std::string::npos;
     if (op == "isincs") return b.find(a) != std::string::npos;
-    if (op == "iswm") return wildMatch(a, b);
-    if (op == "iswmcs") return wildMatch(a, b);  // (cs variant; fold not applied — close enough for v1)
+    if (op == "iswm") return matchWild(a, b);
+    if (op == "iswmcs") return matchWild(a, b);  // (cs variant; fold not applied — close enough for v1)
     if (op == "isnum") {
         double x;
         return asNumber(a, x);
@@ -583,6 +561,125 @@ std::string Interpreter::callAlias(const std::string& name, const std::vector<st
     scope.params = params;
     execute(it->second, scope);
     return scope.returnValue;
+}
+
+// --- wildcard + remote scripts ------------------------------------------
+
+bool matchWild(std::string_view pat, std::string_view str) {
+    std::size_t p = 0, s = 0, star = std::string::npos, mark = 0;
+    auto lc = [](char c) { return (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c; };
+    while (s < str.size()) {
+        if (p < pat.size() && (pat[p] == '?' || lc(pat[p]) == lc(str[s]))) {
+            ++p;
+            ++s;
+        } else if (p < pat.size() && pat[p] == '*') {
+            star = p++;
+            mark = s;
+        } else if (star != std::string::npos) {
+            p = star + 1;
+            s = ++mark;
+        } else {
+            return false;
+        }
+    }
+    while (p < pat.size() && pat[p] == '*') ++p;
+    return p == pat.size();
+}
+
+void Interpreter::clearScripts() {
+    m_aliases.clear();
+    m_events.clear();
+}
+
+bool Interpreter::hasEvent(const std::string& event) const { return m_events.count(event) != 0; }
+
+void Interpreter::loadScript(std::string_view text) {
+    // A remote file is a sequence of definitions. Each is a header line
+    // (`alias name ...`, `on <level>:<EVENT>:...:`) followed by either a brace
+    // block or, for a one-line alias, the rest of the line. We scan definitions
+    // by reading a header up to its '{' (or end of line) and the balanced block.
+    std::size_t i = 0;
+    const std::size_t n = text.size();
+    auto skipWs = [&] {
+        while (i < n && (std::isspace(static_cast<unsigned char>(text[i])))) ++i;
+    };
+    while (i < n) {
+        skipWs();
+        if (i >= n) break;
+        if (text[i] == ';') {  // comment line
+            while (i < n && text[i] != '\n') ++i;
+            continue;
+        }
+        // Read the header up to '{' or newline.
+        const std::size_t headStart = i;
+        while (i < n && text[i] != '{' && text[i] != '\n') ++i;
+        std::string header = trimmed(text.substr(headStart, i - headStart));
+        std::string body;
+        if (i < n && text[i] == '{') {
+            std::size_t pos = i;
+            body = parseBrace(text, pos);  // balanced { ... }
+            i = pos;
+        } else {
+            // One-line form: body is after the first keyword+name on the header.
+        }
+
+        if (header.empty()) continue;
+        const std::string kw = toLowerAscii(firstWord(header));
+        if (kw == "alias") {
+            std::string rest = trimmed(header.substr(5));
+            const std::string name = firstWord(rest);
+            std::string inlineBody = trimmed(rest.substr(std::min(name.size(), rest.size())));
+            defineAlias(name, body.empty() ? inlineBody : body);
+        } else if (kw == "on") {
+            // on <level>:<EVENT>:<p1>:<p2>: { body }
+            std::vector<std::string> fields = splitTokens(header.substr(0, header.size()), ':');
+            // fields[0] = "on <level>", then EVENT, then params...
+            if (fields.size() >= 2) {
+                EventHandler h;
+                h.level = trimmed(fields[0].substr(2));  // after "on"
+                const std::string event = toLowerAscii(trimmed(fields[1]));
+                if (fields.size() >= 4) {
+                    h.match = trimmed(fields[2]);
+                    h.target = trimmed(fields[3]);
+                } else if (fields.size() == 3) {
+                    h.target = trimmed(fields[2]);
+                }
+                if (h.match.empty()) h.match = "*";
+                h.body = body;
+                m_events[event].push_back(std::move(h));
+            }
+        }
+        // Unknown definitions (menu, dialog, …) are skipped for now.
+    }
+}
+
+namespace {
+bool targetMatches(const std::string& handlerTarget, const Scope& scope) {
+    const std::string& t = handlerTarget;
+    const bool isChan = !scope.target.empty() && std::string("#&+!").find(scope.target.front()) != std::string::npos;
+    if (t.empty() || t == "*") return true;
+    if (t == "#") return isChan;
+    if (t == "?") return !isChan;
+    if (t == "@") return !scope.target.empty() && scope.target.front() == '@';
+    // A specific name/wildcard, matched against the channel/target.
+    return matchWild(t, scope.target) || matchWild(t, scope.chan);
+}
+}  // namespace
+
+void Interpreter::raiseEvent(const std::string& event, const std::string& subject, Scope& scope) {
+    const auto it = m_events.find(toLowerAscii(event));
+    if (it == m_events.end()) return;
+    scope.event = event;
+    for (const EventHandler& h : it->second) {
+        if (!targetMatches(h.target, scope)) continue;
+        if (!matchWild(h.match, subject)) continue;
+        Scope local = scope;  // each handler gets a fresh copy of the context
+        execute(h.body, local);
+        if (local.halted) {
+            scope.halted = true;
+            break;
+        }
+    }
 }
 
 }  // namespace lurker::msl

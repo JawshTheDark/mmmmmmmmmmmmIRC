@@ -32,10 +32,23 @@ struct Scope {
     std::vector<std::string> params;              // $1 == params[0]
     std::map<std::string, std::string, CiLess> locals;
     std::string event;                            // $event (the active on-event name)
+    // Event context ($nick, $chan, ... during an on-event).
+    std::string nick;
+    std::string address;  // nick!user@host
+    std::string chan;     // channel the event is on
+    std::string target;   // the window ($target): channel, query nick or @window
     bool halted = false;                          // /halt stops the whole script
     bool returned = false;                        // /return stops the current alias
     std::string returnValue;                      // value of /return or /returnex
     int depth = 0;                                // recursion guard
+};
+
+// One `on <level>:<EVENT>:<match>:<target>:{ body }` remote definition.
+struct EventHandler {
+    std::string level = "*";
+    std::string match = "*";   // wildcard matched against the event's subject text
+    std::string target;        // "#", "?", "@", "*", "" or a specific name
+    std::string body;
 };
 
 class Interpreter {
@@ -51,6 +64,17 @@ public:
     void defineAlias(const std::string& name, const std::string& body);
     bool hasCommand(const std::string& name) const;
     bool hasAlias(const std::string& name) const;
+
+    // Load a remote script file: parses `alias`, `on`, and top-level comments.
+    // Replaces nothing — definitions accumulate (later ones win by name/append).
+    void loadScript(std::string_view text);
+    void clearScripts();  // forget loaded aliases and events (for /unload or reload)
+
+    // Fire an event: runs every matching `on <EVENT>` handler. `subject` is the
+    // text its match wildcard is tested against (e.g. the message for TEXT).
+    // `scope` carries $nick/$chan/$target/$1-; the handler body runs in it.
+    void raiseEvent(const std::string& event, const std::string& subject, Scope& scope);
+    bool hasEvent(const std::string& event) const;
 
     // Resolve all $identifiers and %variables in `text` (one pass, like mIRC).
     std::string evaluate(std::string_view text, Scope& scope);
@@ -85,7 +109,11 @@ private:
     std::map<std::string, CommandFn, CiLess> m_commands;
     std::map<std::string, std::string, CiLess> m_aliases;
     std::map<std::string, std::string, CiLess> m_globals;
+    std::map<std::string, std::vector<EventHandler>, CiLess> m_events;
 };
+
+// Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.
+bool matchWild(std::string_view pattern, std::string_view text);
 
 // Registers the standard identifier and command set (Builtins.cpp).
 void registerBuiltins(Interpreter&);
