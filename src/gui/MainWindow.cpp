@@ -659,6 +659,12 @@ void MainWindow::setupScripting() {
         if (QTimer* t = m_scriptTimers.take(name)) t->deleteLater();
     };
     m_scriptHost.openWindowFn = [this](const QString& name, const QString& sw) {
+        if (sw == QLatin1String("query")) {  // /query → a query buffer on the active network
+            int net = activeBuffer() ? activeBuffer()->networkId : -1;
+            if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+            activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, name, keyFor(net, name)));
+            return;
+        }
         if (sw.contains('p')) {
             PictureWindow* pw = ensurePictureWindow(name);
             if (auto* sub = qobject_cast<QMdiSubWindow*>(pw->parentWidget())) {
@@ -670,6 +676,12 @@ void MainWindow::setupScripting() {
         if (b.sub && b.sub->isMinimized()) b.sub->showNormal();
     };
     m_scriptHost.clearWindowFn = [this](const QString& name) {
+        for (auto& b : m_buffers) {
+            if (b.display.compare(name, Qt::CaseInsensitive) == 0) {
+                b.view->clearMessages();
+                return;
+            }
+        }
         if (Buffer* b = findBuffer(keyFor(-1, name))) b->view->clearMessages();
     };
     m_scriptHost.drawOpFn = [this](const QString& win, const QString& op, const QStringList& args) {

@@ -478,6 +478,31 @@ int main() {
         host.myChans.clear();
     }
 
+    // Standard IRC commands map to the right raw lines / sends.
+    {
+        Scope s;
+        host.raws.clear();
+        in.execute("join #chan", s);
+        CHECK_EQ(host.raws.back(), std::string("JOIN #chan"));
+        in.execute("nick newnick", s);
+        CHECK_EQ(host.raws.back(), std::string("NICK newnick"));
+        in.execute("topic #chan hello world", s);
+        CHECK_EQ(host.raws.back(), std::string("TOPIC #chan :hello world"));
+        in.execute("kick #chan baddie go away", s);
+        CHECK_EQ(host.raws.back(), std::string("KICK #chan baddie :go away"));
+        in.execute("notice bob hi there", s);
+        CHECK_EQ(host.raws.back(), std::string("NOTICE bob :hi there"));
+        in.execute("away back soon", s);
+        CHECK_EQ(host.raws.back(), std::string("AWAY :back soon"));
+        in.execute("back", s);
+        CHECK_EQ(host.raws.back(), std::string("AWAY"));
+        host.myChans = {"#a", "#b"};
+        host.sent.clear();
+        in.execute("amsg hello all", s);
+        CHECK_EQ(host.sent.size(), 2u);
+        host.myChans.clear();
+    }
+
     // Unbounded recursion is caught, not a crash (reports an error and stops).
     {
         host.errors.clear();

@@ -944,6 +944,90 @@ void registerBuiltins(Interpreter& in) {
         i.host().sendRaw(i.host().activeTarget().networkId, i.evaluate(a, sc));
     });
 
+    // --- standard IRC commands (map to raw lines / the active window) ---
+    // first word of a string, and the remainder
+    auto firstWord = [](const std::string& s, std::string& rest) {
+        std::size_t sp = s.find(' ');
+        if (sp == std::string::npos) {
+            rest.clear();
+            return s;
+        }
+        rest = s.substr(sp + 1);
+        return s.substr(0, sp);
+    };
+    auto rawCmd = [](const std::string& verb) {
+        return [verb](Interpreter& i, S& sc, const std::string& a) {
+            const std::string args = i.evaluate(a, sc);
+            i.host().sendRaw(i.host().activeTarget().networkId, args.empty() ? verb : verb + " " + args);
+        };
+    };
+    in.registerCommand("join", rawCmd("JOIN"));
+    in.registerCommand("nick", rawCmd("NICK"));
+    in.registerCommand("mode", rawCmd("MODE"));
+    in.registerCommand("whois", rawCmd("WHOIS"));
+    in.registerCommand("whowas", rawCmd("WHOWAS"));
+    in.registerCommand("who", rawCmd("WHO"));
+    in.registerCommand("names", rawCmd("NAMES"));
+    in.registerCommand("list", rawCmd("LIST"));
+    in.registerCommand("invite", rawCmd("INVITE"));
+    in.registerCommand("knock", rawCmd("KNOCK"));
+    in.registerCommand("part", [](Interpreter& i, S& sc, const std::string& a) {
+        std::string args = i.evaluate(a, sc);
+        if (args.empty()) args = i.host().activeTarget().window;  // /part with no arg parts here
+        i.host().sendRaw(i.host().activeTarget().networkId, "PART " + args);
+    });
+    in.registerCommand("quit", [](Interpreter& i, S& sc, const std::string& a) {
+        const std::string msg = i.evaluate(a, sc);
+        i.host().sendRaw(i.host().activeTarget().networkId, msg.empty() ? "QUIT" : "QUIT :" + msg);
+    });
+    in.registerCommand("topic", [firstWord](Interpreter& i, S& sc, const std::string& a) {
+        std::string rest, chan = firstWord(i.evaluate(a, sc), rest);
+        i.host().sendRaw(i.host().activeTarget().networkId, rest.empty() ? "TOPIC " + chan : "TOPIC " + chan + " :" + rest);
+    });
+    in.registerCommand("kick", [firstWord](Interpreter& i, S& sc, const std::string& a) {
+        std::string rest, chan = firstWord(i.evaluate(a, sc), rest);
+        std::string reason, nick = firstWord(rest, reason);
+        std::string line = "KICK " + chan + " " + nick;
+        if (!reason.empty()) line += " :" + reason;
+        i.host().sendRaw(i.host().activeTarget().networkId, line);
+    });
+    in.registerCommand("notice", [firstWord](Interpreter& i, S& sc, const std::string& a) {
+        std::string rest, tgt = firstWord(i.evaluate(a, sc), rest);
+        if (!tgt.empty()) i.host().sendRaw(i.host().activeTarget().networkId, "NOTICE " + tgt + " :" + rest);
+    });
+    in.registerCommand("ctcp", [firstWord](Interpreter& i, S& sc, const std::string& a) {
+        std::string rest, tgt = firstWord(i.evaluate(a, sc), rest);
+        if (tgt.empty() || rest.empty()) return;
+        i.host().sendRaw(i.host().activeTarget().networkId, "PRIVMSG " + tgt + " :\x01" + rest + "\x01");
+    });
+    in.registerCommand("away", [](Interpreter& i, S& sc, const std::string& a) {
+        const std::string msg = i.evaluate(a, sc);
+        i.host().sendRaw(i.host().activeTarget().networkId, msg.empty() ? "AWAY" : "AWAY :" + msg);
+    });
+    in.registerCommand("back", [](Interpreter& i, S&, const std::string&) {
+        i.host().sendRaw(i.host().activeTarget().networkId, "AWAY");
+    });
+    // /amsg and /ame: message/action every channel on the active network.
+    in.registerCommand("amsg", [](Interpreter& i, S& sc, const std::string& a) {
+        const std::string text = i.evaluate(a, sc);
+        const int net = i.host().activeTarget().networkId;
+        for (const auto& c : i.host().myChannels(net)) i.host().sendMessage(net, c, text);
+    });
+    in.registerCommand("ame", [](Interpreter& i, S& sc, const std::string& a) {
+        const std::string text = i.evaluate(a, sc);
+        const int net = i.host().activeTarget().networkId;
+        for (const auto& c : i.host().myChannels(net)) i.host().sendAction(net, c, text);
+    });
+    in.registerCommand("query", [firstWord](Interpreter& i, S& sc, const std::string& a) {
+        std::string rest, nick = firstWord(i.evaluate(a, sc), rest);
+        i.host().openWindow(nick, "query");  // the GUI opens/raises a query buffer
+        if (!rest.empty()) i.host().sendMessage(i.host().activeTarget().networkId, nick, rest);
+    });
+    in.registerCommand("clear", [](Interpreter& i, S& sc, const std::string& a) {
+        const std::string win = a.empty() ? i.host().activeTarget().window : i.evaluate(a, sc);
+        i.host().clearWindow(win);
+    });
+
     // variables
     auto parseSetName = [](const std::string& args, std::string& name, std::string& value, bool& hasValue) {
         std::string s = args;
