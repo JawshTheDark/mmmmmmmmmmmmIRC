@@ -47,6 +47,8 @@ private:
         QString key;            // "net\x1ffoldedtarget"
         QStringList memberNicks; // current nicklist (no sigils), for tab-completion
         bool hydrated = false;   // history has been requested for this buffer
+        qlonglong lastMessageId = 0;  // newest persisted id seen here (for mark-read)
+        int unread = 0;          // server-authoritative unread count
     };
 
     QString keyFor(int net, const QString& target) const;
@@ -63,6 +65,10 @@ private:
     void onEvent(const lurker::IrcEvent& event);
     void onMembersReplaced(int net, const QString& target, const QList<lurker::backend::DisplayMember>& members);
     void onTopicChanged(int net, const QString& target, const QByteArray& topic);
+    void onReadStateChanged(int net, const QString& target, int unread, int highlights);
+    void updateBufferLabel(Buffer* buffer);
+    bool bufferIsActive(const Buffer& buffer) const;
+    void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
     void onInput(Buffer* buffer, const QString& text);
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view

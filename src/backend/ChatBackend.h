@@ -55,6 +55,7 @@ public:
     virtual void clearAway(int net) = 0;
     virtual void sendCtcp(int net, const QString& target, const QString& type, const QString& args) = 0;
     virtual void requestHistory(int net, const QString& target) = 0;
+    virtual void markRead(int net, const QString& target, qlonglong messageId) = 0;
     virtual void disconnectAll() = 0;
 
 signals:
@@ -64,6 +65,7 @@ signals:
     void event(const lurker::IrcEvent& ev);                        // one line to append
     void membersReplaced(int net, const QString& target, const QList<lurker::backend::DisplayMember>& members);
     void topicChanged(int net, const QString& target, const QByteArray& topic);
+    void readStateChanged(int net, const QString& target, int unread, int highlights);
     void readyChanged();
     void closed();
 };

@@ -38,6 +38,11 @@ ChatView::Kind kindFromInt(int k) {
     return ChatView::Kind::Channel;
 }
 bool looksLikeChannel(const QString& t) { return !t.isEmpty() && QStringLiteral("#&+!").contains(t.front()); }
+// Lurker names each network's server log ":server:<networkId>"; collapse every
+// such target to one per-network server buffer (which is the treebar node).
+QString normTarget(const QString& t) {
+    return t.startsWith(QStringLiteral(":server:")) ? QStringLiteral(":server:") : t;
+}
 }  // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -199,6 +204,7 @@ void MainWindow::useBackend(ChatBackend* backend) {
     connect(backend, &ChatBackend::event, this, &MainWindow::onEvent);
     connect(backend, &ChatBackend::membersReplaced, this, &MainWindow::onMembersReplaced);
     connect(backend, &ChatBackend::topicChanged, this, &MainWindow::onTopicChanged);
+    connect(backend, &ChatBackend::readStateChanged, this, &MainWindow::onReadStateChanged);
     connect(backend, &ChatBackend::readyChanged, this, [this] {
         const bool ready = m_backend && m_backend->isReady();
         m_disconnectAction->setEnabled(ready);
@@ -216,12 +222,30 @@ void MainWindow::openConversation(int net, const QString& target) {
     activateBuffer(&ensureBuffer(net, kind, target, keyFor(net, target)));
 }
 
+void MainWindow::noteMessage(Buffer* buffer, long long id) {
+    if (!buffer) return;
+    if (id > buffer->lastMessageId) buffer->lastMessageId = id;
+    // Reading a buffer you're looking at keeps it read on every device.
+    if (bufferIsActive(*buffer)) {
+        if (id > 0 && m_backend) m_backend->markRead(buffer->networkId, buffer->display, id);
+        if (buffer->unread != 0) {
+            buffer->unread = 0;
+            updateBufferLabel(buffer);
+        }
+    }
+}
+
 void MainWindow::activateBuffer(Buffer* buffer) {
     if (!buffer || !buffer->sub) return;
     if (buffer->sub->isMinimized()) buffer->sub->showNormal();
     m_mdi->setActiveSubWindow(buffer->sub);
     buffer->view->focusInput();
     hydrateBuffer(buffer);
+    if (buffer->lastMessageId > 0 && m_backend) m_backend->markRead(buffer->networkId, buffer->display, buffer->lastMessageId);
+    if (buffer->unread != 0) {
+        buffer->unread = 0;
+        updateBufferLabel(buffer);
+    }
 }
 
 void MainWindow::hydrateBuffer(Buffer* buffer) {
@@ -258,12 +282,16 @@ void MainWindow::onNetworkUpdated(const NetworkInfo& info) {
     server.view->addSystemLine(tr("%1: %2 as %3").arg(m_networkNames.value(info.id), info.state, info.nick).toUtf8());
 }
 
-void MainWindow::onBufferOpened(int net, const QString& target, int kind) {
+void MainWindow::onBufferOpened(int net, const QString& rawTarget, int kind) {
+    const QString target = normTarget(rawTarget);
+    // The per-network server buffer already exists as the network node.
+    if (target == QStringLiteral(":server:")) return;
     ensureBuffer(net, kindFromInt(kind), target, keyFor(net, target));
 }
 
-MainWindow::Buffer* MainWindow::routeTarget(int net, const QString& target, ChatView::Kind fallback) {
-    if (target.isEmpty()) {
+MainWindow::Buffer* MainWindow::routeTarget(int net, const QString& rawTarget, ChatView::Kind fallback) {
+    const QString target = normTarget(rawTarget);
+    if (target.isEmpty() || target == QStringLiteral(":server:")) {
         Buffer* s = findBuffer(serverKeyFor(net));
         return s ? s : findBuffer(statusKey());
     }
@@ -284,12 +312,18 @@ void MainWindow::onEvent(const IrcEvent& event) {
         case IrcEventType::Message:
         case IrcEventType::Action: {
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
-            if (buf) buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self);
+            if (buf) {
+                buf->view->addMessage(ts, nick, text, event.type == IrcEventType::Action, event.self);
+                noteMessage(buf, event.id);
+            }
             break;
         }
         case IrcEventType::Notice: {
             Buffer* buf = routeTarget(net, target, ChatView::Kind::Query);
-            if (buf) buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
+            if (buf) {
+                buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
+                noteMessage(buf, event.id);
+            }
             break;
         }
         case IrcEventType::Join: {
@@ -364,6 +398,28 @@ void MainWindow::onMembersReplaced(int net, const QString& target, const QList<D
 
 void MainWindow::onTopicChanged(int net, const QString& target, const QByteArray& topic) {
     if (Buffer* b = findBuffer(keyFor(net, target))) b->view->setTopic(topic);
+}
+
+bool MainWindow::bufferIsActive(const Buffer& buffer) const {
+    return buffer.sub && m_mdi->activeSubWindow() == buffer.sub && !buffer.sub->isMinimized();
+}
+
+void MainWindow::updateBufferLabel(Buffer* buffer) {
+    if (!buffer || !buffer->treeItem) return;
+    const QString label =
+        buffer->unread > 0 ? QStringLiteral("%1 (%2)").arg(buffer->display).arg(buffer->unread) : buffer->display;
+    buffer->treeItem->setText(0, label);
+    QFont f = buffer->treeItem->font(0);
+    f.setBold(buffer->unread > 0);
+    buffer->treeItem->setFont(0, f);
+    if (buffer->switchAction) buffer->switchAction->setText(label);
+}
+
+void MainWindow::onReadStateChanged(int net, const QString& rawTarget, int unread, int /*highlights*/) {
+    if (Buffer* b = findBuffer(keyFor(net, normTarget(rawTarget)))) {
+        b->unread = bufferIsActive(*b) ? 0 : unread;
+        updateBufferLabel(b);
+    }
 }
 
 void MainWindow::onInput(Buffer* buffer, const QString& text) {

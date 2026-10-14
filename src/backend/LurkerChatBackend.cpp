@@ -42,6 +42,10 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     connect(&m_client, &LurkerClient::backlogReceived, this, &LurkerChatBackend::onBacklog);
     connect(&m_client, &LurkerClient::historyReceived, this, &LurkerChatBackend::onHistory);
     connect(&m_client, &LurkerClient::ircEvent, this, &LurkerChatBackend::onLive);
+    connect(&m_client, &LurkerClient::readState, this, [this](const QJsonObject& f) {
+        emit readStateChanged(f.value("networkId").toInt(-1), f.value("target").toString(),
+                              f.value("unread").toInt(), f.value("highlights").toInt());
+    });
     connect(&m_client, &LurkerClient::connected, this, [this] {
         m_ready = true;
         emit readyChanged();
@@ -157,6 +161,9 @@ void LurkerChatBackend::onBacklog(const QJsonObject& frame) {
     const QString target = frame.value("target").toString();
     if (net < 0 || target.isEmpty()) return;
     emit bufferOpened(net, target, guessKind(target));
+    // Seed the unread badge from the snapshot's per-buffer counts.
+    if (frame.contains("unread"))
+        emit readStateChanged(net, target, frame.value("unread").toInt(), frame.value("highlights").toInt());
     for (const QJsonValue& ev : frame.value("events").toArray()) translateEvent(ev.toObject(), false);
 }
 
@@ -195,6 +202,7 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
     IrcEvent out;
     out.type = type;
     out.networkId = net;
+    out.id = static_cast<long long>(ev.value("id").toDouble());
     out.nick = ev.value("nick").toString().toStdString();
     out.target = target.toStdString();
     out.text = ev.value("text").toString().toStdString();
@@ -274,6 +282,9 @@ void LurkerChatBackend::sendCtcp(int net, const QString& target, const QString& 
 }
 void LurkerChatBackend::requestHistory(int net, const QString& target) {
     m_client.requestHistoryLatest(net, target, 50);
+}
+void LurkerChatBackend::markRead(int net, const QString& target, qlonglong messageId) {
+    m_client.markRead(net, target, messageId);
 }
 void LurkerChatBackend::disconnectAll() { m_client.disconnect(); }
 

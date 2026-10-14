@@ -43,8 +43,9 @@ enum class IrcEventType {
 
 struct IrcEvent {
     IrcEventType type = IrcEventType::Unknown;
-    int networkId = -1;  // which network (Lurker gives several at once); -1 = single/unknown
-    std::string nick;    // source nick (or server name)
+    int networkId = -1;       // which network (Lurker gives several at once); -1 = single/unknown
+    long long id = 0;         // persisted message id (Lurker's global sequence); 0 = ephemeral/none
+    std::string nick;         // source nick (or server name)
     std::string user;    // source ident
     std::string host;    // source host
     std::string target;  // window the event belongs to; "" = network status

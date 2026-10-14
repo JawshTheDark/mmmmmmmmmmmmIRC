@@ -32,6 +32,7 @@ public:
     void clearAway(int net) override;
     void sendCtcp(int net, const QString& target, const QString& type, const QString& args) override;
     void requestHistory(int net, const QString& target) override;
+    void markRead(int net, const QString& target, qlonglong messageId) override;
     void disconnectAll() override;
 
     static constexpr int kNetworkId = 1;

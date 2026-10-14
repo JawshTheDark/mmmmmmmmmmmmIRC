@@ -120,6 +120,11 @@ void BouncerChatBackend::requestHistory(int, const QString&) {
     // The Lurker bouncer replays recent history on attach; scroll-up CHATHISTORY
     // is a later enhancement (needs the draft/chathistory cap negotiated).
 }
+void BouncerChatBackend::markRead(int, const QString& target, qlonglong) {
+    // Lurker's bouncer supports MARKREAD (draft/read-marker). Time-based, not id;
+    // wiring it needs the oldest/newest timestamp — deferred with scroll-up.
+    Q_UNUSED(target);
+}
 void BouncerChatBackend::disconnectAll() { m_bouncer.disconnectFromHost(); }
 
 }  // namespace lurker::backend
