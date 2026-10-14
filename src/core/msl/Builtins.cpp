@@ -114,6 +114,96 @@ std::mt19937& rng() {
     return gen;
 }
 
+// --- INI helpers (mIRC .ini files: [section] then item=value, case-insensitive)
+std::string iniStrip(const std::string& s) {
+    std::size_t a = 0, b = s.size();
+    while (a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r')) ++a;
+    while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r')) --b;
+    return s.substr(a, b - a);
+}
+bool ciEq(const std::string& a, const std::string& b) { return toLowerAscii(a) == toLowerAscii(b); }
+
+std::string readIniValue(const std::string& content, const std::string& section, const std::string& item) {
+    bool inSec = false;
+    for (const auto& raw : splitTokens(content, '\n')) {
+        std::string line = iniStrip(raw);
+        if (line.empty() || line[0] == ';') continue;
+        if (line.front() == '[' && line.back() == ']') {
+            inSec = ciEq(line.substr(1, line.size() - 2), section);
+            continue;
+        }
+        if (!inSec) continue;
+        const std::size_t eq = line.find('=');
+        if (eq != std::string::npos && ciEq(iniStrip(line.substr(0, eq)), item)) return iniStrip(line.substr(eq + 1));
+    }
+    return {};
+}
+std::string iniSectionByIndex(const std::string& content, int n) {
+    int seen = 0;
+    for (const auto& raw : splitTokens(content, '\n')) {
+        std::string line = iniStrip(raw);
+        if (line.size() >= 2 && line.front() == '[' && line.back() == ']' && ++seen == n)
+            return line.substr(1, line.size() - 2);
+    }
+    return {};
+}
+std::string iniItemByIndex(const std::string& content, const std::string& section, int n) {
+    bool inSec = false;
+    int seen = 0;
+    for (const auto& raw : splitTokens(content, '\n')) {
+        std::string line = iniStrip(raw);
+        if (line.empty()) continue;
+        if (line.front() == '[' && line.back() == ']') {
+            inSec = ciEq(line.substr(1, line.size() - 2), section);
+            continue;
+        }
+        if (inSec) {
+            const std::size_t eq = line.find('=');
+            if (eq != std::string::npos && ++seen == n) return iniStrip(line.substr(0, eq));
+        }
+    }
+    return {};
+}
+// Returns `content` with [section] item=value set (section/item created as needed).
+std::string writeIniValue(const std::string& content, const std::string& section, const std::string& item,
+                          const std::string& value) {
+    std::vector<std::string> lines = splitTokens(content, '\n');
+    if (!lines.empty() && lines.back().empty()) lines.pop_back();
+    int secStart = -1, secEnd = static_cast<int>(lines.size());
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        std::string line = iniStrip(lines[i]);
+        if (line.size() >= 2 && line.front() == '[' && line.back() == ']') {
+            if (secStart < 0 && ciEq(line.substr(1, line.size() - 2), section)) {
+                secStart = static_cast<int>(i);
+            } else if (secStart >= 0) {
+                secEnd = static_cast<int>(i);
+                break;
+            }
+        }
+    }
+    const std::string entry = item + "=" + value;
+    if (secStart < 0) {
+        if (!lines.empty()) lines.push_back("");
+        lines.push_back("[" + section + "]");
+        lines.push_back(entry);
+    } else {
+        bool replaced = false;
+        for (int i = secStart + 1; i < secEnd; ++i) {
+            std::string line = iniStrip(lines[i]);
+            const std::size_t eq = line.find('=');
+            if (eq != std::string::npos && ciEq(iniStrip(line.substr(0, eq)), item)) {
+                lines[i] = entry;
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) lines.insert(lines.begin() + secEnd, entry);
+    }
+    std::string out;
+    for (const auto& l : lines) out += l + "\n";
+    return out;
+}
+
 // Parse an mIRC-style regex argument: optional /pattern/flags, returning the
 // pattern and the std::regex flags plus whether the g (global) flag was set.
 std::regex compileRegex(const std::string& raw, bool& global) {
@@ -482,6 +572,54 @@ void registerBuiltins(Interpreter& in) {
         return std::to_string(i.host().unixTime());
     });
 
+    // --- files and INI ---
+    in.registerIdent("exists", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return (i.host().fileExists(arg(a, 0)) || i.host().dirExists(arg(a, 0))) ? std::string("$true")
+                                                                                 : std::string("$false");
+    });
+    in.registerIdent("isfile", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return i.host().fileExists(arg(a, 0)) ? std::string("$true") : std::string("$false");
+    });
+    in.registerIdent("isdir", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return i.host().dirExists(arg(a, 0)) ? std::string("$true") : std::string("$false");
+    });
+    in.registerIdent("lines", [](Interpreter& i, S&, const A& a, const std::string&) {
+        const std::string c = i.host().fileRead(arg(a, 0));
+        if (c.empty()) return std::string("0");
+        return std::to_string(static_cast<long long>(std::count(c.begin(), c.end(), '\n')) + (c.back() == '\n' ? 0 : 1));
+    });
+    in.registerIdent("read", [](Interpreter& i, S&, const A& a, const std::string&) {
+        const auto lines = splitTokens(i.host().fileRead(arg(a, 0)), '\n');
+        if (lines.empty()) return std::string();
+        int n = a.size() >= 2 ? argInt(a, 1) : 1;
+        if (n < 1 || n > static_cast<int>(lines.size())) return std::string();
+        std::string line = lines[n - 1];
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        return line;
+    });
+    in.registerIdent("readini", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return readIniValue(i.host().fileRead(arg(a, 0)), arg(a, 1), arg(a, 2));
+    });
+    in.registerIdent("ini", [](Interpreter& i, S&, const A& a, const std::string&) {
+        // $ini(file,N) -> Nth section; $ini(file,section,N) -> Nth item in section.
+        const std::string content = i.host().fileRead(arg(a, 0));
+        if (a.size() == 2) return iniSectionByIndex(content, argInt(a, 1));
+        if (a.size() >= 3) return iniItemByIndex(content, arg(a, 1), argInt(a, 2));
+        return std::string();
+    });
+    in.registerIdent("file", [](Interpreter& i, S&, const A& a, const std::string& prop) {
+        if (prop == "size") {
+            long long sz = i.host().fileSize(arg(a, 0));
+            return sz < 0 ? std::string("0") : std::to_string(sz);
+        }
+        return arg(a, 0);
+    });
+    in.registerIdent("findfile", [](Interpreter& i, S&, const A& a, const std::string&) {
+        auto files = i.host().listDir(arg(a, 0), arg(a, 1).empty() ? std::string("*") : arg(a, 1));
+        int n = argInt(a, 2, 1);
+        return (n >= 1 && n <= static_cast<int>(files.size())) ? files[n - 1] : std::string();
+    });
+
     // === commands ===
     // Commands receive RAW args and evaluate what they need (mIRC semantics):
     // message/echo text is evaluated; a target variable NAME is kept literal.
@@ -657,6 +795,45 @@ void registerBuiltins(Interpreter& in) {
     };
     in.registerCommand("hinc", hincdec(true));
     in.registerCommand("hdec", hincdec(false));
+
+    // Files and INI.
+    in.registerCommand("write", [](Interpreter& i, S& s, const std::string& a) {
+        // /write [-c] <file> <text>   (append a line; -c clears first)
+        std::string args = i.evaluate(a, s);
+        bool clear = false;
+        if (!args.empty() && args[0] == '-') {
+            clear = args.find('c') != std::string::npos;
+            args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        }
+        std::size_t sp = args.find(' ');
+        if (sp == std::string::npos) return;
+        const std::string file = args.substr(0, sp);
+        const std::string text = args.substr(sp + 1);
+        std::string content = clear ? std::string() : i.host().fileRead(file);
+        if (!content.empty() && content.back() != '\n') content += '\n';
+        content += text + "\n";
+        i.host().fileWrite(file, content);
+    });
+    in.registerCommand("writeini", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        auto toks = splitTokens(args, ' ');
+        if (toks.size() < 4) return;
+        const std::string file = toks[0], section = toks[1], item = toks[2];
+        std::string value;
+        for (std::size_t k = 3; k < toks.size(); ++k) value += (k > 3 ? " " : "") + toks[k];
+        i.host().fileWrite(file, writeIniValue(i.host().fileRead(file), section, item, value));
+    });
+    in.registerCommand("remini", [](Interpreter& i, S& s, const std::string& a) {
+        // Minimal: /remini removes by rewriting the value empty (full section
+        // removal is a later refinement).
+        auto toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.size() >= 3) i.host().fileWrite(toks[0], writeIniValue(i.host().fileRead(toks[0]), toks[1], toks[2], ""));
+    });
+    in.registerCommand("mkdir", [](Interpreter& i, S& s, const std::string& a) { i.host().makeDir(i.evaluate(a, s)); });
+    in.registerCommand("remove", [](Interpreter& i, S& s, const std::string& a) {
+        i.host().removePath(i.evaluate(a, s));
+    });
 
     // Dialogs.
     in.registerCommand("dialog", [](Interpreter& i, S& s, const std::string& a) {

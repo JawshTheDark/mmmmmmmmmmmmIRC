@@ -71,6 +71,43 @@ public:
         (void)prop;
         return {};
     }
+
+    // Filesystem (/write, $read, INI, $exists, ...). Defaults do nothing so a
+    // non-GUI host has no disk access; the GUI maps these to QFile/QDir.
+    virtual std::string fileRead(const std::string& path) const {
+        (void)path;
+        return {};
+    }
+    virtual bool fileWrite(const std::string& path, const std::string& content) {
+        (void)path;
+        (void)content;
+        return false;
+    }
+    virtual bool fileExists(const std::string& path) const {
+        (void)path;
+        return false;
+    }
+    virtual bool dirExists(const std::string& path) const {
+        (void)path;
+        return false;
+    }
+    virtual long long fileSize(const std::string& path) const {
+        (void)path;
+        return -1;
+    }
+    virtual bool makeDir(const std::string& path) {
+        (void)path;
+        return false;
+    }
+    virtual bool removePath(const std::string& path) {
+        (void)path;
+        return false;
+    }
+    virtual std::vector<std::string> listDir(const std::string& dir, const std::string& wildcard) const {
+        (void)dir;
+        (void)wildcard;
+        return {};
+    }
 };
 
 }  // namespace lurker::msl

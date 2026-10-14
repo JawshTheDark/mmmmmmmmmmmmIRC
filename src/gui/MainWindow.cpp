@@ -15,6 +15,7 @@
 #include <QMdiArea>
 #include <QMdiSubWindow>
 #include <QMenuBar>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QTreeWidget>
@@ -126,6 +127,9 @@ void MainWindow::setupScripting() {
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };
+    // Scripts' relative file paths resolve under a per-user data directory.
+    m_scriptHost.baseDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(m_scriptHost.baseDir);
     m_scriptHost.openDialogFn = [this](const QString& instance, const lurker::msl::DialogTable& table, bool modal) {
         if (ScriptDialog* existing = m_dialogs.value(instance)) {
             existing->raise();
@@ -183,6 +187,8 @@ void MainWindow::runScript(const QString& line) {
 void MainWindow::loadScriptFile(const QString& path) {
     if (!m_msl) return;
     QFileInfo info(path);
+    // A script's own folder becomes the base for its relative file paths (mIRC $mircdir).
+    m_scriptHost.baseDir = info.isDir() ? info.absoluteFilePath() : info.absolutePath();
     if (info.isDir()) {
         int files = 0;
         for (const QFileInfo& fi : QDir(path).entryInfoList({QStringLiteral("*.mrc")}, QDir::Files, QDir::Name)) {

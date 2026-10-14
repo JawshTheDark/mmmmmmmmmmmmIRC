@@ -6,22 +6,19 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 25 | 235 | 10.6% | 23 |
-| Identifiers | 49 | 406 | 12.1% | 15 |
+| Commands | 30 | 235 | 12.8% | 23 |
+| Identifiers | 58 | 406 | 14.3% | 15 |
 | Events | 6 | 84 | 7.1% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **90** | **1129** | **8.0%** | |
+| **Total** | **104** | **1129** | **9.2%** | |
 
 ## Commands
 
-### planned (198)
+### planned (193)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `/writeini` | 1854 |  | mirc_commands.html |  |  |
-| `/write` | 225 |  | mirc_commands.html |  |  |
-| `/remini` | 194 |  | mirc_commands.html |  |  |
 | `/window` | 188 |  | custom_windows.html |  |  |
 | `/color` | 169 |  | mirc_commands.html |  |  |
 | `/scid` | 149 |  | multimserver.html |  |  |
@@ -34,7 +31,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/run` | 93 |  | mirc_commands.html |  | substitute: xdg-open / direct exec; Windows programs via Wine when configured |
 | `/notify` | 86 |  | notify_list.html |  |  |
 | `/clear` | 64 |  | mirc_commands.html |  |  |
-| `/remove` | 56 |  | mirc_commands.html |  |  |
 | `/drawtext` | 55 |  | picture_windows.html |  |  |
 | `/beep` | 50 |  | mirc_commands.html |  |  |
 | `/ignore` | 44 |  | control.html |  |  |
@@ -93,7 +89,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/clipboard` | 3 |  | mirc_commands.html |  |  |
 | `/exit` | 3 |  | mirc_commands.html |  |  |
 | `/flushini` | 3 |  | mirc_commands.html |  |  |
-| `/mkdir` | 3 |  | mirc_commands.html |  |  |
 | `/reload` | 3 |  | mirc_commands.html |  |  |
 | `/rlevel` | 3 |  | remote_commands.html |  |  |
 | `/save` | 3 |  | mirc_commands.html |  |  |
@@ -235,7 +230,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (25)
+### done (30)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -255,15 +250,20 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/hmake` | 6 |  | hash_tables.html | test_msl |  |
 | `/inc` | 799 |  | variables.html | test_msl |  |
 | `/me` | 13 |  | basic_irc_commands.html | test_msl |  |
+| `/mkdir` | 3 |  | mirc_commands.html | test_msl |  |
 | `/msg` | 3927 |  | basic_irc_commands.html | test_msl |  |
 | `/quote` | 4 |  | mirc_commands.html | test_msl |  |
 | `/raw` | 0 |  | mirc_commands.html | test_msl |  |
+| `/remini` | 194 |  | mirc_commands.html | test_msl |  |
+| `/remove` | 56 |  | mirc_commands.html | test_msl |  |
 | `/return` | 0 |  | aliases.html | test_msl |  |
 | `/say` | 12 |  | mirc_commands.html | test_msl |  |
 | `/set` | 2921 |  | variables.html | test_msl |  |
 | `/timer` | 351 |  | mirc_commands.html | test_msl |  |
 | `/unset` | 943 |  | variables.html | test_msl |  |
 | `/var` | 0 |  | variables.html | test_msl |  |
+| `/write` | 225 |  | mirc_commands.html | test_msl |  |
+| `/writeini` | 1854 |  | mirc_commands.html | test_msl |  |
 
 ### not-possible (23)
 
@@ -295,24 +295,18 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (357)
+### planned (348)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `$color` | 903 |  | other_identifiers.html |  |  |
-| `$readini` | 429 |  | file_directory_identifiers.html |  |  |
-| `$read` | 343 |  | file_directory_identifiers.html |  |  |
-| `$findfile` | 199 |  | file_directory_identifiers.html |  |  |
 | `$window` | 169 |  | custom_windows.html |  |  |
 | `$duration` | 138 |  | time_date_identifiers.html |  |  |
 | `$version` | 128 |  | other_identifiers.html |  |  |
 | `$chat` | 121 |  | window_identifiers.html |  |  |
 | `$scriptdir` | 112 |  | remote_identifiers.html |  |  |
 | `$server` | 110 |  | other_identifiers.html |  |  |
-| `$exists` | 100 |  | file_directory_identifiers.html |  |  |
-| `$isfile` | 81 |  | file_directory_identifiers.html |  |  |
 | `$mouse` | 80 |  | picture_windows.html |  |  |
-| `$lines` | 79 |  | file_directory_identifiers.html |  |  |
 | `$opnick` | 78 |  | on_opodeop.html |  |  |
 | `$sock` | 74 |  | sockets.html |  |  |
 | `$strip` | 74 |  | text_number_identifiers.html |  |  |
@@ -345,7 +339,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$sockname` | 34 |  | sockets.html |  |  |
 | `$timer` | 32 |  | time_date_identifiers.html |  |  |
 | `$snick` | 29 |  | nick_address_identifiers.html |  |  |
-| `$ini` | 28 |  | file_directory_identifiers.html |  |  |
 | `$ulist` | 28 |  | remote_identifiers.html |  |  |
 | `$ialchan` | 25 |  | nick_address_identifiers.html |  |  |
 | `$deltok` | 24 |  | token_identifiers.html |  |  |
@@ -362,7 +355,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$lf` | 15 |  | other_identifiers.html |  |  |
 | `$cid` | 14 |  | multimserver.html |  |  |
 | `$disk` | 14 |  | file_directory_identifiers.html |  |  |
-| `$file` | 14 |  | file_directory_identifiers.html |  |  |
 | `$decode` | 13 |  | text_number_identifiers.html |  |  |
 | `$sdir` | 13 |  | file_directory_identifiers.html |  |  |
 | `$usermode` | 13 |  | other_identifiers.html |  |  |
@@ -385,7 +377,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$filename` | 7 |  | on_filesentofilercvd.html |  |  |
 | `$lock` | 7 |  | other_identifiers.html |  |  |
 | `$scon` | 7 |  | multimserver.html |  |  |
-| `$isdir` | 6 |  | file_directory_identifiers.html |  |  |
 | `$port` | 6 |  | other_identifiers.html |  |  |
 | `$vol` | 6 |  | playing_sounds.html |  |  |
 | `$didwm` | 5 |  | dialogs.html |  |  |
@@ -657,7 +648,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (49)
+### done (58)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -676,16 +667,23 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$did` | 2799 |  | dialogs.html | demo_dialog.mrc |  |
 | `$dname` | 1512 |  | dialogs.html | demo_dialog.mrc |  |
 | `$event` | 0 |  | remote_identifiers.html | test_msl |  |
+| `$exists` | 100 |  | file_directory_identifiers.html | test_msl |  |
+| `$file` | 14 |  | file_directory_identifiers.html | test_msl |  |
+| `$findfile` | 199 |  | file_directory_identifiers.html | test_msl |  |
 | `$findtok` | 7 |  | token_identifiers.html | test_msl |  |
 | `$gettok` | 563 |  | token_identifiers.html | test_msl |  |
 | `$hget` | 51 |  | hash_tables.html | test_msl |  |
 | `$iif` | 719 |  | other_identifiers.html | test_msl |  |
+| `$ini` | 28 |  | file_directory_identifiers.html | test_msl |  |
 | `$instok` | 20 |  | token_identifiers.html | test_msl |  |
 | `$int` | 36 |  | text_number_identifiers.html | test_msl |  |
 | `$isalias` | 9 |  | other_identifiers.html | test_msl |  |
+| `$isdir` | 6 |  | file_directory_identifiers.html | test_msl |  |
+| `$isfile` | 81 |  | file_directory_identifiers.html | test_msl |  |
 | `$istok` | 103 |  | token_identifiers.html | test_msl |  |
 | `$left` | 1099 |  | text_number_identifiers.html | test_msl |  |
 | `$len` | 92 |  | text_number_identifiers.html | test_msl |  |
+| `$lines` | 79 |  | file_directory_identifiers.html | test_msl |  |
 | `$lower` | 4 |  | text_number_identifiers.html | test_msl |  |
 | `$me` | 1042 |  | nick_address_identifiers.html | test_msl |  |
 | `$mid` | 133 |  | text_number_identifiers.html | test_msl |  |
@@ -698,6 +696,8 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$puttok` | 5 |  | token_identifiers.html | test_msl |  |
 | `$qt` | 0 |  | text_number_identifiers.html | test_msl |  |
 | `$rand` | 118 |  | text_number_identifiers.html | test_msl |  |
+| `$read` | 343 |  | file_directory_identifiers.html | test_msl |  |
+| `$readini` | 429 |  | file_directory_identifiers.html | test_msl |  |
 | `$regex` | 1 |  | regular_expressions.html | test_msl |  |
 | `$regml` | 0 |  | regular_expressions.html | test_msl |  |
 | `$regsub` | 0 |  | regular_expressions.html | test_msl |  |

@@ -154,7 +154,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /mdi	planned		mirc_commands.html	0		
 /me	done		basic_irc_commands.html	13	test_msl	
 /menubar	planned		mirc_commands.html	1		
-/mkdir	planned		mirc_commands.html	3		
+/mkdir	done		mirc_commands.html	3	test_msl	
 /mnick	planned		mirc_commands.html	0		
 /mode	partial		basic_irc_commands.html	219	test_msl	
 /msg	done		basic_irc_commands.html	3927	test_msl	
@@ -186,9 +186,9 @@ name	status	since	help_page	corpus_uses	test	notes
 /quote	done		mirc_commands.html	4	test_msl	
 /raw	done		mirc_commands.html	0	test_msl	
 /reload	planned		mirc_commands.html	3		
-/remini	planned		mirc_commands.html	194		
+/remini	done		mirc_commands.html	194	test_msl	
 /remote	planned		remote_commands.html	7		
-/remove	planned		mirc_commands.html	56		
+/remove	done		mirc_commands.html	56	test_msl	
 /rename	planned		mirc_commands.html	2		
 /renwin	planned		custom_windows.html	1		
 /reseterror	planned		aliases.html	0		
@@ -255,5 +255,5 @@ name	status	since	help_page	corpus_uses	test	notes
 /whois	partial		basic_irc_commands.html	15	test_msl	
 /window	planned		custom_windows.html	188		
 /winhelp	planned		mirc_commands.html	0		
-/write	planned		mirc_commands.html	225		
-/writeini	planned		mirc_commands.html	1854		
+/write	done		mirc_commands.html	225	test_msl	
+/writeini	done		mirc_commands.html	1854	test_msl	

@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <map>
 #include <vector>
 
 #include "check.h"
@@ -33,6 +34,21 @@ struct FakeHost : Host {
     std::string startTimer(const std::string&, int, double, const std::string&) override { return "timer1"; }
     void stopTimer(const std::string&) override {}
     void scriptError(const std::string& t) override { errors.push_back(t); }
+
+    std::map<std::string, std::string> files;  // in-memory filesystem
+    std::string fileRead(const std::string& p) const override {
+        auto it = files.find(p);
+        return it == files.end() ? std::string() : it->second;
+    }
+    bool fileWrite(const std::string& p, const std::string& c) override {
+        files[p] = c;
+        return true;
+    }
+    bool fileExists(const std::string& p) const override { return files.count(p) != 0; }
+    long long fileSize(const std::string& p) const override {
+        auto it = files.find(p);
+        return it == files.end() ? -1 : static_cast<long long>(it->second.size());
+    }
 };
 
 std::string eval(Interpreter& in, const std::string& text) {
@@ -294,6 +310,34 @@ int main() {
     // $isalias.
     CHECK_EQ(eval(in, "$isalias(square)"), std::string("$true"));
     CHECK_EQ(eval(in, "$isalias(nosuch)"), std::string("$false"));
+
+    // Files and INI.
+    {
+        Scope s;
+        in.execute("write log.txt first line", s);
+        in.execute("write log.txt second line", s);
+        CHECK_EQ(eval(in, "$lines(log.txt)"), std::string("2"));
+        CHECK_EQ(eval(in, "$read(log.txt,2)"), std::string("second line"));
+        CHECK_EQ(eval(in, "$isfile(log.txt)"), std::string("$true"));
+        CHECK_EQ(eval(in, "$isfile(nope.txt)"), std::string("$false"));
+        CHECK(std::stoi(eval(in, "$file(log.txt).size")) > 0);
+        in.execute("write -c log.txt only line", s);
+        CHECK_EQ(eval(in, "$lines(log.txt)"), std::string("1"));
+
+        in.execute("writeini cfg.ini Settings nick jawsh", s);
+        in.execute("writeini cfg.ini Settings theme neon", s);
+        in.execute("writeini cfg.ini Window width 800", s);
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,nick)"), std::string("jawsh"));
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,theme)"), std::string("neon"));
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Window,width)"), std::string("800"));
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,nick)"), std::string("jawsh"));
+        CHECK_EQ(eval(in, "$ini(cfg.ini,1)"), std::string("Settings"));
+        CHECK_EQ(eval(in, "$ini(cfg.ini,Settings,2)"), std::string("theme"));
+        // Updating an existing item keeps the file coherent.
+        in.execute("writeini cfg.ini Settings theme dark", s);
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,theme)"), std::string("dark"));
+        CHECK_EQ(eval(in, "$readini(cfg.ini,Settings,nick)"), std::string("jawsh"));
+    }
 
     // halt stops the rest of the script.
     {

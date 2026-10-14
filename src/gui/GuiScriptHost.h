@@ -7,6 +7,9 @@
 // MainWindow wires the callbacks; the engine stays decoupled from Qt.
 #pragma once
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QString>
 #include <ctime>
 #include <functional>
@@ -64,6 +67,38 @@ public:
     std::string didQuery(const std::string& instance, int id, const std::string& prop) const override {
         return didQueryFn ? didQueryFn(QString::fromStdString(instance), id, QString::fromStdString(prop)).toStdString()
                           : std::string();
+    }
+
+    // Filesystem: relative paths resolve against baseDir (the script/config dir).
+    QString baseDir;
+    QString resolve(const std::string& p) const {
+        const QString path = QString::fromStdString(p);
+        return QFileInfo(path).isAbsolute() || baseDir.isEmpty() ? path : QDir(baseDir).filePath(path);
+    }
+    std::string fileRead(const std::string& p) const override {
+        QFile f(resolve(p));
+        return f.open(QIODevice::ReadOnly) ? f.readAll().toStdString() : std::string();
+    }
+    bool fileWrite(const std::string& p, const std::string& content) override {
+        QFile f(resolve(p));
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+        f.write(content.data(), static_cast<qint64>(content.size()));
+        return true;
+    }
+    bool fileExists(const std::string& p) const override { return QFileInfo(resolve(p)).isFile(); }
+    bool dirExists(const std::string& p) const override { return QFileInfo(resolve(p)).isDir(); }
+    long long fileSize(const std::string& p) const override {
+        QFileInfo fi(resolve(p));
+        return fi.isFile() ? fi.size() : -1;
+    }
+    bool makeDir(const std::string& p) override { return QDir().mkpath(resolve(p)); }
+    bool removePath(const std::string& p) override { return QFile::remove(resolve(p)); }
+    std::vector<std::string> listDir(const std::string& dir, const std::string& wildcard) const override {
+        std::vector<std::string> out;
+        for (const QString& name :
+             QDir(resolve(dir)).entryList({QString::fromStdString(wildcard)}, QDir::Files, QDir::Name))
+            out.push_back(name.toStdString());
+        return out;
     }
 };
 
