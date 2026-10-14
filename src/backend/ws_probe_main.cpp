@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QHash>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QTextStream>
 #include <QTimer>
 
