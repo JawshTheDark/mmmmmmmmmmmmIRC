@@ -1,0 +1,391 @@
+name	group	status	since	test	notes
+About mIRC	about_mirc	planned			
+Accepting Files	accepting_files	planned			
+Access levels	access_levels	planned			
+Event Prefixes	access_levels	planned			
+Groups	access_levels	planned			
+Levels	access_levels	planned			
+Named Levels	access_levels	planned			
+Prefixes	access_levels	planned			
+Remote Levels	access_levels	planned			
+User List	access_levels	planned			
+Address Book	address_book	planned			
+Agent Scripts	agents_scripting	planned			
+[ ] evaluation brackets	aliases	planned			
+ALIAS prefix	aliases	planned			
+Aliases	aliases	planned			
+Brackets	aliases	planned			
+Command Prefixes	aliases	planned			
+Comments	aliases	planned			
+Custom Identifiers	aliases	planned			
+Error handling	aliases	planned			
+Function Keys	aliases	planned			
+Goto Loops	aliases	planned			
+While Loops	aliases	planned			
+Basic IRC Commands	basic_irc_commands	planned			
+IRC Commands	basic_irc_commands	planned			
+Binary files	binary_files	planned			
+Binary variables	binary_files	planned			
+Catcher	catcher	planned			
+Chat Links	catcher	planned			
+Email Catcher	catcher	planned			
+URL Catcher	catcher	planned			
+Changing Colors	change_colors	planned			
+Colors Dialog	change_colors	planned			
+$dialog().mapw/.maph	changelog-7.73-7.85	planned	7.73		
+$encode/$decode 'v' switch (Z85)	changelog-7.73-7.85	planned	7.73		
+$encode/$decode 'x' switch (percent-encoding)	changelog-7.73-7.85	planned	7.77		
+$encode/$decode 'y' switch (Punycode)	changelog-7.73-7.85	planned	7.83		
+$input() 'x' switch (dialog on desktop)	changelog-7.73-7.85	planned	7.73		
+$tip() delay -1 (permanent tip)	changelog-7.73-7.85	planned	7.82		
+$urlget() 'e' switch	changelog-7.73-7.85	planned	7.76		
+$window().fulltitle	changelog-7.73-7.85	planned	7.77		
+/ban -a and $ibl().prefix/.mask/.account (IRCv3 EXTBAN/ACCOUNTEXTBAN)	changelog-7.73-7.85	planned	7.85		
+/copy -p (preserve timestamps)	changelog-7.73-7.85	planned	7.73		
+/dns -mn [name server]	changelog-7.73-7.85	planned	7.77		
+/drawpic -v (picture from &binvar)	changelog-7.73-7.85	planned	7.73		
+/drawsave -v[pgj] and -du switches	changelog-7.73-7.85	planned	7.73		
+/findtext -hc switches	changelog-7.73-7.85	planned	7.78		
+/localinfo -w [URL]	changelog-7.73-7.85	planned	7.84		
+/server -ircv3 [type]	changelog-7.73-7.85	planned	7.85		
+/server -lname <name> and -lerror [0|1]	changelog-7.73-7.85	planned	7.82		
+/window -qS:P and $window().pbstate/.pbpercent	changelog-7.73-7.85	planned	7.78		
+/write and $read() -WR switches	changelog-7.73-7.85	planned	7.78		
+Dark mode support and $darkmode	changelog-7.73-7.85	planned	7.79		
+IRCv3 extended-monitor tag in $notify()	changelog-7.73-7.85	planned	7.74		
+IRCX mask \ character email/userid support	changelog-7.73-7.85	planned	7.77		
+Per-server option to connect/minimize on startup	changelog-7.73-7.85	planned	7.74		
+Scripts Editor find/replace: Count option, escape, remembered settings	changelog-7.73-7.85	planned	7.77		
+Server option: disconnect on SASL login error	changelog-7.73-7.85	planned	7.82		
+Channel Central	channel_central	planned			
+Chatting Privately	chat_privately	planned			
+ActiveX	com_objects	planned			
+COM Objects	com_objects	planned			
+Command Line	command_line	planned			
+U3 support	command_line	planned			
+Connect to a Server	connect	planned			
+Full Name	connect	planned			
+Advanced Options	connect_options	planned			
+Bind to Adapter or IP Address	connect_options	planned			
+Connect Options	connect_options	planned			
+Connect Retry	connect_options	planned			
+Default Port	connect_options	planned			
+IPv6 support	connect_options	planned			
+Perform	connect_options	planned			
+Port Range	connect_options	planned			
+Randomize Ports	connect_options	planned			
+Retry Connection	connect_options	planned			
+SSL	connect_options	planned			
+UPnP support	connect_options	planned			
+Alternative Nickname	connect_to_a_server	planned			
+Connecting to a Server	connect_to_a_server	planned			
+Email Address	connect_to_a_server	planned			
+Invisible Mode	connect_to_a_server	planned			
+IRC Servers	connect_to_a_server	planned			
+New Server Window	connect_to_a_server	planned			
+Nickname	connect_to_a_server	planned			
+Real Name	connect_to_a_server	planned			
+Connection Issues	connection_issues	planned			
+Unable to connect to server	connection_issues	planned			
+Unable to resolve server	connection_issues	planned			
+Auto-Op List	control	planned			
+Auto-Voice List	control	planned			
+Control	control	planned			
+Ignore List	control	planned			
+Op List	control	planned			
+Protect List	control	planned			
+Voice List	control	planned			
+Control Codes	control_codes	planned			
+Ctcp Events	ctcp_events	planned			
+@windows	custom_windows	planned			
+Custom Windows	custom_windows	planned			
+Chat	dcc	planned			
+DCC	dcc	planned			
+DCC Chat	dcc	planned			
+DCC Fileserver	dcc	planned			
+DCC Options	dcc	planned			
+DCC Packet Size	dcc	planned			
+DCC Server	dcc	planned			
+Get	dcc	planned			
+Ignore file types	dcc	planned			
+Packet Size	dcc	planned			
+Passive DCCs	dcc	planned			
+Send	dcc	planned			
+Time-out delays	dcc	planned			
+Trusted Users	dcc	planned			
+DCC Resume Protocol	dcc_resume_protocol	planned			
+DCC Server Protocol	dcc_server_protocol	planned			
+DCC Socks5 Protocol	dcc_socks5_protocol	planned			
+DDE	dde	planned			
+Custom Dialogs	dialogs	planned			
+DIALOG prefix	dialogs	planned			
+Dialogs	dialogs	planned			
+Display	display	planned			
+Menubar	display	planned			
+Switchbar	display	planned			
+Toolbar	display	planned			
+Treebar	display	planned			
+Automatic editbox	display_options	planned			
+Desktop Windows	display_options	planned			
+Editbox size	display_options	planned			
+Line Marker	display_options	planned			
+Line Spacing	display_options	planned			
+Multi-line editbox	display_options	planned			
+Multi-Server	display_options	planned			
+Single-line editbox	display_options	planned			
+Titlebar Text	display_options	planned			
+Transparency	display_options	planned			
+Tray	display_options	planned			
+Windows	display_options	planned			
+DLL Support	dll	planned			
+Drag Drop	drag_drop	planned			
+Example Script	example_script	planned			
+File and Directory Identifiers	file_directory_identifiers	planned			
+File Handling	file_handling	planned			
+File Server	file_server	planned			
+Flood	flood	planned			
+Halting default text	halting_text	planned			
+Hash tables	hash_tables	planned			
+Help Menu	help_menu	planned			
+Flash	highlight	planned			
+Highlight	highlight	planned			
+How To Register	how_to_register	planned			
+Register	how_to_register	planned			
+Identd	identd	planned			
+Identifiers	identifiers	planned			
+&	if_then_else	planned			
+&&	if_then_else	planned			
+<	if_then_else	planned			
+<=	if_then_else	planned			
+==	if_then_else	planned			
+===	if_then_else	planned			
+>	if_then_else	planned			
+>=	if_then_else	planned			
+\\	if_then_else	planned			
+If then else	if_then_else	planned			
+isalnum	if_then_else	planned			
+isalpha	if_then_else	planned			
+isaop	if_then_else	planned			
+isavoice	if_then_else	planned			
+isban	if_then_else	planned			
+ischan	if_then_else	planned			
+ishop	if_then_else	planned			
+isignore	if_then_else	planned			
+isin	if_then_else	planned			
+isincs	if_then_else	planned			
+isletter	if_then_else	planned			
+islower	if_then_else	planned			
+isnotify	if_then_else	planned			
+isnum	if_then_else	planned			
+ison	if_then_else	planned			
+isop	if_then_else	planned			
+isprotect	if_then_else	planned			
+isreg	if_then_else	planned			
+isupper	if_then_else	planned			
+isvoice	if_then_else	planned			
+iswm	if_then_else	planned			
+iswmcs	if_then_else	planned			
+||	if_then_else	planned			
+IAL	internal_address_list	planned			
+Internal Address List	internal_address_list	planned			
+IRC	irc	planned			
+Away message	irc_options	planned			
+Flash on event	irc_options	planned			
+Hide away reminders	irc_options	planned			
+IRC Options	irc_options	planned			
+Ping Pong	irc_options	planned			
+Show nicks on join	irc_options	planned			
+Show user addresses	irc_options	planned			
+Skip MOTD on connect	irc_options	planned			
+Channels List	join_a_channel	planned			
+Creating channels	join_a_channel	planned			
+Favorites folder	join_a_channel	planned			
+Join a channel	join_a_channel	planned			
+List Channels	join_a_channel	planned			
+Alt+1...9	key_combinations	planned			
+Alt+Enter	key_combinations	planned			
+Alt+F1	key_combinations	planned			
+Alt+LeftClick	key_combinations	planned			
+Alt+Q	key_combinations	planned			
+Alt+X	key_combinations	planned			
+Alt+Z	key_combinations	planned			
+Control+B	key_combinations	planned			
+Control+Connect	key_combinations	planned			
+Control+Copy	key_combinations	planned			
+Control+Cursor Up/Down	key_combinations	planned			
+Control+Enter	key_combinations	planned			
+Control+F	key_combinations	planned			
+Control+Home/End	key_combinations	planned			
+Control+K	key_combinations	planned			
+Control+L	key_combinations	planned			
+Control+LeftClick	key_combinations	planned			
+Control+Minimize	key_combinations	planned			
+Control+N	key_combinations	planned			
+Control+O	key_combinations	planned			
+Control+Page Up/Down	key_combinations	planned			
+Control+Q	key_combinations	planned			
+Control+R	key_combinations	planned			
+Control+T	key_combinations	planned			
+Control+Tab	key_combinations	planned			
+Control+U	key_combinations	planned			
+Cursor Up/Down	key_combinations	planned			
+ESCape	key_combinations	planned			
+F1	key_combinations	planned			
+Key Combinations	key_combinations	planned			
+Page Up/Down	key_combinations	planned			
+Shift+Connect	key_combinations	planned			
+Shift+Copy	key_combinations	planned			
+Shift+DoubleClick	key_combinations	planned			
+Shift+F1	key_combinations	planned			
+Shift+LeftClick	key_combinations	planned			
+Shift+Minimize	key_combinations	planned			
+Shift+RightClick	key_combinations	planned			
+Shift+Tab	key_combinations	planned			
+IP Address	local	planned			
+Local Host	local	planned			
+Local Info	local	planned			
+Lookup Method	local	planned			
+Unable to get local host	local	planned			
+Unable to resolve local host	local	planned			
+Disable commands	lock	planned			
+Limit Channels	lock	planned			
+Lock	lock	planned			
+Password	lock	planned			
+Lock log files	logging	planned			
+Logging	logging	planned			
+Merge log files	logging	planned			
+Reload logs	logging	planned			
+Timestamp logs	logging	planned			
+Trim log files	logging	planned			
+View log files	logging	planned			
+Long File Names	long_file_names	planned			
+Ctcp finger reply	messages	planned			
+Messages	messages	planned			
+Quit Message	messages	planned			
+Split long messages	messages	planned			
+Strip codes	messages	planned			
+Timestamp events	messages	planned			
+Commands	mirc_commands	planned			
+Do Not Disturb	mirc_commands	planned			
+mIRC Commands	mirc_commands	planned			
+Secure Connections	mirc_commands	planned			
+SSL Connections	mirc_commands	planned			
+Timers	mirc_commands	planned			
+Double-Click	mouse	planned			
+Mouse	mouse	planned			
+Internal Ban List	nick_address_identifiers	planned			
+Nick and Address Identifiers	nick_address_identifiers	planned			
+Nick Colors	nick_colors	planned			
+Notify List	notify_list	planned			
+=$nick	on_chatoserv	planned			
+on MP3END	on_midiend	planned			
+Online Timer	online_timer	planned			
+Command Prefix	other	planned			
+Confirm	other	planned			
+Hotlinks	other	planned			
+Line Separator	other	planned			
+Other	other	planned			
+Right-click select	other	planned			
+Tab	other	planned			
+Titlebar right-click	other	planned			
+Window Buffer	other	planned			
+Other Features	other_features	planned			
+IRCv3	other_identifiers	planned			
+Other Identifiers	other_identifiers	planned			
+SSL identifiers	other_identifiers	planned			
+DCLICK event	picture_windows	planned			
+DROP event	picture_windows	planned			
+LBCLICK event	picture_windows	planned			
+LEAVE event	picture_windows	planned			
+MENU prefix	picture_windows	planned			
+MOUSE event	picture_windows	planned			
+Picture windows	picture_windows	planned			
+SCLICK event	picture_windows	planned			
+UCLICK event	picture_windows	planned			
+Playing Files	playing_files	planned			
+Mp3	playing_sounds	planned			
+Ogg	playing_sounds	planned			
+Playing Sounds	playing_sounds	planned			
+Wma	playing_sounds	planned			
+Menus	popups	planned			
+Popup Menus	popups	planned			
+Firewall	proxy	planned			
+Proxy	proxy	planned			
+Socks4	proxy	planned			
+Socks5	proxy	planned			
+Numeric events	raw_events	planned			
+Raw events	raw_events	planned			
+Server messages	raw_events	planned			
+Regular Expressions	regular_expressions	planned			
+Events	remote	planned			
+Remote	remote	planned			
+Remote Scripts	remote	planned			
+Scripts	remote	planned			
+Remote Commands	remote_commands	planned			
+Remote Identifiers	remote_identifiers	planned			
+DCC Get	send_receive_files	planned			
+DCC Resume	send_receive_files	planned			
+DCC Send	send_receive_files	planned			
+Get Files	send_receive_files	planned			
+Resume	send_receive_files	planned			
+Send Files	send_receive_files	planned			
+Sending and Receiving Files	send_receive_files	planned			
+SendMessage	sendmessage	planned			
+ECDSA-NIST256P-CHALLENGE	servers	planned			
+Login Method	servers	planned			
+NickServ	servers	planned			
+SASL	servers	planned			
+SCRAM-SHA-256	servers	planned			
+Servers	servers	planned			
+Options	set_options	planned			
+Setting Options	set_options	planned			
+Signals	signals	planned			
+Sockets	sockets	planned			
+UDP Sockets	sockets	planned			
+Sound Requests	sound_requests	planned			
+Event beep	sounds	planned			
+Internal beep	sounds	planned			
+Navigation clicks	sounds	planned			
+Sounds	sounds	planned			
+Speak Text	speech	planned			
+Speech	speech	planned			
+Background	system_menu	planned			
+Beeping	system_menu	planned			
+Buffer	system_menu	planned			
+Changing Fonts	system_menu	planned			
+Desktop	system_menu	planned			
+Editbox	system_menu	planned			
+Flashing	system_menu	planned			
+Font	system_menu	planned			
+Nicklist	system_menu	planned			
+On Top	system_menu	planned			
+Position	system_menu	planned			
+Saving Positions	system_menu	planned			
+Spacing	system_menu	planned			
+System Menu	system_menu	planned			
+Timestamp	system_menu	planned			
+Track URLs	system_menu	planned			
+Text Copy and Paste	text_copy_paste	planned			
+Text and Number Identifiers	text_number_identifiers	planned			
+Time and Date Identifiers	time_date_identifiers	planned			
+Balloons	tips	planned			
+Tips	tips	planned			
+Token Identifiers	token_identifiers	planned			
+%	variables	planned			
+*	variables	planned			
++	variables	planned			
+^	variables	planned			
+Big Float	variables	planned			
+Local Variables	variables	planned			
+Variables	variables	planned			
+Voice Control	voice_commands	planned			
+Introduction	welcome_to_mirc	planned			
+mIRC Website	welcome_to_mirc	planned			
+Window Identifiers	window_identifiers	planned			
+Arrange Icons	window_menu	planned			
+Cascade	window_menu	planned			
+Group by Network	window_menu	planned			
+Sort	window_menu	planned			
+Status to Top	window_menu	planned			
+Tile	window_menu	planned			
+Window Menu	window_menu	planned			

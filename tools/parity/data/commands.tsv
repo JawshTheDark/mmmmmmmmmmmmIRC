@@ -1,0 +1,259 @@
+name	status	since	help_page	corpus_uses	test	notes
+/abook	planned		address_book.html	0		
+/ajinvite	planned		mirc_commands.html	0		
+/alias	planned		mirc_commands.html	0		
+/aline	planned		custom_windows.html	96		
+/ame	planned		mirc_commands.html	3		
+/amsg	planned		mirc_commands.html	16		
+/anick	planned		mirc_commands.html	3		
+/aop	planned		control.html	3		
+/auser	planned		remote_commands.html	11		
+/autojoin	planned		mirc_commands.html	0		
+/avoice	planned		control.html	0		
+/away	planned		basic_irc_commands.html	13		
+/background	planned		mirc_commands.html	33		
+/ban	planned		mirc_commands.html	43		
+/bcopy	planned		binary_files.html	0		
+/beep	planned		mirc_commands.html	50		
+/bigfloat	planned		variables.html	0		
+/bindip	planned		sockets.html	0		
+/bread	planned		binary_files.html	2		
+/break	planned		aliases.html	0		
+/breplace	planned		binary_files.html	0		
+/bset	planned		binary_files.html	0		
+/btrunc	planned		binary_files.html	0		
+/bunset	planned		binary_files.html	0		
+/bwrite	planned		binary_files.html	3		
+/channel	planned		mirc_commands.html	23		
+/clear	planned		mirc_commands.html	64		
+/clearall	planned		mirc_commands.html	1		
+/cline	planned		custom_windows.html	104		
+/clipboard	planned		mirc_commands.html	3		
+/close	planned		mirc_commands.html	115		
+/cnick	planned		nick_colors.html	0		
+/color	planned		mirc_commands.html	169		
+/comclose	not-possible		com_objects.html	0		COM/ActiveX
+/comlist	not-possible		com_objects.html	0		COM/ActiveX
+/comopen	not-possible		com_objects.html	0		COM/ActiveX
+/comreg	not-possible		com_objects.html	0		COM/ActiveX
+/continue	planned		aliases.html	0		
+/copy	planned		mirc_commands.html	7		
+/copyini	planned	7.84	versions.txt	0		copy INI topics
+/creq	planned		mirc_commands.html	1		
+/ctcpreply	planned		mirc_commands.html	2		
+/ctcps	planned		remote_commands.html	1		
+/dcc chat	planned		chat_privately.html	0		
+/dcc get	planned		dcc.html	0		
+/dcc ignore	planned		dcc.html	0		
+/dcc nick	planned		dcc.html	0		
+/dcc passive	planned		dcc.html	0		
+/dcc reject	planned		dcc.html	0		
+/dcc send	planned		send_receive_files.html	0		
+/dcc trust	planned		dcc.html	0		
+/dccserver	planned		dcc.html	0		
+/dde	not-possible		dde.html	0		Windows DDE
+/ddeserver	not-possible		dde.html	0		Windows DDE
+/debug	planned		mirc_commands.html	0		
+/dec	planned		variables.html	121		
+/describe	planned		mirc_commands.html	3		
+/dialog	planned		dialogs.html	0		
+/did	planned		dialogs.html	3499		
+/didtok	planned		dialogs.html	12		
+/disable	planned		remote_commands.html	29		
+/disconnect	planned		mirc_commands.html	5		
+/dlevel	planned		remote_commands.html	0		
+/dline	planned		custom_windows.html	6		
+/dll	not-possible		mirc_commands.html	236		Win32 DLL plugins (see Phase 6 Wine bridge)
+/dns	planned		mirc_commands.html	6		
+/donotdisturb	planned		mirc_commands.html	0		
+/dqwindow	planned		mirc_commands.html	0		
+/drawcopy	planned		picture_windows.html	12		
+/drawdll	not-possible	7.83	versions.txt	0		Win32 DLL plugins
+/drawdot	planned		picture_windows.html	2		
+/drawfill	planned		picture_windows.html	29		
+/drawline	planned		picture_windows.html	1		
+/drawpic	planned		picture_windows.html	29		
+/drawrect	planned		picture_windows.html	37		
+/drawreplace	planned		picture_windows.html	0		
+/drawrot	planned		picture_windows.html	0		
+/drawsave	planned		picture_windows.html	25		
+/drawscroll	planned		picture_windows.html	0		
+/drawsize	planned		picture_windows.html	0		
+/drawtext	planned		picture_windows.html	55		
+/ebeeps	planned		mirc_commands.html	0		
+/echo	planned		mirc_commands.html	1165		
+/editbox	planned		mirc_commands.html	0		
+/emailaddr	planned		mirc_commands.html	0		
+/enable	planned		remote_commands.html	39		
+/events	planned		remote_commands.html	0		
+/exit	planned		mirc_commands.html	3		
+/fclose	planned		file_handling.html	0		
+/filter	planned		mirc_commands.html	35		
+/findtext	planned		mirc_commands.html	0		
+/firewall	planned		proxy.html	0		
+/flash	planned		mirc_commands.html	2		
+/flist	planned		file_handling.html	1		
+/flood	planned		flood.html	2		
+/flush	planned		remote_commands.html	0		
+/flushini	planned		mirc_commands.html	3		
+/font	planned		mirc_commands.html	2		
+/fopen	planned		file_handling.html	0		
+/fseek	planned		file_handling.html	0		
+/fserve	planned		file_server.html	4		
+/fullname	planned		mirc_commands.html	0		
+/fwrite	planned		file_handling.html	0		
+/ghide	not-possible		agents_scripting.html	0		Microsoft Agent
+/gload	not-possible		agents_scripting.html	0		Microsoft Agent
+/gmove	not-possible		agents_scripting.html	0		Microsoft Agent
+/gopts	not-possible		agents_scripting.html	0		Microsoft Agent
+/goto	planned		aliases.html	0		
+/gplay	not-possible		agents_scripting.html	0		Microsoft Agent
+/gpoint	not-possible		agents_scripting.html	0		Microsoft Agent
+/gqreq	not-possible		agents_scripting.html	0		Microsoft Agent
+/groups	planned		remote_commands.html	0		
+/gshow	not-possible		agents_scripting.html	0		Microsoft Agent
+/gsize	not-possible		agents_scripting.html	0		Microsoft Agent
+/gstop	not-possible		agents_scripting.html	0		Microsoft Agent
+/gtalk	not-possible		agents_scripting.html	0		Microsoft Agent
+/gunload	not-possible		agents_scripting.html	0		Microsoft Agent
+/guser	planned		remote_commands.html	0		
+/hadd	planned		hash_tables.html	14		
+/halt	planned		aliases.html	0		
+/haltdef	planned		halting_text.html	0		
+/hdec	planned		hash_tables.html	0		
+/hdel	planned		hash_tables.html	6		
+/help	planned		mirc_commands.html	5		
+/hfree	planned		hash_tables.html	8		
+/hinc	planned		hash_tables.html	0		
+/hload	planned		hash_tables.html	1		
+/hmake	planned		hash_tables.html	6		
+/hop	planned		mirc_commands.html	1		
+/hsave	planned		hash_tables.html	1		
+/ial	planned		internal_address_list.html	6		
+/ialclear	planned		internal_address_list.html	0		
+/ialfill	planned		internal_address_list.html	0		
+/ialmark	planned		internal_address_list.html	0		
+/identd	planned		identd.html	1		
+/if	planned		if_then_else.html	0		
+/ignore	planned		control.html	44		
+/iline	planned		custom_windows.html	9		
+/inc	planned		variables.html	799		
+/invite	planned		basic_irc_commands.html	13		
+/iuser	planned		remote_commands.html	1		
+/join	planned		basic_irc_commands.html	23		
+/kick	planned		basic_irc_commands.html	224		
+/linesep	planned		mirc_commands.html	9		
+/links	planned		mirc_commands.html	0		
+/list	planned		basic_irc_commands.html	100		
+/load	planned		mirc_commands.html	8		
+/loadbuf	planned		mirc_commands.html	20		
+/localinfo	planned		mirc_commands.html	0		
+/log	planned		mirc_commands.html	5		
+/logview	planned		mirc_commands.html	1		
+/markasread	planned	7.77	versions.txt	0		mark a window as read
+/mdi	planned		mirc_commands.html	0		
+/me	planned		basic_irc_commands.html	13		
+/menubar	planned		mirc_commands.html	1		
+/mkdir	planned		mirc_commands.html	3		
+/mnick	planned		mirc_commands.html	0		
+/mode	planned		basic_irc_commands.html	219		
+/msg	planned		basic_irc_commands.html	3927		
+/msg nickserv	planned		servers.html	0		
+/nick	planned		basic_irc_commands.html	24		
+/nickserv	planned		servers.html	136		
+/noop	planned		mirc_commands.html	0		
+/notice	planned		basic_irc_commands.html	156		
+/notify	planned		notify_list.html	86		
+/omsg	planned		mirc_commands.html	0		
+/onotice	planned		mirc_commands.html	0		
+/parseline	planned		on_parseline.html	0		
+/part	planned		basic_irc_commands.html	9		
+/partall	planned		mirc_commands.html	0		
+/pdcc	planned		mirc_commands.html	5		
+/perform	planned		mirc_commands.html	0		
+/play	planned		mirc_commands.html	16		
+/playctrl	planned		playing_files.html	1		
+/pop	planned		mirc_commands.html	5		
+/privmsg	planned		basic_irc_commands.html	0		
+/protect	planned		control.html	0		
+/proxy	planned		proxy.html	4		
+/pvoice	planned		mirc_commands.html	0		
+/qme	planned		mirc_commands.html	0		
+/qmsg	planned		mirc_commands.html	0		
+/query	planned		basic_irc_commands.html	18		
+/queryrn	planned		mirc_commands.html	0		
+/quit	planned		basic_irc_commands.html	17		
+/quote	planned		mirc_commands.html	4		
+/raw	planned		mirc_commands.html	0		
+/reload	planned		mirc_commands.html	3		
+/remini	planned		mirc_commands.html	194		
+/remote	planned		remote_commands.html	7		
+/remove	planned		mirc_commands.html	56		
+/rename	planned		mirc_commands.html	2		
+/renwin	planned		custom_windows.html	1		
+/reseterror	planned		aliases.html	0		
+/resetidle	planned		mirc_commands.html	2		
+/return	planned		aliases.html	0		
+/rlevel	planned		remote_commands.html	3		
+/rline	planned		custom_windows.html	4		
+/rmdir	planned		mirc_commands.html	0		
+/run	planned		mirc_commands.html	93		substitute: xdg-open / direct exec; Windows programs via Wine when configured
+/ruser	planned		remote_commands.html	8		
+/save	planned		mirc_commands.html	3		
+/savebuf	planned		mirc_commands.html	16		
+/saveini	planned		mirc_commands.html	0		
+/say	planned		mirc_commands.html	12		
+/scid	planned		multimserver.html	149		
+/scon	planned		multimserver.html	20		
+/server	planned		mirc_commands.html	14		
+/set	planned		variables.html	2921		
+/setlayer	planned		mirc_commands.html	0		
+/showmirc	planned		mirc_commands.html	0		
+/signal	planned		signals.html	0		
+/sline	planned		mirc_commands.html	8		
+/sockaccept	planned		sockets.html	1		
+/sockclose	planned		sockets.html	40		
+/socklist	planned		sockets.html	0		
+/socklisten	planned		sockets.html	1		
+/sockmark	planned		sockets.html	0		
+/sockopen	planned		sockets.html	39		
+/sockpause	planned		sockets.html	0		
+/sockread	planned		sockets.html	13		
+/sockrename	planned		sockets.html	0		
+/sockudp	planned		sockets.html	0		
+/sockwrite	planned		sockets.html	95		
+/sound	planned		sound_requests.html	4		
+/speak	planned		speech.html	0		substitute: speech-dispatcher instead of SAPI
+/splay	planned		mirc_commands.html	126		
+/sreq	planned		mirc_commands.html	0		
+/strip	planned		mirc_commands.html	0		
+/switchbar	planned		mirc_commands.html	1		
+/timer	planned		mirc_commands.html	351		
+/timestamp	planned		mirc_commands.html	11		
+/tip	planned		tips.html	0		
+/tips	planned		tips.html	6		
+/titlebar	planned		mirc_commands.html	29		
+/tnick	planned		mirc_commands.html	0		
+/tokenize	planned		mirc_commands.html	30		
+/toolbar	planned		mirc_commands.html	1		
+/topic	planned		basic_irc_commands.html	1		
+/tray	planned		tray.html	0		
+/treebar	planned		mirc_commands.html	0		
+/ulist	planned		remote_commands.html	0		
+/unload	planned		mirc_commands.html	25		
+/unset	planned		variables.html	943		
+/unsetall	planned		variables.html	0		
+/updatenl	planned		mirc_commands.html	0		
+/url	planned		mirc_commands.html	14		
+/uwho	planned		address_book.html	0		
+/var	planned		variables.html	0		
+/vcadd	not-possible		voice_commands.html	0		Windows speech recognition
+/vcmd	not-possible		voice_commands.html	0		Windows speech recognition
+/vcrem	not-possible		voice_commands.html	0		Windows speech recognition
+/vol	planned		playing_sounds.html	3		
+/while	planned		aliases.html	0		
+/whois	planned		basic_irc_commands.html	15		
+/window	planned		custom_windows.html	188		
+/winhelp	planned		mirc_commands.html	0		
+/write	planned		mirc_commands.html	225		
+/writeini	planned		mirc_commands.html	1854		

@@ -1,0 +1,15 @@
+name	status	since	help_page	corpus_uses	test	notes
+!=	planned		if_then_else.html	0		
+#	planned		aliases.html	0		
+$	planned		aliases.html	0		
+$!	planned		aliases.html	0		
+$$	planned		aliases.html	0		
+$&	planned		aliases.html	0		
+$(...)	planned		remote_identifiers.html	0		
+$+	planned		aliases.html	0		
+$0	planned		remote_identifiers.html	0		
+$1-	planned		remote_identifiers.html	0		
+$?	planned		other_identifiers.html	0		
+-	planned		variables.html	0		
+/	planned		variables.html	0		
+//	planned		if_then_else.html	0		
