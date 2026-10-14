@@ -114,6 +114,8 @@ public:
     std::string regmlGet(const std::string& name, int n) const;
     int regmlCount(const std::string& name) const;
 
+    int lastSockBytes = 0;  // $sockbr: bytes from the most recent /sockread
+
     std::string getVariable(const std::string& name, const Scope& scope) const;
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);
     void unsetVariable(const std::string& name, Scope& scope);

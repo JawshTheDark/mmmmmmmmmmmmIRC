@@ -374,6 +374,16 @@ int main() {
     CHECK(!eval(in, "$date").empty());
     CHECK(eval(in, "$asctime(0)").find(":") != std::string::npos);  // formatted (year is tz-dependent)
 
+    // /signal fires on SIGNAL:<name> with params and $signal.
+    {
+        host.echoed.clear();
+        in.loadScript("on *:SIGNAL:ping:{ echo got signal $signal with $1 }\n");
+        Scope s;
+        in.execute("signal ping hello", s);
+        CHECK_EQ(host.echoed.size(), 1u);
+        CHECK_EQ(host.echoed[0], std::string("got signal ping with hello"));
+    }
+
     // halt stops the rest of the script.
     {
         host.echoed.clear();

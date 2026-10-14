@@ -6,16 +6,16 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 38 | 235 | 16.2% | 23 |
-| Identifiers | 76 | 406 | 18.7% | 15 |
-| Events | 6 | 84 | 7.1% | 2 |
+| Commands | 43 | 235 | 18.3% | 23 |
+| Identifiers | 81 | 406 | 20.0% | 15 |
+| Events | 10 | 84 | 11.9% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 4 | 390 | 1.0% | 0 |
-| **Total** | **130** | **1129** | **11.5%** | |
+| **Total** | **144** | **1129** | **12.8%** | |
 
 ## Commands
 
-### planned (185)
+### planned (180)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -25,15 +25,12 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/splay` | 126 |  | mirc_commands.html |  |  |
 | `/close` | 115 |  | mirc_commands.html |  |  |
 | `/cline` | 104 |  | custom_windows.html |  |  |
-| `/sockwrite` | 95 |  | sockets.html |  |  |
 | `/run` | 93 |  | mirc_commands.html |  | substitute: xdg-open / direct exec; Windows programs via Wine when configured |
 | `/notify` | 86 |  | notify_list.html |  |  |
 | `/beep` | 50 |  | mirc_commands.html |  |  |
 | `/ignore` | 44 |  | control.html |  |  |
 | `/ban` | 43 |  | mirc_commands.html |  |  |
-| `/sockclose` | 40 |  | sockets.html |  |  |
 | `/enable` | 39 |  | remote_commands.html |  |  |
-| `/sockopen` | 39 |  | sockets.html |  |  |
 | `/filter` | 35 |  | mirc_commands.html |  |  |
 | `/background` | 33 |  | mirc_commands.html |  |  |
 | `/tokenize` | 30 |  | mirc_commands.html |  |  |
@@ -51,7 +48,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/savebuf` | 16 |  | mirc_commands.html |  |  |
 | `/server` | 14 |  | mirc_commands.html |  |  |
 | `/url` | 14 |  | mirc_commands.html |  |  |
-| `/sockread` | 13 |  | sockets.html |  |  |
 | `/didtok` | 12 |  | dialogs.html |  |  |
 | `/drawcopy` | 12 |  | picture_windows.html |  |  |
 | `/auser` | 11 |  | remote_commands.html |  |  |
@@ -185,7 +181,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/saveini` | 0 |  | mirc_commands.html |  |  |
 | `/setlayer` | 0 |  | mirc_commands.html |  |  |
 | `/showmirc` | 0 |  | mirc_commands.html |  |  |
-| `/signal` | 0 |  | signals.html |  |  |
 | `/socklist` | 0 |  | sockets.html |  |  |
 | `/sockmark` | 0 |  | sockets.html |  |  |
 | `/sockpause` | 0 |  | sockets.html |  |  |
@@ -222,7 +217,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (38)
+### done (43)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -258,6 +253,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/return` | 0 |  | aliases.html | test_msl |  |
 | `/say` | 12 |  | mirc_commands.html | test_msl |  |
 | `/set` | 2921 |  | variables.html | test_msl |  |
+| `/signal` | 0 |  | signals.html | test_msl |  |
+| `/sockclose` | 40 |  | sockets.html | test_msl |  |
+| `/sockopen` | 39 |  | sockets.html | test_msl |  |
+| `/sockread` | 13 |  | sockets.html | test_msl |  |
+| `/sockwrite` | 95 |  | sockets.html | test_msl |  |
 | `/timer` | 351 |  | mirc_commands.html | test_msl |  |
 | `/unset` | 943 |  | variables.html | test_msl |  |
 | `/var` | 0 |  | variables.html | test_msl |  |
@@ -295,7 +295,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (330)
+### planned (325)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -307,14 +307,12 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$server` | 110 |  | other_identifiers.html |  |  |
 | `$mouse` | 80 |  | picture_windows.html |  |  |
 | `$opnick` | 78 |  | on_opodeop.html |  |  |
-| `$sock` | 74 |  | sockets.html |  |  |
 | `$sline` | 69 |  | custom_windows.html |  |  |
 | `$wildsite` | 69 |  | remote_identifiers.html |  |  |
 | `$vnick` | 64 |  | on_opodeop.html |  |  |
 | `$style` | 60 |  | popups.html |  |  |
 | `$crlf` | 58 |  | other_identifiers.html |  |  |
 | `$rgb` | 58 |  | picture_windows.html |  |  |
-| `$sockerr` | 55 |  | sockets.html |  |  |
 | `$isid` | 51 |  | other_identifiers.html |  |  |
 | `$send` | 51 |  | window_identifiers.html |  |  |
 | `$comchan` | 50 |  | nick_address_identifiers.html |  |  |
@@ -330,7 +328,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$scid` | 35 |  | multimserver.html |  |  |
 | `$uptime` | 35 |  | time_date_identifiers.html |  |  |
 | `$eval` | 34 |  | other_identifiers.html |  |  |
-| `$sockname` | 34 |  | sockets.html |  |  |
 | `$snick` | 29 |  | nick_address_identifiers.html |  |  |
 | `$ulist` | 28 |  | remote_identifiers.html |  |  |
 | `$ialchan` | 25 |  | nick_address_identifiers.html |  |  |
@@ -349,7 +346,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$usermode` | 13 |  | other_identifiers.html |  |  |
 | `$getdot` | 12 |  | picture_windows.html |  |  |
 | `$notify` | 12 |  | nick_address_identifiers.html |  |  |
-| `$sockbr` | 12 |  | sockets.html |  |  |
 | `$group` | 11 |  | remote_identifiers.html |  |  |
 | `$timestamp` | 11 |  | time_date_identifiers.html |  |  |
 | `$titlebar` | 11 |  | other_identifiers.html |  |  |
@@ -584,7 +580,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$sha256` | 0 |  | other_identifiers.html |  |  |
 | `$sha384` | 0 |  | other_identifiers.html |  |  |
 | `$sha512` | 0 |  | other_identifiers.html |  |  |
-| `$signal` | 0 |  | signals.html |  |  |
 | `$sin` | 0 |  | text_number_identifiers.html |  |  |
 | `$snotify` | 0 |  | nick_address_identifiers.html |  |  |
 | `$sound` | 0 |  | playing_sounds.html |  |  |
@@ -630,7 +625,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (76)
+### done (81)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -700,7 +695,12 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$right` | 406 |  | text_number_identifiers.html | test_msl |  |
 | `$round` | 200 |  | text_number_identifiers.html | test_msl |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html | test_msl | substitute: no 8.3 names on Linux; returns the long name |
+| `$signal` | 0 |  | signals.html | test_msl |  |
 | `$site` | 36 |  | remote_identifiers.html | test_msl |  |
+| `$sock` | 74 |  | sockets.html | test_msl |  |
+| `$sockbr` | 12 |  | sockets.html | test_msl |  |
+| `$sockerr` | 55 |  | sockets.html | test_msl |  |
+| `$sockname` | 34 |  | sockets.html | test_msl |  |
 | `$sorttok` | 1 |  | token_identifiers.html | test_msl |  |
 | `$sqrt` | 0 |  | text_number_identifiers.html | test_msl |  |
 | `$str` | 49 |  | text_number_identifiers.html | test_msl |  |
@@ -733,15 +733,13 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Events
 
-### planned (73)
+### planned (69)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `RAW` | 114 |  | raw_events.html |  |  |
-| `SOCKOPEN` | 31 |  | sockets.html |  |  |
 | `LOAD` | 23 |  | on_loadostart.html |  |  |
 | `START` | 16 |  | on_loadostart.html |  |  |
-| `SOCKREAD` | 13 |  | sockets.html |  |  |
 | `CHAT` | 12 |  | on_chatoserv.html |  |  |
 | `INPUT` | 12 |  | on_input.html |  |  |
 | `CONNECT` | 10 |  | on_connect.html |  |  |
@@ -750,7 +748,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `CLOSE` | 9 |  | on_openoclose.html |  |  |
 | `DISCONNECT` | 9 |  | on_connect.html |  |  |
 | `OP` | 9 |  | on_opodeop.html |  |  |
-| `SOCKCLOSE` | 9 |  | sockets.html |  |  |
 | `OPEN` | 7 |  | on_openoclose.html |  |  |
 | `VOICE` | 7 |  | on_opodeop.html |  |  |
 | `DEVOICE` | 6 |  | on_opodeop.html |  |  |
@@ -805,7 +802,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `SERVERMODE` | 0 |  | on_mode.html |  |  |
 | `SERVERVOICE` | 0 |  | on_opodeop.html |  |  |
 | `SERVOPEN` | 0 |  | on_chatoserv.html |  |  |
-| `SIGNAL` | 0 |  | signals.html |  |  |
 | `SOCKWRITE` | 0 |  | sockets.html |  |  |
 | `TABCOMP` | 0 |  | on_tabcomp.html |  |  |
 | `UDPREAD` | 0 |  | sockets.html |  |  |
@@ -821,7 +817,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `QUIT` | 6 |  | on_quit.html | test_msl |  |
 | `TOPIC` | 1 |  | on_topic.html | test_msl |  |
 
-### done (6)
+### done (10)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -830,6 +826,10 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `JOIN` | 18 |  | on_joinopart.html | test_msl |  |
 | `KICK` | 13 |  | on_kick.html | test_msl |  |
 | `PART` | 7 |  | on_joinopart.html | test_msl |  |
+| `SIGNAL` | 0 |  | signals.html | test_msl |  |
+| `SOCKCLOSE` | 9 |  | sockets.html | test_msl |  |
+| `SOCKOPEN` | 31 |  | sockets.html | test_msl |  |
+| `SOCKREAD` | 13 |  | sockets.html | test_msl |  |
 | `TEXT` | 43 |  | on_text.html | test_msl |  |
 
 ### not-possible (2)

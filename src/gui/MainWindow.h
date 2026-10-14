@@ -104,6 +104,7 @@ private:
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
+    class ScriptSockets* m_sockets = nullptr;
     QHash<QString, class ScriptDialog*> m_dialogs;  // open script dialogs by instance name
     QHash<QString, class QTimer*> m_scriptTimers;   // /timer instances by name
     int m_timerSeq = 0;

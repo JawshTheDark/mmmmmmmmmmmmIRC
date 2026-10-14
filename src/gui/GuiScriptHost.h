@@ -36,6 +36,11 @@ public:
     std::function<void(const QString&, const QString&)> openWindowFn;
     std::function<void(const QString&)> clearWindowFn;
     std::function<void(const QString&, const QString&, const QStringList&)> drawOpFn;
+    std::function<void(const QString&, const QString&, int, bool)> sockOpenFn;
+    std::function<void(const QString&, const QString&, bool)> sockWriteFn;
+    std::function<void(const QString&)> sockCloseFn;
+    std::function<QString(const QString&, bool&)> sockReadLineFn;
+    std::function<QString(const QString&, const QString&)> sockInfoFn;
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -122,6 +127,27 @@ public:
              QDir(resolve(dir)).entryList({QString::fromStdString(wildcard)}, QDir::Files, QDir::Name))
             out.push_back(name.toStdString());
         return out;
+    }
+
+    void sockOpen(const std::string& name, const std::string& host, int port, bool ssl) override {
+        if (sockOpenFn) sockOpenFn(QString::fromStdString(name), QString::fromStdString(host), port, ssl);
+    }
+    void sockWrite(const std::string& name, const std::string& data, bool nl) override {
+        if (sockWriteFn) sockWriteFn(QString::fromStdString(name), QString::fromStdString(data), nl);
+    }
+    void sockClose(const std::string& name) override {
+        if (sockCloseFn) sockCloseFn(QString::fromStdString(name));
+    }
+    std::string sockReadLine(const std::string& name, bool& ok) override {
+        if (!sockReadLineFn) {
+            ok = false;
+            return {};
+        }
+        return sockReadLineFn(QString::fromStdString(name), ok).toStdString();
+    }
+    std::string sockInfo(const std::string& name, const std::string& prop) const override {
+        return sockInfoFn ? sockInfoFn(QString::fromStdString(name), QString::fromStdString(prop)).toStdString()
+                          : std::string();
     }
 };
 

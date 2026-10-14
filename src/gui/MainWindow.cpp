@@ -27,6 +27,7 @@
 #include "gui/ConnectDialog.h"
 #include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
+#include "gui/ScriptSockets.h"
 #include "gui/Theme.h"
 
 namespace lurker::gui {
@@ -214,6 +215,19 @@ void MainWindow::setupScripting() {
     m_scriptHost.drawOpFn = [this](const QString& win, const QString& op, const QStringList& args) {
         ensurePictureWindow(win)->drawOp(op, args);
     };
+    m_sockets = new ScriptSockets(this);
+    m_sockets->onEvent = [this](const QString& name, const QString& event) {
+        if (!m_msl) return;
+        lurker::msl::Scope s;
+        s.event = event.toStdString();
+        s.target = name.toStdString();
+        m_msl->raiseEvent(event.toStdString(), name.toStdString(), s);
+    };
+    m_scriptHost.sockOpenFn = [this](const QString& n, const QString& h, int p, bool ssl) { m_sockets->open(n, h, p, ssl); };
+    m_scriptHost.sockWriteFn = [this](const QString& n, const QString& d, bool nl) { m_sockets->writeData(n, d, nl); };
+    m_scriptHost.sockCloseFn = [this](const QString& n) { m_sockets->close(n); };
+    m_scriptHost.sockReadLineFn = [this](const QString& n, bool& ok) { return m_sockets->readLine(n, ok); };
+    m_scriptHost.sockInfoFn = [this](const QString& n, const QString& p) { return m_sockets->info(n, p); };
     m_msl = std::make_unique<lurker::msl::Interpreter>(m_scriptHost);
 }
 

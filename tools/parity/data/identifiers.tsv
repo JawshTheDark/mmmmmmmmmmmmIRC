@@ -343,17 +343,17 @@ $sha384	planned		other_identifiers.html	0
 $sha512	planned		other_identifiers.html	0		
 $shortfn	done		file_directory_identifiers.html	66	test_msl	substitute: no 8.3 names on Linux; returns the long name
 $show	planned		other_identifiers.html	3		
-$signal	planned		signals.html	0		
+$signal	done		signals.html	0	test_msl	
 $sin	planned		text_number_identifiers.html	0		
 $site	done		remote_identifiers.html	36	test_msl	
 $sline	planned		custom_windows.html	69		
 $snick	planned		nick_address_identifiers.html	29		
 $snicks	planned		nick_address_identifiers.html	4		
 $snotify	planned		nick_address_identifiers.html	0		
-$sock	planned		sockets.html	74		
-$sockbr	planned		sockets.html	12		
-$sockerr	planned		sockets.html	55		
-$sockname	planned		sockets.html	34		
+$sock	done		sockets.html	74	test_msl	
+$sockbr	done		sockets.html	12	test_msl	
+$sockerr	done		sockets.html	55	test_msl	
+$sockname	done		sockets.html	34	test_msl	
 $sorttok	done		token_identifiers.html	1	test_msl	
 $sound	planned		playing_sounds.html	0		
 $speak	planned		speech.html	0		substitute: speech-dispatcher instead of SAPI

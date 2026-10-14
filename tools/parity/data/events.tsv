@@ -65,12 +65,12 @@ SERVERMODE	planned		on_mode.html	0
 SERVEROP	planned		on_opodeop.html	3		
 SERVERVOICE	planned		on_opodeop.html	0		
 SERVOPEN	planned		on_chatoserv.html	0		
-SIGNAL	planned		signals.html	0		
+SIGNAL	done		signals.html	0	test_msl	
 SNOTICE	planned		on_snotice.html	1		
-SOCKCLOSE	planned		sockets.html	9		
+SOCKCLOSE	done		sockets.html	9	test_msl	
 SOCKLISTEN	planned		sockets.html	1		
-SOCKOPEN	planned		sockets.html	31		
-SOCKREAD	planned		sockets.html	13		
+SOCKOPEN	done		sockets.html	31	test_msl	
+SOCKREAD	done		sockets.html	13	test_msl	
 SOCKWRITE	planned		sockets.html	0		
 START	planned		on_loadostart.html	16		
 TABCOMP	planned		on_tabcomp.html	0		

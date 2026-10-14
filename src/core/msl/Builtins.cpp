@@ -253,6 +253,19 @@ void registerBuiltins(Interpreter& in) {
         return i.host().activeTarget().window;
     });
     in.registerIdent("event", [](Interpreter&, S& s, const A&, const std::string&) { return s.event; });
+    in.registerIdent("signal", [](Interpreter&, S& s, const A&, const std::string&) {
+        return s.event == "SIGNAL" ? s.target : std::string();
+    });
+    in.registerIdent("sockname", [](Interpreter&, S& s, const A&, const std::string&) { return s.target; });
+    in.registerIdent("sockbr", [](Interpreter& i, S&, const A&, const std::string&) {
+        return std::to_string(i.lastSockBytes);
+    });
+    in.registerIdent("sockerr", [](Interpreter& i, S& s, const A& a, const std::string&) {
+        return i.host().sockInfo(a.empty() ? s.target : a[0], "err");
+    });
+    in.registerIdent("sock", [](Interpreter& i, S&, const A& a, const std::string& prop) {
+        return i.host().sockInfo(arg(a, 0), prop.empty() ? std::string("status") : prop);
+    });
     in.registerIdent("prop", [](Interpreter&, S& s, const A&, const std::string&) { return s.prop; });
     // Dialog event context + control access.
     in.registerIdent("dname", [](Interpreter&, S& s, const A&, const std::string&) {
@@ -1056,6 +1069,63 @@ void registerBuiltins(Interpreter& in) {
         std::string text;
         for (std::size_t k = idx; k < toks.size(); ++k) text += (k > idx ? " " : "") + toks[k];
         i.host().didCommand(name, id, sw, text);
+    });
+
+    // Sockets.
+    in.registerCommand("sockopen", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        bool ssl = false;
+        if (!args.empty() && args[0] == '-') {
+            ssl = args.find('e') != std::string::npos;
+            args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        }
+        auto toks = splitTokens(args, ' ');
+        if (toks.size() < 3) return;
+        i.host().sockOpen(toks[0], toks[1], [&] { try { return std::stoi(toks[2]); } catch (...) { return 0; } }(), ssl);
+    });
+    in.registerCommand("sockwrite", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        bool nl = false;
+        if (!args.empty() && args[0] == '-') {
+            nl = args.find('n') != std::string::npos;
+            args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        }
+        std::size_t sp = args.find(' ');
+        if (sp == std::string::npos) return;
+        i.host().sockWrite(args.substr(0, sp), args.substr(sp + 1), nl);
+    });
+    in.registerCommand("sockclose", [](Interpreter& i, S& s, const std::string& a) {
+        i.host().sockClose(i.evaluate(a, s));
+    });
+    in.registerCommand("sockread", [](Interpreter& i, S& s, const std::string& a) {
+        // /sockread [-f] [&binvar | %var]  — reads a line from the current socket
+        // (the socket named in the on SOCKREAD event, i.e. $sockname/scope.target).
+        std::string args = i.evaluate(a, s);
+        if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        std::string var = splitTokens(args, ' ').empty() ? std::string() : splitTokens(args, ' ').back();
+        if (!var.empty() && var[0] == '%') var = var.substr(1);
+        bool ok = false;
+        std::string line = i.host().sockReadLine(s.target, ok);
+        i.lastSockBytes = ok ? static_cast<int>(line.size()) : 0;
+        if (!var.empty()) i.setVariable(var, ok ? line : std::string(), true, s);
+    });
+
+    // /signal [-n] <name> [params] → fires on SIGNAL:<name> handlers.
+    in.registerCommand("signal", [](Interpreter& i, S& s, const std::string& a) {
+        std::string args = i.evaluate(a, s);
+        if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        std::size_t sp = args.find(' ');
+        const std::string name = sp == std::string::npos ? args : args.substr(0, sp);
+        if (name.empty()) return;
+        Scope ev;
+        ev.event = "SIGNAL";
+        ev.target = name;
+        if (sp != std::string::npos) {
+            for (const auto& t : splitTokens(args.substr(sp + 1), ' ')) {
+                if (!t.empty()) ev.params.push_back(t);
+            }
+        }
+        i.raiseEvent("SIGNAL", name, ev);
     });
 
     in.registerCommand("alias", [](Interpreter& i, S&, const std::string& args) {

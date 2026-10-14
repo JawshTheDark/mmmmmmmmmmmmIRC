@@ -17,6 +17,8 @@ qt_add_executable(lurker-desktop
     Theme.h
     PictureWindow.cpp
     PictureWindow.h
+    ScriptSockets.cpp
+    ScriptSockets.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core

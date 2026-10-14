@@ -209,19 +209,19 @@ name	status	since	help_page	corpus_uses	test	notes
 /set	done		variables.html	2921	test_msl	
 /setlayer	planned		mirc_commands.html	0		
 /showmirc	planned		mirc_commands.html	0		
-/signal	planned		signals.html	0		
+/signal	done		signals.html	0	test_msl	
 /sline	planned		mirc_commands.html	8		
 /sockaccept	planned		sockets.html	1		
-/sockclose	planned		sockets.html	40		
+/sockclose	done		sockets.html	40	test_msl	
 /socklist	planned		sockets.html	0		
 /socklisten	planned		sockets.html	1		
 /sockmark	planned		sockets.html	0		
-/sockopen	planned		sockets.html	39		
+/sockopen	done		sockets.html	39	test_msl	
 /sockpause	planned		sockets.html	0		
-/sockread	planned		sockets.html	13		
+/sockread	done		sockets.html	13	test_msl	
 /sockrename	planned		sockets.html	0		
 /sockudp	planned		sockets.html	0		
-/sockwrite	planned		sockets.html	95		
+/sockwrite	done		sockets.html	95	test_msl	
 /sound	planned		sound_requests.html	4		
 /speak	planned		speech.html	0		substitute: speech-dispatcher instead of SAPI
 /splay	planned		mirc_commands.html	126		

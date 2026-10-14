@@ -123,6 +123,32 @@ public:
         (void)op;
         (void)args;
     }
+
+    // TCP sockets (/sockopen, /sockwrite, $sock, on SOCKOPEN/READ/CLOSE). Defaults
+    // do nothing; the GUI backs them with QTcpSocket/QSslSocket.
+    virtual void sockOpen(const std::string& name, const std::string& host, int port, bool ssl) {
+        (void)name;
+        (void)host;
+        (void)port;
+        (void)ssl;
+    }
+    virtual void sockWrite(const std::string& name, const std::string& data, bool newline) {
+        (void)name;
+        (void)data;
+        (void)newline;
+    }
+    virtual void sockClose(const std::string& name) { (void)name; }
+    // Reads one line from the socket's buffer; ok=false when none is ready.
+    virtual std::string sockReadLine(const std::string& name, bool& ok) {
+        (void)name;
+        ok = false;
+        return {};
+    }
+    virtual std::string sockInfo(const std::string& name, const std::string& prop) const {
+        (void)name;
+        (void)prop;
+        return {};
+    }
 };
 
 }  // namespace lurker::msl
