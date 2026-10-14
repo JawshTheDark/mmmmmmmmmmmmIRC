@@ -48,10 +48,13 @@ remotes (on TEXT/ACTION/JOIN/PART/KICK/DIALOG/SIGNAL/SOCK*), ~100 identifiers, ~
 tables, regex, file & INI I/O, timers, sockets, signals, binary variables, dialogs, picture + custom
 windows. Control flow now includes `/break` `/continue` `/tokenize`, `$(text,N)` evaluation,
 `$gettok` ranges, `$wildtok`/`$reptok`, case-insensitive `==`/`!=`, and a recursion guard (an
-unbounded alias reports an error instead of crashing). Phase 3 (started): theming
-(Default/Dark/OLED/BeOS), configurable chat font/size (live), 16-colour palette page, Scripts Editor,
-full tree Options dialog, top toolbar, app icon. Phase 5.5: **CI** (Linux + Windows build/test on every
-push/PR) and **Releases** (tag `v*` → AppImage + Windows zip) via GitHub Actions.
+unbounded alias reports an error instead of crashing). Phase 3 (mostly): theming — 7 shipped skins
+(Default/Dark/OLED/Solarized/Matrix/Amber/BeOS) with a themed MDI backdrop, configurable chat
+font/size (live), the 16-colour palette wired into message rendering, per-nick colouring, window
+background colour/image, theme **import/export**; full tree Options dialog, top toolbar, app icon,
+right-click **context menus** on the nicklist (query/whois/op/kick/ban/CTCP) and the networks tree
+(part/close/disconnect), and channel/query **logging** to disk. Phase 5.5: **CI** (Linux + Windows
+build/test on every push/PR) and **Releases** (tag `v*` → AppImage + Windows zip) via GitHub Actions.
 
 Validated: [NeonScript](https://github.com/jawshthedark/neonscript) loads fully (1024 aliases, 457
 handlers); jirc's Anope/abaexp/ppfserv scripts parse correctly.
@@ -63,10 +66,10 @@ handlers); jirc's Anope/abaexp/ppfserv scripts parse correctly.
 2. IRC-state identifiers that need the session wired into the MSL Host: `$nick(#,N)`, `$nickcount`,
    `$ial`/`$ialchan`, `$comchan`, `$onotice`, `$level`; `on`-event `$halt` of default processing.
 3. `$regsubex`, `$hfind`, more of the identifier tail (see PARITY.md `planned`, ordered by corpus use).
-4. Make more Options pages take effect live (timestamps/format, join-event display, highlight words,
-   logging) — the settings persist already; wire the consumers.
-5. Deeper theming (per-channel backgrounds, feed the 16-colour palette into message rendering,
-   import/export) — Phase 3.6.
+4. Wire the remaining Options consumers: highlight words → highlight styling, flood protection on
+   send, join/part/quit display toggle, reconnect options. (Timestamp format, scrollback, strip/colour
+   nicks, background, logging are already live.)
+5. **Per-channel** theming (background/font overrides keyed by net+channel) — Phase 3.6; global is done.
 6. Run the oracle (tools/oracle) to pin evaluation edge cases.
 
 ## Gotchas

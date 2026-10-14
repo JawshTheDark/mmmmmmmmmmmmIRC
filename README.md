@@ -38,10 +38,13 @@ mIRC's layout; every setting persists.
 Validated against real scripts — [NeonScript](https://github.com/jawshthedark/neonscript) (35 files,
 17k lines, 1024 aliases + 457 handlers) loads fully, plus Anope/abaexp/ppfserv test scripts.
 
-**Theming (Phase 3, started).** Switchable skins (View ▸ Theme): Default, Dark, OLED, and a **BeOS**
-skin. Configurable chat **font & size** (Options ▸ Display) apply live to every window, plus an
-editable **16-colour mIRC palette** (Options ▸ Display ▸ Colors). Per-channel backgrounds and
-theme import/export are planned.
+**Theming (Phase 3).** Seven shipped skins (View ▸ Theme): Default, Dark, OLED, **Solarized Dark**,
+**Matrix**, **Amber**, and a **BeOS** skin — each themes the whole window, MDI backdrop included.
+Configurable chat **font & size** apply live; the editable **16-colour mIRC palette** drives message
+colour codes; **nicknames are colour-coded**; chat windows take a **background colour or image**; and
+whole themes **import/export** to a file (Options ▸ Display). Right-click **context menus** on the
+nicklist (query/whois/op/kick/ban/CTCP) and the networks tree (part/close/disconnect), plus
+channel/query **logging** to disk. Per-channel overrides are planned.
 
 See `docs/screenshots/` for captures of each of the above.
 
