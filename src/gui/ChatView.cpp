@@ -24,12 +24,23 @@
 namespace lurker::gui {
 
 namespace {
-// The chat font comes from Options ▸ Display (family + size); it falls back to
-// the platform's fixed-width font so the client is readable out of the box.
-QFont configuredChatFont() {
+// Reads a setting, preferring a per-channel override under `scope` when one is
+// set, otherwise the global key. (Per-channel theming, Phase 3.6.)
+QVariant scoped(const QString& scope, const QString& key, const QString& globalKey, const QVariant& def) {
     QSettings s;
-    const QString family = s.value(QStringLiteral("display/fontFamily")).toString();
-    const int size = s.value(QStringLiteral("display/fontSize"), 10).toInt();
+    if (!scope.isEmpty()) {
+        const QString k = scope + QLatin1Char('/') + key;
+        if (s.contains(k)) return s.value(k);
+    }
+    return s.value(globalKey, def);
+}
+
+// The chat font comes from Options ▸ Display (family + size), with an optional
+// per-channel override; it falls back to the platform's fixed-width font.
+QFont configuredChatFont(const QString& scope = QString()) {
+    const QString family = scoped(scope, QStringLiteral("fontFamily"), QStringLiteral("display/fontFamily"),
+                                  QString()).toString();
+    const int size = scoped(scope, QStringLiteral("fontSize"), QStringLiteral("display/fontSize"), 10).toInt();
     QFont f = family.isEmpty() ? QFontDatabase::systemFont(QFontDatabase::FixedFont) : QFont(family);
     if (size > 0) f.setPointSize(size);
     return f;
@@ -140,19 +151,25 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     applyDisplaySettings();  // apply any configured background on creation
 }
 
+void ChatView::setSettingsScope(const QString& scope) {
+    m_settingsScope = scope;
+    applyDisplaySettings();  // re-apply with any per-channel overrides
+}
+
 void ChatView::applyDisplaySettings() {
-    const QFont f = configuredChatFont();
+    const QFont f = configuredChatFont(m_settingsScope);
     m_messages->setFont(f);
     if (m_nicklist) m_nicklist->setFont(f);
     m_input->setFont(f);
     m_messages->document()->setMaximumBlockCount(
-        QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());
+        scoped(m_settingsScope, QStringLiteral("scrollback"), QStringLiteral("display/scrollback"), 5000).toInt());
 
-    // Window background: a solid colour and/or an image (Options ▸ Display).
+    // Window background: a solid colour and/or an image, global or per-channel.
     // A widget stylesheet overrides the app skin, so an empty setting clears it.
-    QSettings s;
-    const QString bgColor = s.value(QStringLiteral("display/bgColor")).toString();
-    const QString bgImage = s.value(QStringLiteral("display/bgImage")).toString();
+    const QString bgColor =
+        scoped(m_settingsScope, QStringLiteral("bgColor"), QStringLiteral("display/bgColor"), QString()).toString();
+    const QString bgImage =
+        scoped(m_settingsScope, QStringLiteral("bgImage"), QStringLiteral("display/bgImage"), QString()).toString();
     QString css;
     if (!bgColor.isEmpty() || !bgImage.isEmpty()) {
         css = QStringLiteral("QTextBrowser{");

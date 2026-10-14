@@ -48,6 +48,11 @@ public:
     // theming changes take effect without reopening the window.
     void applyDisplaySettings();
 
+    // Settings prefix for per-channel theme overrides (e.g. "chan/1/_lurker").
+    // When set, applyDisplaySettings prefers keys under it over the globals.
+    void setSettingsScope(const QString& scope);
+    QString settingsScope() const { return m_settingsScope; }
+
     // Supplies nick candidates (no sigils) for tab-completion; set by the owner.
     void setNickProvider(std::function<QStringList()> provider) { m_nickProvider = std::move(provider); }
 
@@ -67,6 +72,7 @@ private:
     void doTabCompletion();
 
     Kind m_kind;
+    QString m_settingsScope;  // per-channel theme override prefix, empty = globals only
     QLabel* m_topicBar = nullptr;
     QTextBrowser* m_messages = nullptr;
     QListWidget* m_nicklist = nullptr;

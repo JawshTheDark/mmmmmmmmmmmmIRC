@@ -11,6 +11,12 @@
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
+#include <QSpinBox>
+#include <QFormLayout>
+#include <QFontComboBox>
+#include <QComboBox>
+#include <QColorDialog>
+#include <QCheckBox>
 #include <QDir>
 #include <QDockWidget>
 #include <QEvent>
@@ -122,6 +128,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             menu.addAction(tr("Close"), this, [this, key = target->key] {
                 if (Buffer* b = findBuffer(key)) closeBuffer(b);
             });
+            menu.addSeparator();
+            menu.addAction(tr("Channel theme..."), this, [this, key = target->key] { showChannelTheme(key); });
         } else if (target->kind == ChatView::Kind::Query) {
             menu.addAction(tr("Close query"), this, [this, key = target->key] {
                 if (Buffer* b = findBuffer(key)) closeBuffer(b);
@@ -474,6 +482,77 @@ void MainWindow::logLine(const Buffer* buffer, const QString& plainLine) {
     f.write("\n");
 }
 
+QString MainWindow::themeScope(int net, const QString& target) const {
+    QString safe = target.toLower();
+    safe.replace(QRegularExpression(QStringLiteral("[^a-z0-9]")), QStringLiteral("_"));
+    return QStringLiteral("chan/%1/%2").arg(net).arg(safe);
+}
+
+void MainWindow::showChannelTheme(const QString& key) {
+    Buffer* buf = findBuffer(key);
+    if (!buf) return;
+    const QString scope = buf->view->settingsScope();
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Channel Theme — %1").arg(buf->display));
+    dlg.resize(420, 220);
+    auto* form = new QFormLayout(&dlg);
+    form->addRow(new QLabel(tr("<i>Leave blank to inherit the global theme.</i>"), &dlg));
+
+    QSettings s;
+    auto* fontCombo = new QFontComboBox(&dlg);
+    auto* fontOverride = new QCheckBox(tr("Override font"), &dlg);
+    fontOverride->setChecked(s.contains(scope + QStringLiteral("/fontFamily")));
+    if (fontOverride->isChecked()) fontCombo->setCurrentFont(QFont(s.value(scope + QStringLiteral("/fontFamily")).toString()));
+    auto* size = new QSpinBox(&dlg);
+    size->setRange(0, 48);
+    size->setSpecialValueText(tr("(inherit)"));
+    size->setValue(s.value(scope + QStringLiteral("/fontSize"), 0).toInt());
+    auto* bgColor = new QLineEdit(s.value(scope + QStringLiteral("/bgColor")).toString(), &dlg);
+    bgColor->setPlaceholderText(tr("inherit"));
+    auto* pickColor = new QPushButton(tr("Pick..."), &dlg);
+    auto* colorRow = new QHBoxLayout;
+    colorRow->addWidget(bgColor, 1);
+    colorRow->addWidget(pickColor);
+    auto* bgImage = new QLineEdit(s.value(scope + QStringLiteral("/bgImage")).toString(), &dlg);
+    bgImage->setPlaceholderText(tr("inherit"));
+    auto* browse = new QPushButton(tr("Browse..."), &dlg);
+    auto* imgRow = new QHBoxLayout;
+    imgRow->addWidget(bgImage, 1);
+    imgRow->addWidget(browse);
+
+    form->addRow(fontOverride, fontCombo);
+    form->addRow(tr("Font size"), size);
+    form->addRow(tr("Background colour"), colorRow);
+    form->addRow(tr("Background image"), imgRow);
+    connect(pickColor, &QPushButton::clicked, &dlg, [bgColor] {
+        const QColor c = QColorDialog::getColor(QColor(bgColor->text()), bgColor, tr("Background colour"));
+        if (c.isValid()) bgColor->setText(c.name());
+    });
+    connect(browse, &QPushButton::clicked, &dlg, [bgImage] {
+        const QString p = QFileDialog::getOpenFileName(bgImage, tr("Background image"), bgImage->text(),
+                                                       tr("Images (*.png *.jpg *.jpeg *.bmp *.gif)"));
+        if (!p.isEmpty()) bgImage->setText(p);
+    });
+
+    auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    form->addRow(bb);
+    connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    // Persist as overrides; clearing a field removes the override (inherits global).
+    auto setOrClear = [&](const QString& suffix, const QString& value) {
+        if (value.isEmpty()) s.remove(scope + QLatin1Char('/') + suffix);
+        else s.setValue(scope + QLatin1Char('/') + suffix, value);
+    };
+    setOrClear(QStringLiteral("fontFamily"), fontOverride->isChecked() ? fontCombo->currentFont().family() : QString());
+    setOrClear(QStringLiteral("fontSize"), size->value() > 0 ? QString::number(size->value()) : QString());
+    setOrClear(QStringLiteral("bgColor"), bgColor->text().trimmed());
+    setOrClear(QStringLiteral("bgImage"), bgImage->text().trimmed());
+    buf->view->applyDisplaySettings();
+}
+
 void MainWindow::setupScripting() {
     m_scriptHost.echoFn = [this](const lurker::msl::ScriptTarget& where, const QString& text) {
         echoToWindow(where.networkId, QString::fromStdString(where.window), text);
@@ -729,6 +808,8 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     b.display = display;
     b.key = key;
     b.view = new ChatView(kind);
+    if (kind == ChatView::Kind::Channel || kind == ChatView::Kind::Query)
+        b.view->setSettingsScope(themeScope(net, display));
 
     b.sub = m_mdi->addSubWindow(b.view);
     b.sub->setWindowTitle(display);
