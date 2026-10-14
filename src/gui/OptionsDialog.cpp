@@ -10,6 +10,7 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFileDialog>
 #include <QFontComboBox>
 #include <QFormLayout>
 #include <QFrame>
@@ -191,7 +192,11 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
                                                 QStringLiteral("HH:mm")));
         f->addRow(tr("Scrollback lines"), boundSpin(QStringLiteral("display/scrollback"), 100, 100000, 5000, 500));
         f->addRow(boundCheck(tr("Strip mIRC colours from messages"), QStringLiteral("display/stripColors"), false));
+        f->addRow(boundCheck(tr("Colour nicknames"), QStringLiteral("display/colorNicks"), true));
         f->addRow(boundCheck(tr("Wrap long lines"), QStringLiteral("display/wrap"), true));
+        f->addRow(tr("Background colour"), boundColorField(QStringLiteral("display/bgColor")));
+        f->addRow(tr("Background image"),
+                  boundFileField(QStringLiteral("display/bgImage"), tr("Images (*.png *.jpg *.jpeg *.bmp *.gif)")));
     });
     QTreeWidgetItem* displayNode = addCategory(nullptr, tr("Display"), displayTop);
     addCategory(displayNode, tr("Options"),
@@ -309,7 +314,11 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
     m_tree->setCurrentItem(connectNode);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto* importBtn = buttons->addButton(tr("Import..."), QDialogButtonBox::ActionRole);
+    auto* exportBtn = buttons->addButton(tr("Export..."), QDialogButtonBox::ActionRole);
     outer->addWidget(buttons);
+    connect(importBtn, &QPushButton::clicked, this, &OptionsDialog::importTheme);
+    connect(exportBtn, &QPushButton::clicked, this, &OptionsDialog::exportTheme);
     connect(buttons, &QDialogButtonBox::accepted, this, [this] {
         save();
         accept();
@@ -372,6 +381,75 @@ QComboBox* OptionsDialog::boundCombo(const QString& key, const QStringList& item
     c->addItems(items);
     m_bindings.push_back({c, key, def, false});
     return c;
+}
+
+QWidget* OptionsDialog::boundColorField(const QString& key, const QString& def) {
+    auto* row = new QWidget;
+    auto* h = new QHBoxLayout(row);
+    h->setContentsMargins(0, 0, 0, 0);
+    auto* edit = new QLineEdit;
+    edit->setPlaceholderText(tr("theme default"));
+    m_bindings.push_back({edit, key, def, false});
+    auto* pick = new QPushButton(tr("Pick..."));
+    auto* clear = new QPushButton(tr("Clear"));
+    h->addWidget(edit, 1);
+    h->addWidget(pick);
+    h->addWidget(clear);
+    connect(pick, &QPushButton::clicked, row, [edit] {
+        const QColor cur = edit->text().isEmpty() ? QColor(Qt::white) : QColor(edit->text());
+        const QColor c = QColorDialog::getColor(cur, edit, tr("Pick a colour"));
+        if (c.isValid()) edit->setText(c.name());
+    });
+    connect(clear, &QPushButton::clicked, edit, &QLineEdit::clear);
+    return row;
+}
+
+QWidget* OptionsDialog::boundFileField(const QString& key, const QString& filter) {
+    auto* row = new QWidget;
+    auto* h = new QHBoxLayout(row);
+    h->setContentsMargins(0, 0, 0, 0);
+    auto* edit = new QLineEdit;
+    edit->setPlaceholderText(tr("none"));
+    m_bindings.push_back({edit, key, QString(), false});
+    auto* browse = new QPushButton(tr("Browse..."));
+    auto* clear = new QPushButton(tr("Clear"));
+    h->addWidget(edit, 1);
+    h->addWidget(browse);
+    h->addWidget(clear);
+    connect(browse, &QPushButton::clicked, row, [edit, filter] {
+        const QString p = QFileDialog::getOpenFileName(edit, tr("Choose a file"), edit->text(), filter);
+        if (!p.isEmpty()) edit->setText(p);
+    });
+    connect(clear, &QPushButton::clicked, edit, &QLineEdit::clear);
+    return row;
+}
+
+void OptionsDialog::exportTheme() {
+    QString path = QFileDialog::getSaveFileName(this, tr("Export Theme"), QStringLiteral("my-theme.lrktheme"),
+                                                tr("Lurker theme (*.lrktheme *.ini)"));
+    if (path.isEmpty()) return;
+    save();  // make sure on-screen edits are persisted before we copy them out
+    QSettings src;
+    QSettings out(path, QSettings::IniFormat);
+    for (const QString& k : src.allKeys()) {
+        if (k == QStringLiteral("theme") || k.startsWith(QStringLiteral("display/")) ||
+            k.startsWith(QStringLiteral("colors/"))) {
+            out.setValue(k, src.value(k));
+        }
+    }
+    out.sync();
+}
+
+void OptionsDialog::importTheme() {
+    const QString path =
+        QFileDialog::getOpenFileName(this, tr("Import Theme"), QString(), tr("Lurker theme (*.lrktheme *.ini)"));
+    if (path.isEmpty()) return;
+    QSettings in(path, QSettings::IniFormat);
+    QSettings dst;
+    for (const QString& k : in.allKeys()) dst.setValue(k, in.value(k));
+    dst.sync();
+    load();  // refresh every bound widget from the imported values
+    applyTheme(*qApp, dst.value(QStringLiteral("theme"), QStringLiteral("default")).toString());
 }
 
 QTreeWidgetItem* OptionsDialog::addCategory(QTreeWidgetItem* parent, const QString& name, QWidget* page) {

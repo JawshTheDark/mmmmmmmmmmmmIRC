@@ -37,6 +37,7 @@
 
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
+#include "gui/FormattedText.h"
 #include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
 #include "gui/OptionsDialog.h"
@@ -207,6 +208,7 @@ void MainWindow::showOptions(const QString& page) {
     OptionsDialog dlg(this);
     if (!page.isEmpty()) dlg.selectPage(page);
     if (dlg.exec() == QDialog::Accepted) {
+        refreshColorSettings();  // pick up Colors-page edits for new messages
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();

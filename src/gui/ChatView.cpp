@@ -33,6 +33,14 @@ QFont configuredChatFont() {
     if (size > 0) f.setPointSize(size);
     return f;
 }
+
+// A stable per-nick colour (hash → hue), tuned for readability on the current
+// theme's message background. mIRC colours nicks this way.
+QColor hashNickColor(const QString& nick, const QPalette& pal) {
+    const uint h = qHash(nick.toLower());
+    const bool dark = pal.color(QPalette::Base).lightness() < 128;
+    return QColor::fromHsv(static_cast<int>(h % 360), dark ? 150 : 200, dark ? 230 : 160);
+}
 }  // namespace
 
 ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
@@ -94,6 +102,8 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         m_input->clear();
         emit lineEntered(text);
     });
+
+    applyDisplaySettings();  // apply any configured background on creation
 }
 
 void ChatView::applyDisplaySettings() {
@@ -103,6 +113,24 @@ void ChatView::applyDisplaySettings() {
     m_input->setFont(f);
     m_messages->document()->setMaximumBlockCount(
         QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());
+
+    // Window background: a solid colour and/or an image (Options ▸ Display).
+    // A widget stylesheet overrides the app skin, so an empty setting clears it.
+    QSettings s;
+    const QString bgColor = s.value(QStringLiteral("display/bgColor")).toString();
+    const QString bgImage = s.value(QStringLiteral("display/bgImage")).toString();
+    QString css;
+    if (!bgColor.isEmpty() || !bgImage.isEmpty()) {
+        css = QStringLiteral("QTextBrowser{");
+        if (!bgColor.isEmpty()) css += QStringLiteral("background-color:%1;").arg(bgColor);
+        if (!bgImage.isEmpty()) {
+            css += QStringLiteral("background-image:url(\"%1\");background-position:center;"
+                                  "background-attachment:fixed;")
+                       .arg(bgImage);
+        }
+        css += QStringLiteral("}");
+    }
+    m_messages->setStyleSheet(css);
 }
 
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {
@@ -196,10 +224,20 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
     meta.setForeground(pal.color(QPalette::Disabled, QPalette::Text));
     if (!timestamp.isEmpty()) cursor.insertText(QStringLiteral("%1 ").arg(timestamp), meta);
 
+    const bool colorNicks = QSettings().value(QStringLiteral("display/colorNicks"), true).toBool();
+    QColor nickColor;
+    if (highlight) {
+        nickColor = QColor(0xE5, 0xB5, 0x67);
+    } else if (selfEcho) {
+        nickColor = pal.color(QPalette::Disabled, QPalette::Text);
+    } else if (colorNicks && !nick.isEmpty()) {
+        nickColor = hashNickColor(nick, pal);
+    } else {
+        nickColor = pal.color(QPalette::Link);
+    }
     QTextCharFormat nickFmt;
-    nickFmt.setForeground(highlight ? QColor(0xE5, 0xB5, 0x67)
-                                    : (selfEcho ? pal.color(QPalette::Disabled, QPalette::Text)
-                                                : pal.color(QPalette::Link)));
+    nickFmt.setForeground(nickColor);
+    nickFmt.setFontWeight(QFont::Bold);
     if (action) {
         cursor.insertText(QStringLiteral("* %1 ").arg(nick), nickFmt);
     } else if (!nick.isEmpty()) {

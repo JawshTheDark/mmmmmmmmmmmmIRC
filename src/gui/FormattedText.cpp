@@ -5,13 +5,36 @@
 #include "gui/FormattedText.h"
 
 #include <QFontDatabase>
+#include <QSettings>
 #include <QTextCharFormat>
+
+#include <array>
 
 #include "core/IrcFormat.h"
 
 namespace lurker::gui {
 
 namespace {
+
+// The user's overrides for the 16 mIRC palette slots (Options ▸ Display ▸
+// Colors). An invalid entry means "use the built-in default for that slot".
+// Cached so bulk history rendering doesn't hit QSettings per line.
+std::array<QColor, 16> g_userPalette;
+bool g_paletteLoaded = false;
+
+void loadUserPalette() {
+    QSettings s;
+    for (int i = 0; i < 16; ++i) {
+        const QString key = QStringLiteral("colors/%1").arg(i);
+        g_userPalette[i] = s.contains(key) ? QColor(s.value(key).toString()) : QColor();
+    }
+    g_paletteLoaded = true;
+}
+
+const std::array<QColor, 16>& userPalette() {
+    if (!g_paletteLoaded) loadUserPalette();
+    return g_userPalette;
+}
 
 // Inserts `text` under `base`, turning http(s):// runs into clickable anchors.
 void insertRunWithLinks(QTextCursor& cursor, const QString& text, const QTextCharFormat& base, const QColor& linkColor) {
@@ -47,9 +70,11 @@ QColor resolve(const Color& c, const QColor& fallback) {
             return fallback;
         case Color::Kind::Rgb:
             return QColor(c.rgb.r, c.rgb.g, c.rgb.b);
-        case Color::Kind::Palette:
+        case Color::Kind::Palette: {
+            if (c.index >= 0 && c.index < 16 && userPalette()[c.index].isValid()) return userPalette()[c.index];
             if (const auto rgb = paletteColor(c.index)) return QColor(rgb->r, rgb->g, rgb->b);
             return fallback;
+        }
     }
     return fallback;
 }
@@ -76,6 +101,8 @@ void insertFormatted(QTextCursor& cursor, const QByteArray& utf8, const TextSche
                                                                                      : QColor(0x1a, 0x5f, 0xb4));
     }
 }
+
+void refreshColorSettings() { loadUserPalette(); }
 
 QString stripFormattingQt(const QByteArray& utf8) {
     const std::string stripped =

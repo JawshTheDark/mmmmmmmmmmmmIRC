@@ -18,6 +18,10 @@ struct TextScheme {
 // Appends `utf8` at `cursor`, translating IRC formatting codes into character formats.
 void insertFormatted(QTextCursor& cursor, const QByteArray& utf8, const TextScheme& scheme);
 
+// Re-read the user's 16-colour mIRC palette (Options ▸ Display ▸ Colors) from
+// settings; call after the Colors page is saved so new messages use it.
+void refreshColorSettings();
+
 // `utf8` with all IRC formatting codes removed, as a QString (for topic bars, titles).
 QString stripFormattingQt(const QByteArray& utf8);
 

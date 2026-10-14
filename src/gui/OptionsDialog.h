@@ -60,6 +60,11 @@ private:
     QCheckBox* boundCheck(const QString& label, const QString& key, bool def);
     QSpinBox* boundSpin(const QString& key, int lo, int hi, int def, int step = 1);
     QComboBox* boundCombo(const QString& key, const QStringList& items, const QString& def);
+    QWidget* boundColorField(const QString& key, const QString& def = QString());  // hex edit + picker
+    QWidget* boundFileField(const QString& key, const QString& filter);            // path edit + browse
+
+    void exportTheme();  // save theme + display + colour settings to a file
+    void importTheme();  // load them back and apply
 
     QTreeWidgetItem* addCategory(QTreeWidgetItem* parent, const QString& name, QWidget* page);
 
