@@ -35,7 +35,7 @@ $bindip	planned		sockets.html	0
 $bitoff	planned		text_number_identifiers.html	1		
 $biton	planned		text_number_identifiers.html	3		
 $bnick	planned		on_banounban.html	1		
-$bvar	planned		binary_files.html	0		
+$bvar	done		binary_files.html	0	test_msl	
 $bytes	planned		text_number_identifiers.html	2		
 $calc	done		text_number_identifiers.html	1709	test_msl	
 $caller	planned		other_identifiers.html	0		

@@ -109,6 +109,14 @@ public:
     std::string hashDataByIndex(const std::string& table, int n) const;   // $hget(t,N).data
     bool aliasDefined(const std::string& name) const { return m_aliases.count(name) != 0; }
 
+    // Binary variables (&name) for /bset and $bvar.
+    std::vector<unsigned char>& binVar(const std::string& name) { return m_binvars[name]; }
+    const std::vector<unsigned char>* binVarGet(const std::string& name) const {
+        const auto it = m_binvars.find(name);
+        return it == m_binvars.end() ? nullptr : &it->second;
+    }
+    void binUnset(const std::string& name) { m_binvars.erase(name); }
+
     // Regex capture store ($regex fills it, $regml reads it), keyed by name.
     void regexStore(const std::string& name, std::vector<std::string> groups);
     std::string regmlGet(const std::string& name, int n) const;
@@ -148,6 +156,7 @@ private:
     std::map<std::string, HashTable, CiLess> m_hash;
     std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
+    std::map<std::string, std::vector<unsigned char>, CiLess> m_binvars;  // &binary variables
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.

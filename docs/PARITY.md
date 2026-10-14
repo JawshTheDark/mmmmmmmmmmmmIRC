@@ -6,16 +6,16 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
-| Commands | 43 | 235 | 18.3% | 23 |
-| Identifiers | 81 | 406 | 20.0% | 15 |
+| Commands | 45 | 235 | 19.1% | 23 |
+| Identifiers | 82 | 406 | 20.2% | 15 |
 | Events | 10 | 84 | 11.9% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 5 | 390 | 1.3% | 0 |
-| **Total** | **145** | **1129** | **12.8%** | |
+| **Total** | **148** | **1129** | **13.1%** | |
 
 ## Commands
 
-### planned (180)
+### planned (178)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -116,9 +116,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/bindip` | 0 |  | sockets.html |  |  |
 | `/break` | 0 |  | aliases.html |  |  |
 | `/breplace` | 0 |  | binary_files.html |  |  |
-| `/bset` | 0 |  | binary_files.html |  |  |
 | `/btrunc` | 0 |  | binary_files.html |  |  |
-| `/bunset` | 0 |  | binary_files.html |  |  |
 | `/cnick` | 0 |  | nick_colors.html |  |  |
 | `/continue` | 0 |  | aliases.html |  |  |
 | `/copyini` | 0 | 7.84 | versions.txt |  | copy INI topics |
@@ -217,12 +215,14 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `/topic` | 1 |  | basic_irc_commands.html | test_msl |  |
 | `/whois` | 15 |  | basic_irc_commands.html | test_msl |  |
 
-### done (43)
+### done (45)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
 | `/alias` | 0 |  | mirc_commands.html | test_msl |  |
 | `/aline` | 96 |  | custom_windows.html | test_msl |  |
+| `/bset` | 0 |  | binary_files.html | test_msl |  |
+| `/bunset` | 0 |  | binary_files.html | test_msl |  |
 | `/clear` | 64 |  | mirc_commands.html | test_msl |  |
 | `/dec` | 121 |  | variables.html | test_msl |  |
 | `/describe` | 3 |  | mirc_commands.html | test_msl |  |
@@ -295,7 +295,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (325)
+### planned (324)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -410,7 +410,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$avoice` | 0 |  | control.html |  |  |
 | `$bigfloat` | 0 |  | variables.html |  |  |
 | `$bindip` | 0 |  | sockets.html |  |  |
-| `$bvar` | 0 |  | binary_files.html |  |  |
 | `$caller` | 0 |  | other_identifiers.html |  |  |
 | `$cb` | 0 |  | other_identifiers.html |  |  |
 | `$cbrt` | 0 |  | text_number_identifiers.html |  |  |
@@ -625,7 +624,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (81)
+### done (82)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -636,6 +635,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$asc` | 10 |  | text_number_identifiers.html | test_msl |  |
 | `$asctime` | 50 |  | time_date_identifiers.html | test_msl |  |
 | `$base` | 12 |  | text_number_identifiers.html | test_msl |  |
+| `$bvar` | 0 |  | binary_files.html | test_msl |  |
 | `$calc` | 1709 |  | text_number_identifiers.html | test_msl |  |
 | `$ceil` | 0 |  | text_number_identifiers.html | test_msl |  |
 | `$chan` | 1300 |  | remote_identifiers.html | test_msl |  |

@@ -541,6 +541,23 @@ void registerBuiltins(Interpreter& in) {
         }
     });
 
+    // $bvar(&name, N) byte, or N1-N2 range (space-separated), or 1- for all.
+    in.registerIdent("bvar", [](Interpreter& i, S&, const A& a, const std::string& prop) {
+        const auto* v = i.binVarGet(arg(a, 0));
+        if (!v) return std::string();
+        if (prop == "len" || a.size() < 2) return std::to_string(v->size());
+        const std::string spec = a[1];
+        const std::size_t dash = spec.find('-');
+        auto at = [&](std::size_t n) { return (n >= 1 && n <= v->size()) ? std::to_string((*v)[n - 1]) : std::string(); };
+        if (dash == std::string::npos) return at(static_cast<std::size_t>(argInt(a, 1)));
+        std::size_t from = spec.substr(0, dash).empty() ? 1 : std::stoul(spec.substr(0, dash));
+        std::string toStr = spec.substr(dash + 1);
+        std::size_t to = toStr.empty() ? v->size() : std::stoul(toStr);
+        std::string out;
+        for (std::size_t n = from; n <= to && n <= v->size(); ++n) out += (out.empty() ? "" : " ") + at(n);
+        return out;
+    });
+
     // $qt / $noqt quoting.
     in.registerIdent("qt", [](Interpreter&, S&, const A& a, const std::string&) {
         std::string s = arg(a, 0);
@@ -988,6 +1005,44 @@ void registerBuiltins(Interpreter& in) {
         auto toks = splitTokens(i.evaluate(a, s), ' ');
         if (toks.size() >= 3) i.host().fileWrite(toks[0], writeIniValue(i.host().fileRead(toks[0]), toks[1], toks[2], ""));
     });
+    // Binary variables.
+    in.registerCommand("bset", [](Interpreter& i, S& s, const std::string& a) {
+        // /bset [-t] &name N value [value...]   (-t: values are text chars)
+        std::string args = i.evaluate(a, s);
+        bool text = false;
+        if (!args.empty() && args[0] == '-') {
+            text = args.find('t') != std::string::npos;
+            args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        }
+        auto toks = splitTokens(args, ' ');
+        if (toks.size() < 3) return;
+        const std::string name = toks[0];
+        int pos = 0;
+        try { pos = std::stoi(toks[1]); } catch (...) { return; }
+        if (pos < 1) return;
+        auto& v = i.binVar(name);
+        if (text) {
+            std::string joined;
+            for (std::size_t k = 2; k < toks.size(); ++k) joined += (k > 2 ? " " : "") + toks[k];
+            for (std::size_t k = 0; k < joined.size(); ++k) {
+                std::size_t idx = pos - 1 + k;
+                if (idx >= v.size()) v.resize(idx + 1, 0);
+                v[idx] = static_cast<unsigned char>(joined[k]);
+            }
+        } else {
+            for (std::size_t k = 2; k < toks.size(); ++k) {
+                std::size_t idx = pos - 1 + (k - 2);
+                if (idx >= v.size()) v.resize(idx + 1, 0);
+                try { v[idx] = static_cast<unsigned char>(std::stoi(toks[k]) & 0xFF); } catch (...) {}
+            }
+        }
+    });
+    in.registerCommand("bunset", [](Interpreter& i, S& s, const std::string& a) {
+        for (const auto& t : splitTokens(i.evaluate(a, s), ' ')) {
+            if (!t.empty()) i.binUnset(t);
+        }
+    });
+
     // Custom windows.
     in.registerCommand("window", [](Interpreter& i, S& s, const std::string& a) {
         std::string args = i.evaluate(a, s);

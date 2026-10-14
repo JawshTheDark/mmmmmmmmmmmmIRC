@@ -20,9 +20,9 @@ name	status	since	help_page	corpus_uses	test	notes
 /bread	planned		binary_files.html	2		
 /break	planned		aliases.html	0		
 /breplace	planned		binary_files.html	0		
-/bset	planned		binary_files.html	0		
+/bset	done		binary_files.html	0	test_msl	
 /btrunc	planned		binary_files.html	0		
-/bunset	planned		binary_files.html	0		
+/bunset	done		binary_files.html	0	test_msl	
 /bwrite	planned		binary_files.html	3		
 /channel	planned		mirc_commands.html	23		
 /clear	done		mirc_commands.html	64	test_msl	

@@ -374,6 +374,19 @@ int main() {
     CHECK(!eval(in, "$date").empty());
     CHECK(eval(in, "$asctime(0)").find(":") != std::string::npos);  // formatted (year is tz-dependent)
 
+    // Binary variables.
+    {
+        Scope s;
+        in.execute("bset -t &b 1 Hello", s);
+        CHECK_EQ(eval(in, "$bvar(&b,1)"), std::string("72"));   // 'H'
+        CHECK_EQ(eval(in, "$bvar(&b).len"), std::string("5"));
+        CHECK_EQ(eval(in, "$bvar(&b,1-5)"), std::string("72 101 108 108 111"));
+        in.execute("bset &b 1 74", s);  // overwrite 'H' with 'J'
+        CHECK_EQ(eval(in, "$bvar(&b,1)"), std::string("74"));
+        in.execute("bunset &b", s);
+        CHECK_EQ(eval(in, "$bvar(&b).len"), std::string("0"));
+    }
+
     // /signal fires on SIGNAL:<name> with params and $signal.
     {
         host.echoed.clear();
