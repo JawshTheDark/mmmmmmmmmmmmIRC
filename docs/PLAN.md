@@ -1,4 +1,4 @@
-# Plan: 100% mIRC parity, tailored to Lurker
+# Plan: a cross-platform mIRC replica with Lurker interoperability
 
 This is the execution plan for `lurker-desktop`. It is written so that an agent or a person can
 pick up any work package (WP) cold. Read [DESIGN.md](DESIGN.md) for the architecture and the
@@ -6,6 +6,31 @@ clean-room rules first; this document says *what* to build, *in which order*, an
 it is done*.
 
 The live scoreboard is [PARITY.md](PARITY.md), generated from `tools/parity/data/*.tsv`.
+
+## 0. Vision (from the owner)
+
+An **exact replica of mIRC**, running on **both Linux and Windows**, with modern **interoperability**.
+The owner's requirements, stated and non-negotiable:
+
+1. **Exact mIRC replica** — look, feel and behaviour match mIRC 7.85 as closely as the host allows:
+   MDI windows, treebar, switchbar, nicklists, menus, dialogs, the options tree, the Scripts Editor.
+2. **Full MSL (mIRC Scripting Language)** — scripts, aliases, variables, events/remotes, raw, ctcp,
+   popups/menus, timers, hash tables, binary variables, file and INI I/O, sockets, custom and picture
+   windows, and **`/dialog`** dialogs. Existing mIRC scripts load and run unchanged. This is Phase 2
+   and is the heart of the project.
+3. **Total theming** — users restyle everything: window backgrounds (image or colour, global and
+   per-window/per-channel), fonts and text size (global and per-window), every UI/message colour,
+   nick colouring, line spacing, and script-rendered graphics (picture windows). Themes import and
+   export. Light/dark. This runs through Phase 3.6 and the picture-window work in Phase 2.9.
+4. **Cross-platform: Linux and Windows** (Qt 6 builds both). The parity matrix's `not-possible`
+   rows are **Linux-only** caveats — on Windows, `$dll`/`/dll`, COM/ActiveX (`$com`), DDE and MS
+   Agent are implementable natively, so those rows are `done` on Windows and `not-possible`/
+   `substitute` on Linux. The matrix carries a per-platform status where they differ. macOS is a
+   later nice-to-have (Qt supports it) but not a stated requirement.
+5. **Interoperability** — speaks to Lurker (bouncer *and* WebSocket/REST), to soju/ZNC bouncers, and
+   directly to ordinary IRC networks; reads and writes mIRC's own on-disk files so an mIRC install
+   moves over as-is, and exports/imports so users move between mIRC and this freely.
+6. **Clean room** — see §2 and DESIGN.md. Nothing derived from mIRC's binary.
 
 ## 1. Definition of done
 
@@ -157,7 +182,7 @@ dialog, menu and key where they expect it.
 | 3.3 Windows and menus | File/View/Favorites/Tools/Commands/Window/Help menus; window system menu (logging, timestamps, font, colours, beep, hide, …); Channel Central; Channels List window; Favorites/channels folder; Notify window; URL catcher window; Address Book (nicks, notify, control lists, nick colours); DCC transfer windows and status; Finger?; Link/Hotlink; Full screen; Arrange/cascade/tile; Desktop windows |
 | 3.4 Keys, mouse, drag/drop, copy/paste | every `key_combinations` row; editbox behaviour (multi-line, Ctrl+K colour dialog, Ctrl+B/U/I/R/O codes, history, auto-complete, nick completion with suffix, Ctrl+Enter); nicklist/switchbar mouse options; drag/drop files to DCC send; copy/paste options |
 | 3.5 Identd, proxy, SSL | identd server; SOCKS4/5 and HTTP proxy; TLS options, certificate warnings/accept dialog, CertFP management, SASL methods incl. SCRAM-SHA-256 and ECDSA-NIST256P-CHALLENGE |
-| 3.6 Theme and look | mIRC colour scheme model (all colour slots), fonts per window, background images (`/background`), line spacing, nick colours; a default theme that reads as mIRC-like without copying its assets |
+| 3.6 Theming (total) | A full theme engine — the owner requires users restyle everything. mIRC colour-scheme model (all 16 palette slots + every UI element colour); fonts and **text size** global and per-window/per-channel; **window backgrounds** as solid colour or image, global and per-window/per-channel (`/background` and the options); line spacing; nick colouring; message-density and bubble/compact layouts; script-rendered graphics (picture windows, §2.9). Themes are a saved document that **imports and exports**; light/dark/OLED presets; live preview. No mIRC assets are copied — the default theme is mIRC-like, drawn fresh. |
 
 ### Phase 4 — Lurker tailoring
 
@@ -181,17 +206,22 @@ Exit gate: everything Lurker offers that mIRC never had is reachable without lea
 | 5.2 Differential sweep | run the oracle over the whole identifier/command surface with generated cases; diff; fix | diff is empty or each difference is documented as intentional |
 | 5.3 Corpus runs | A and B: run; C: load + exercise dialogs/windows; record transcripts as regression fixtures | green in CI |
 | 5.4 Performance | 2k-user channels, 100k-line scrollback, 500 timers, 50 sockets, 10 picture windows at 30 fps | budgets met on the owner's machine |
-| 5.5 Packaging and CI | GitHub Actions (build, tests, parity `--check`), AppImage + Flatpak + .deb, update check (`substitute` for mIRC's installer flow) | installable artefacts from CI |
+| 5.5 Packaging and CI | GitHub Actions building **both platforms**: Linux (AppImage + Flatpak + .deb) and Windows (installer + portable .zip); run tests and parity `--check` on each; update check | installable artefacts for Linux and Windows from CI |
 | 5.6 Docs | user guide (differences from mIRC, Lurker setup), script-author guide (what differs on Linux), CLEANROOM.md complete | published with the release |
 
-### Phase 6 — Stretch (closing `substitute` gaps)
+### Phase 6 — Closing the Linux gaps (native Linux equivalents)
+
+The Linux analogues for mIRC's Windows-only surface. These make new Linux scripts/plugins first-class;
+existing Windows binaries (`.dll`, `.acs`) still need the Wine bridge or a rebuild.
 
 | WP | Scope |
 |---|---|
-| 6.1 Wine DLL bridge | a tiny Win32 host under Wine that loads a mIRC-style DLL and calls `int fn(HWND, HWND, char* data, char* parms, BOOL show, BOOL nopause)` over a pipe; works for computation DLLs, **not** for GUI DLLs that reach into mIRC's windows (mdx.dll, dialog.mdx — corpus C's dependencies stay `not-possible`) |
-| 6.2 MIDI | optional FluidSynth backend so `$inmidi`/MIDI `/splay` become `done` |
-| 6.3 Speech | speech-dispatcher for `/speak` |
-| 6.4 Native plugin ABI | a documented Linux `.so` plugin interface mirroring the DLL calling convention, so DLL authors can port |
+| 6.1 Native `.so` plugin ABI (`$dll`/`/dll` on Linux) | `dlopen`/`dlsym` a shared object and call a plugin ABI mirroring mIRC's `int fn(mWnd, aWnd, char* data, char* parms, int show, int nopause)` (HWNDs become opaque handles; `data` is the in/out text buffer). Documented header so authors port a DLL by recompiling. |
+| 6.2 Wine DLL bridge | run an **existing Windows** mIRC DLL in a tiny Win32 host under Wine, marshalling the call over a pipe. Works for compute DLLs; GUI DLLs that reach into mIRC's own HWNDs (mdx.dll, dialog.mdx) can't be bridged. |
+| 6.3 D-Bus bridge (`$com`/`$dde` on Linux) | expose the client as a session **D-Bus** service (send it commands, read identifiers — the DDE "talk to mIRC" use case) and let scripts *call* D-Bus services and MPRIS players (the COM "automate another app / OS service" use case). Not a drop-in for automating Word-style COM objects; it maps the category. |
+| 6.4 TTS + avatar (`agent` on Linux) | MS Agent is discontinued even on Windows and its `.acs` characters can't be reused. Provide the scriptable surface (the `/g*` commands and `on AGENT`) backed by **speech-dispatcher** TTS and an optional simple sprite/avatar window; otherwise a clear error. |
+| 6.5 MIDI | optional FluidSynth backend so `$inmidi`/MIDI `/splay` become `done` on Linux |
+| 6.6 Speech recognition | best-effort via a Linux STT engine (Vosk) for `on VCMD`, or error |
 
 ## 5. Testing strategy
 
@@ -210,20 +240,29 @@ Exit gate: everything Lurker offers that mIRC never had is reachable without lea
    skipped when absent); run-level checks for A and B in Phase 5.
 6. **GUI checks**: `--screenshot` + `QT_QPA_PLATFORM=offscreen` for layout regressions.
 
-## 6. Not possible on Linux (and what happens instead)
+## 6. Platform differences (cross-platform: Linux + Windows)
 
-| Area | Why | What the client does |
+The goal is a build on **both Linux and Windows**. Qt 6 covers the UI, the scripting engine and the
+backends on both. A handful of MSL features wrap Windows-only OS technology: those are **`done`
+natively on Windows** and `not-possible`/`substitute` on Linux. The parity matrix records a
+per-platform status (`status_win` / `status_linux`) wherever they differ, so "100%" is evaluated per
+platform and nothing is hidden.
+
+| Area | Windows | Linux |
 |---|---|---|
-| `$dll` / `/dll` / `/drawdll` / `$dllcall` | Win32 DLLs | clear error naming the DLL; Phase 6 Wine bridge for non-GUI DLLs; native `.so` plugin ABI |
-| COM / ActiveX (`$com*`, `/com*`) | Windows COM | error; common uses (WMI, shell) have no equivalent |
-| DDE (`/dde*`, `$dde*`) | Windows DDE | error |
-| Microsoft Agent (`/g*`, `$agent*`, `on AGENT`) | discontinued Windows tech | error; options page hidden |
-| Speech recognition (`/vc*`, `$vcmd*`, `on VCMD`) | Windows SAPI | error |
-| `/speak`, `$speak` | SAPI | **substitute**: speech-dispatcher |
-| `/run` of Windows programs | | **substitute**: `xdg-open`/exec; Wine when configured |
-| `$os`, `$sysdir`, `$shortfn`, `$longfn`, registry | Windows semantics | **substitute** values documented in the script-author guide |
-| MIDI playback | no system synth | **substitute** until 6.2 |
-| Pixel-identical Win32 controls | | mIRC-like Qt look; dialog units mapped the Windows way so script dialogs keep their layout |
+| `$dll` / `/dll` / `/drawdll` / `$dllcall` | **done** — load the Win32 DLL and call its `int fn(HWND,HWND,char* data,char* parms,BOOL,BOOL)` directly | error naming the DLL; Phase 6 Wine bridge for compute-only DLLs; native `.so` plugin ABI |
+| COM / ActiveX (`$com*`, `/com*`) | **done** — native COM | error; no general equivalent |
+| DDE (`/dde*`, `$dde*`) | **done** — native DDE | error (or a local-IPC shim for same-app DDE) |
+| Microsoft Agent (`/g*`, `$agent*`, `on AGENT`) | **substitute** — MS Agent is gone even on Windows; offer a modern TTS avatar or error | error; options page hidden |
+| Speech (`/speak`, `$speak`) | **done** — SAPI | **substitute**: speech-dispatcher |
+| Speech recognition (`/vc*`, `on VCMD`) | **done** — SAPI | error |
+| `/run` | **done** — ShellExecute | **substitute**: `xdg-open`/exec; Wine when configured |
+| `$os`, `$sysdir`, `$shortfn`, `$longfn`, registry | **done** — real values / registry | **substitute** values (XDG dirs; INI-backed registry store), documented |
+| MIDI playback | **done** — system synth | **substitute** until 6.2 (FluidSynth) |
+| Native control pixels | Win32-native where it helps | mIRC-like Qt look; dialog units mapped the Windows way so script dialogs keep their layout |
+
+Phase 6 (Linux) narrows the Linux gaps; on Windows most of this column is simply implemented. CI
+builds and tests both platforms (§5.5).
 
 ## 7. Risks
 
