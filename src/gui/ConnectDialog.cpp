@@ -16,6 +16,7 @@
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSettings>
 
 #include "backend/BouncerChatBackend.h"
 #include "backend/LurkerChatBackend.h"
@@ -88,6 +89,10 @@ ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
     connect(m_mode, &QComboBox::currentIndexChanged, this, [updateRows](int) { updateRows(); });
 
     loadDevProfile();
+    // Saved identity (Options) fills anything the dev profile didn't.
+    QSettings id;
+    if (m_nick->text().isEmpty()) m_nick->setText(id.value(QStringLiteral("id/nick")).toString());
+    if (m_username->text().isEmpty()) m_username->setText(id.value(QStringLiteral("id/user")).toString());
     updateRows();
 }
 

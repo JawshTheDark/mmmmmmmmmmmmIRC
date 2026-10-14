@@ -539,13 +539,15 @@ void MainWindow::hydrateBuffer(Buffer* buffer) {
 }
 
 QString MainWindow::timestampFor(const std::string& isoTime) const {
+    QSettings s;
+    if (!s.value(QStringLiteral("display/timestamps"), true).toBool()) return {};
     QDateTime dt;
     if (!isoTime.empty()) {
         dt = QDateTime::fromString(QString::fromStdString(isoTime), Qt::ISODateWithMs);
         if (dt.isValid()) dt = dt.toLocalTime();
     }
     if (!dt.isValid()) dt = QDateTime::currentDateTime();
-    return dt.toString(QStringLiteral("HH:mm"));
+    return dt.toString(s.value(QStringLiteral("display/timeFormat"), QStringLiteral("HH:mm")).toString());
 }
 
 void MainWindow::onStatusText(const QString& text) {

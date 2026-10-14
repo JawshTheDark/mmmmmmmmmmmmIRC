@@ -7,6 +7,7 @@
 #include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QSettings>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -39,7 +40,8 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     m_messages = new QTextBrowser(this);
     m_messages->setOpenExternalLinks(true);
     m_messages->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    m_messages->document()->setMaximumBlockCount(5000);  // scrollback cap
+    m_messages->document()->setMaximumBlockCount(
+        QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());  // scrollback cap
 
     if (kind == Kind::Channel) {
         auto* split = new QSplitter(Qt::Horizontal, this);
@@ -182,7 +184,13 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
         cursor.insertText(QStringLiteral("<%1> ").arg(nick), nickFmt);
     }
 
-    insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
+    if (QSettings().value(QStringLiteral("display/stripColors"), false).toBool()) {
+        QTextCharFormat plain;
+        plain.setForeground(pal.color(QPalette::Text));
+        cursor.insertText(stripFormattingQt(utf8Text), plain);
+    } else {
+        insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
+    }
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
