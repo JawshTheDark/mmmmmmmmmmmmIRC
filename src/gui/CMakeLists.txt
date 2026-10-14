@@ -13,6 +13,8 @@ qt_add_executable(lurker-desktop
     GuiScriptHost.h
     ScriptDialog.cpp
     ScriptDialog.h
+    Theme.cpp
+    Theme.h
 )
 target_link_libraries(lurker-desktop PRIVATE
     lurker_core

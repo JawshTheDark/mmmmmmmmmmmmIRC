@@ -11,8 +11,11 @@
 #include <QJsonObject>
 #include <QTimer>
 
+#include <QSettings>
+
 #include "backend/LurkerChatBackend.h"
 #include "gui/MainWindow.h"
+#include "gui/Theme.h"
 
 namespace {
 // Locate and load .secrets/dev-profile.json for a local Lurker WS connection.
@@ -50,6 +53,13 @@ int main(int argc, char* argv[]) {
     QApplication::setOrganizationName(QStringLiteral("lurker-desktop"));
 
     const QStringList args = QCoreApplication::arguments();
+    // Apply the saved theme (or --theme=<id> for dev) before building the window.
+    QString themeId = QSettings().value(QStringLiteral("theme"), QStringLiteral("default")).toString();
+    for (const QString& a : args) {
+        if (a.startsWith(QStringLiteral("--theme="))) themeId = a.section(QLatin1Char('='), 1);
+    }
+    lurker::gui::applyTheme(app, themeId);
+
     lurker::gui::MainWindow window;
     window.show();
 

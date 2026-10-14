@@ -15,6 +15,7 @@
 #include <QMdiArea>
 #include <QMdiSubWindow>
 #include <QMenuBar>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QToolBar>
@@ -25,6 +26,7 @@
 #include "core/CommandParser.h"
 #include "gui/ConnectDialog.h"
 #include "gui/ScriptDialog.h"
+#include "gui/Theme.h"
 
 namespace lurker::gui {
 
@@ -92,6 +94,23 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     windowMenu->addAction(tr("&Cascade"), m_mdi, &QMdiArea::cascadeSubWindows);
     windowMenu->addAction(tr("&Tile"), m_mdi, &QMdiArea::tileSubWindows);
     windowMenu->addAction(treeDock->toggleViewAction());
+
+    auto* viewMenu = menuBar()->addMenu(tr("&View"));
+    auto* themeMenu = viewMenu->addMenu(tr("&Theme"));
+    auto* themeGroup = new QActionGroup(this);
+    QSettings settings;
+    const QString current = settings.value(QStringLiteral("theme"), QStringLiteral("default")).toString();
+    for (const Theme& t : availableThemes()) {
+        QAction* a = themeMenu->addAction(t.name);
+        a->setCheckable(true);
+        a->setChecked(t.id == current);
+        themeGroup->addAction(a);
+        const QString id = t.id;
+        connect(a, &QAction::triggered, this, [id] {
+            applyTheme(*qApp, id);
+            QSettings().setValue(QStringLiteral("theme"), id);
+        });
+    }
 
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
         if (m_closing) return;
