@@ -34,7 +34,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.1'
-          modules: 'qtwebsockets'
+          modules: 'qtwebsockets qtimageformats'
           cache: true
 
       - name: Build (GUI only)
@@ -87,7 +87,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.1'
-          modules: 'qtwebsockets'
+          modules: 'qtwebsockets qtimageformats'
           cache: true
 
       - name: Build (GUI only)
