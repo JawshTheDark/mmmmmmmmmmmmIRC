@@ -2,8 +2,19 @@
 
 Every area of this client is specified from public documentation or from black-box observation
 of mIRC. This file records the sources used per area. If a source is not listed here, it was not
-used. Disassembly or decompilation of mIRC is never a source; the earlier REA/Ghidra exploration
-of `mirc.exe` recorded in this project's chat history is explicitly excluded.
+used. Decompiled mIRC **code** — its functions, logic, data structures or control flow — is never
+a source for any implementation here, and no mIRC strings, dialog layouts, icons, sounds or other
+assets are reused.
+
+Reverse-engineering note (2026-10-15, owner-directed): RE tooling (REA) was run once on
+`mirc.exe` 7.85 purely to read its **static structural inventory** — the PE version field
+(FileVersion 7.85.0.0, mIRC Co. Ltd.) and resource-type *counts* (125 RT_DIALOG, 2 RT_MENU, ~191
+RT_STRING tables, 316 icons / 78 groups, 3 WAVE). These are facts, not expression. The resource
+*payloads* (dialog layouts, menu text, string tables) were opaque to the inventory and were not
+read; no procedure was decompiled into any implementation. The finding used downstream is only
+the scale of mIRC's dialog surface, which informs *which* parity dialogs to build — built from the
+public help file, not from mIRC's resources. The earlier REA/Ghidra exploration recorded in chat
+history remains excluded as an implementation source.
 
 | Area | Sources |
 |---|---|
