@@ -8,10 +8,12 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFontMetrics>
+#include <QColor>
 #include <QFrame>
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
+#include <QPalette>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
@@ -139,10 +141,20 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             if (!cap.isEmpty()) {
                 auto* title = new QLabel(cap, this);
                 title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-                title->setAutoFillBackground(true);  // opaque bg breaks the frame line
+                // Paint an opaque background matching the dialog so the title
+                // *breaks* the frame's top line instead of being struck through
+                // by it. setAutoFillBackground() alone is ignored once a style
+                // sheet is active on the dialog (for indicator sizing), so set
+                // the colour explicitly from the palette — works on any theme.
+                const QColor bg = palette().color(QPalette::Window);
+                const QColor fg = palette().color(QPalette::WindowText);
+                title->setStyleSheet(
+                    QStringLiteral("background-color:%1; color:%2;").arg(bg.name(), fg.name()));
                 const QSize ts = title->sizeHint();
-                title->setGeometry(px(c.x, sx) + px(5, sx), px(c.y, sy) - ts.height() / 2, ts.width() + 4,
-                                   ts.height());
+                // Sit the caption above the top edge (line near its baseline), so
+                // the box frames its contents rather than cutting across them.
+                title->setGeometry(px(c.x, sx) + px(5, sx), px(c.y, sy) - (ts.height() * 2 / 3),
+                                   ts.width() + px(3, sx), ts.height());
                 title->raise();
             }
         } else if (c.type == "icon" || c.type == "image") {
