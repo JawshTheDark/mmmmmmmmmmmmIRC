@@ -414,6 +414,11 @@ void ChatView::setTopic(const QByteArray& utf8Topic) {
     m_topicBar->setToolTip(topic);
 }
 
+QString ChatView::currentTopic() const {
+    // The topic bar keeps the raw topic as its tooltip (the label text is stripped).
+    return m_topicBar ? m_topicBar->toolTip() : QString();
+}
+
 void ChatView::setMembers(const QStringList& sigils, const QStringList& nicks) {
     if (!m_nicklist) return;
     m_nicklist->clear();

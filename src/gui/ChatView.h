@@ -47,6 +47,7 @@ public:
     int lineCount() const;          // $line(window,0)
     QString lineAt(int oneBased) const;  // $line(window,N)
     void setTopic(const QByteArray& utf8Topic);
+    QString currentTopic() const;  // the raw topic text (for Channel Central)
     // Members as display strings already sorted by rank then name; `sigils`
     // holds the leading prefix glyph ("@", "+", "") parallel to `nicks`.
     void setMembers(const QStringList& sigils, const QStringList& nicks);

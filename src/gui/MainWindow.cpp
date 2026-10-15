@@ -53,6 +53,7 @@
 #include <QVBoxLayout>
 
 #include "core/CommandParser.h"
+#include "gui/ChannelCentralDialog.h"
 #include "gui/ChannelListWindow.h"
 #include "gui/DccTransfersWindow.h"
 #include "gui/PreviewService.h"
@@ -164,6 +165,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             menu.addAction(tr("Activate"), this, [this, key = target->key] {
                 if (Buffer* b = findBuffer(key)) activateBuffer(b);
             });
+            menu.addAction(tr("Channel Central..."), this, [this, net, chan] { showChannelCentral(net, chan); });
             menu.addAction(tr("Part channel"), this, [this, net, chan] {
                 if (m_backend && m_backend->isReady()) m_backend->partChannel(net, chan, QString());
             });
@@ -632,6 +634,46 @@ lurker::gui::ChannelListWindow* MainWindow::ensureChannelList(int net) {
         m_mdi->setActiveSubWindow(sub);
     }
     return m_channelList;
+}
+
+void MainWindow::channelCentralDemo() {
+    showChannelCentral(1, QStringLiteral("#test"));
+    if (ChannelCentralDialog* d = m_channelCentrals.value(keyFor(1, QStringLiteral("#test")))) {
+        d->setTopicText(QStringLiteral("Welcome to #test — read the rules"));
+        d->setCurrentModes(QStringLiteral("+ntm"), QString(), 0);
+        d->setBanList({QStringLiteral("*!*@spammer.example"), QStringLiteral("baduser!*@*"),
+                       QStringLiteral("*!*@*.blocked.net")});
+    }
+}
+
+void MainWindow::showChannelCentral(int net, const QString& channel) {
+    const QString key = keyFor(net, channel);
+    if (ChannelCentralDialog* d = m_channelCentrals.value(key)) {
+        d->raise();
+        d->activateWindow();
+        return;
+    }
+    auto* d = new ChannelCentralDialog(net, channel, this);
+    d->setAttribute(Qt::WA_DeleteOnClose);
+    // Seed the topic from what we already hold for this buffer.
+    if (Buffer* b = findBuffer(key)) d->setTopicText(b->view ? b->view->currentTopic() : QString());
+    connect(d, &ChannelCentralDialog::topicChangeRequested, this, [this](int n, const QString& ch, const QString& t) {
+        if (m_backend && m_backend->isReady()) m_backend->setTopic(n, ch, t);
+    });
+    connect(d, &ChannelCentralDialog::modeChangeRequested, this, [this](int n, const QString& ch, const QString& spec) {
+        if (m_backend && m_backend->isReady()) m_backend->sendRaw(n, QStringLiteral("MODE %1 %2").arg(ch, spec));
+    });
+    connect(d, &ChannelCentralDialog::stateRefreshRequested, this, [this](int n, const QString& ch) {
+        if (m_backend && m_backend->isReady()) {
+            m_backend->sendRaw(n, QStringLiteral("MODE %1").arg(ch));       // current modes → 324
+            m_backend->sendRaw(n, QStringLiteral("MODE %1 +b").arg(ch));    // ban list → 367/368
+        }
+    });
+    connect(d, &QObject::destroyed, this, [this, key](QObject*) {
+        if (!m_closing) m_channelCentrals.remove(key);
+    });
+    m_channelCentrals.insert(key, d);
+    d->show();
 }
 
 UrlCatcherWindow* MainWindow::ensureUrlCatcher(bool raise) {
@@ -2026,6 +2068,39 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (!chan.isEmpty()) ensureChannelList(net)->listAdd(chan, users, topic);
         }
         return;
+    }
+
+    // Channel Central: current modes (RPL_CHANNELMODEIS 324) and the ban list
+    // (RPL_BANLIST 367 / end 368) feed the open dialog instead of the status window.
+    if (event.type == IrcEventType::ServerText &&
+        (event.numeric == 324 || event.numeric == 367 || event.numeric == 368)) {
+        // Parameters, from the raw line or (WS backend) the rendered text.
+        QStringList parts;
+        if (!event.raw.param(1).empty()) {
+            for (int i = 1; i <= 24; ++i) {
+                const std::string p = event.raw.param(i);
+                if (p.empty() && i > 1) break;
+                parts << QString::fromStdString(p);
+            }
+        } else {
+            parts = QString::fromUtf8(text).split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        }
+        const QString chan = parts.isEmpty() ? QString() : parts[0];
+        if (ChannelCentralDialog* d = m_channelCentrals.value(keyFor(net, chan))) {
+            if (event.numeric == 324 && parts.size() >= 2) {
+                const QString modes = parts[1];
+                QString key;
+                int limit = 0, pi = 2;
+                for (const QChar& c : modes) {
+                    if (c == QLatin1Char('k') && pi < parts.size()) key = parts[pi++];
+                    else if (c == QLatin1Char('l') && pi < parts.size()) limit = parts[pi++].toInt();
+                }
+                d->setCurrentModes(modes, key, limit);
+            } else if (event.numeric == 367 && parts.size() >= 2) {
+                d->addBanMask(parts[1]);
+            }
+            return;  // consumed by the dialog; don't echo to status
+        }
     }
 
     switch (event.type) {

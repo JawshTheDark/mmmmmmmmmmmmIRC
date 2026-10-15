@@ -70,6 +70,7 @@ public:
     void previewDemo();        // dev/screenshot: seed synthetic link/media previews
     void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
     void urlDemo();            // dev/screenshot: seed synthetic caught URLs
+    void channelCentralDemo(); // dev/screenshot: open Channel Central with synthetic state
 
 private:
     struct Buffer {
@@ -180,6 +181,8 @@ private:
     class DccTransfersWindow* m_dccWindow = nullptr;   // DCC Transfers window
     QTreeWidgetItem* m_dccItem = nullptr;              // its treebar entry
     class DccTransfersWindow* ensureDccWindow(bool raise = true);
+    QHash<QString, class ChannelCentralDialog*> m_channelCentrals;  // open Channel Central dialogs by buffer key
+    void showChannelCentral(int net, const QString& channel);
     class UrlCatcherWindow* m_urlCatcher = nullptr;    // URL Catcher window
     QTreeWidgetItem* m_urlCatcherItem = nullptr;       // its treebar entry
     QList<CaughtUrl> m_caughtUrls;                     // kept link history (newest first)
