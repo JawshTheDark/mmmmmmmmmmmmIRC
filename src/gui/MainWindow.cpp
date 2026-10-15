@@ -53,6 +53,7 @@
 
 #include "core/CommandParser.h"
 #include "gui/ChannelListWindow.h"
+#include "gui/DccTransfersWindow.h"
 #include "gui/PreviewService.h"
 #include "gui/ConnectDialog.h"
 #include "gui/FormattedText.h"
@@ -112,6 +113,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto treeOpen = [this](QTreeWidgetItem* item, int) {
         if (item && item == m_channelListItem && m_channelList) {
             if (auto* sub = qobject_cast<QMdiSubWindow*>(m_channelList->parentWidget())) {
+                if (sub->isMinimized()) sub->showNormal();
+                sub->show();
+                m_mdi->setActiveSubWindow(sub);
+            }
+            return;
+        }
+        if (item && item == m_dccItem && m_dccWindow) {
+            if (auto* sub = qobject_cast<QMdiSubWindow*>(m_dccWindow->parentWidget())) {
                 if (sub->isMinimized()) sub->showNormal();
                 sub->show();
                 m_mdi->setActiveSubWindow(sub);
@@ -545,20 +554,64 @@ void MainWindow::startDccChat() {
 }
 
 void MainWindow::showDccInfo() {
-    QSettings s;
-    const QString dir =
-        s.value(QStringLiteral("dcc/downloadDir"),
-                QStandardPaths::writableLocation(QStandardPaths::DownloadLocation))
-            .toString();
-    QMessageBox::information(
-        this, tr("DCC"),
-        tr("<b>DCC transfers are proxied through Lurker.</b><br><br>"
-           "Rather than opening direct peer-to-peer connections, sends and chats are relayed "
-           "through your Lurker bouncer so they work behind NAT and from any device.<br><br>"
-           "Download folder: <code>%1</code><br>"
-           "Configure this under <b>Options ▸ DCC</b>. The server-side bridge is wired to "
-           "Lurker's file host and <code>/api/dcc</code>.")
-            .arg(dir.toHtmlEscaped()));
+    // On the raw bouncer there's no Lurker DCC API — explain the proxy model.
+    if (m_backend && !m_backend->supportsDccTransfers()) {
+        QSettings s;
+        const QString dir = s.value(QStringLiteral("dcc/downloadDir"),
+                                    QStandardPaths::writableLocation(QStandardPaths::DownloadLocation))
+                                .toString();
+        QMessageBox::information(
+            this, tr("DCC"),
+            tr("<b>DCC transfers are proxied through Lurker.</b><br><br>"
+               "Connect via the Lurker backend to use the Transfers window: incoming offers are "
+               "accepted and pulled from Lurker, so transfers work behind NAT and from any device.<br><br>"
+               "Download folder: <code>%1</code> (Options ▸ DCC).")
+                .arg(dir.toHtmlEscaped()));
+        return;
+    }
+    ensureDccWindow();                                 // open the Transfers window
+    if (m_backend) m_backend->requestDccTransfers();   // refresh the list
+}
+
+DccTransfersWindow* MainWindow::ensureDccWindow() {
+    if (!m_dccWindow) {
+        m_dccWindow = new DccTransfersWindow;
+        auto* sub = m_mdi->addSubWindow(m_dccWindow);
+        sub->setWindowTitle(tr("DCC Transfers"));
+        sub->setAttribute(Qt::WA_DeleteOnClose);
+        sub->resize(720, 420);
+        sub->move(90, 70);
+        connect(m_dccWindow, &DccTransfersWindow::acceptRequested, this,
+                [this](int id) { if (m_backend) m_backend->acceptDcc(id); });
+        connect(m_dccWindow, &DccTransfersWindow::rejectRequested, this,
+                [this](int id) { if (m_backend) m_backend->rejectDcc(id); });
+        connect(m_dccWindow, &DccTransfersWindow::cancelRequested, this,
+                [this](int id) { if (m_backend) m_backend->cancelDcc(id); });
+        connect(m_dccWindow, &DccTransfersWindow::deleteRequested, this,
+                [this](int id) { if (m_backend) m_backend->deleteDccFile(id); });
+        connect(m_dccWindow, &DccTransfersWindow::saveRequested, this, [this](int id, const QString& name) {
+            QSettings s;
+            const QString dir = s.value(QStringLiteral("dcc/downloadDir"),
+                                        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation))
+                                    .toString();
+            const QString suggested = QDir(dir).filePath(name.isEmpty() ? tr("download") : name);
+            const QString path = QFileDialog::getSaveFileName(this, tr("Save received file"), suggested);
+            if (!path.isEmpty() && m_backend) m_backend->saveDccFile(id, path);
+        });
+        connect(m_dccWindow, &QObject::destroyed, this, [this](QObject*) {
+            if (m_closing) return;
+            m_dccWindow = nullptr;
+            delete m_dccItem;
+            m_dccItem = nullptr;
+        });
+        m_dccItem = new QTreeWidgetItem(m_treebar, {tr("DCC Transfers")});
+    }
+    if (auto* sub = qobject_cast<QMdiSubWindow*>(m_dccWindow->parentWidget())) {
+        if (sub->isMinimized()) sub->showNormal();
+        sub->show();
+        m_mdi->setActiveSubWindow(sub);
+    }
+    return m_dccWindow;
 }
 
 void MainWindow::openLogsFolder() {
@@ -1239,6 +1292,34 @@ void MainWindow::previewDemo() {
     openConversation(net, QStringLiteral("#previews"));
 }
 
+void MainWindow::dccDemo() {
+    DccTransfersWindow* w = ensureDccWindow();
+    auto mk = [](int id, const QString& dir, const QString& peer, const QString& file, qlonglong size,
+                 qlonglong recv, const QString& state) {
+        lurker::backend::DccTransfer t;
+        t.id = id;
+        t.direction = dir;
+        t.peer = peer;
+        t.filename = file;
+        t.size = size;
+        t.received = recv;
+        t.state = state;
+        return t;
+    };
+    QList<lurker::backend::DccTransfer> list;
+    list << mk(3, QStringLiteral("incoming"), QStringLiteral("friend"), QStringLiteral("mixtape.mp3"), 8388608, 0,
+               QStringLiteral("pending_approval"));
+    list << mk(2, QStringLiteral("incoming"), QStringLiteral("filebot"), QStringLiteral("ubuntu-24.04.iso"),
+               5100273664LL, 2448000000LL, QStringLiteral("receiving"));
+    list << mk(1, QStringLiteral("incoming"), QStringLiteral("slakker"), QStringLiteral("holiday_photos.zip"),
+               52428800, 52428800, QStringLiteral("completed"));
+    list << mk(4, QStringLiteral("outgoing"), QStringLiteral("alice"), QStringLiteral("screenshot.png"), 1048576,
+               1048576, QStringLiteral("completed"));
+    list << mk(5, QStringLiteral("incoming"), QStringLiteral("spammer"), QStringLiteral("totally_legit.exe"), 102400,
+               0, QStringLiteral("rejected"));
+    w->setTransfers(list);
+}
+
 void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
     if (!m_msl) return;
     QString name;
@@ -1437,6 +1518,15 @@ void MainWindow::useBackend(ChatBackend* backend) {
         configurePreviews();  // the feature flag + token are known once ready
     });
     connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
+    connect(backend, &ChatBackend::dccTransferList, this, [this](const QList<lurker::backend::DccTransfer>& list) {
+        if (!list.isEmpty()) ensureDccWindow()->setTransfers(list);  // only pop the window when there's something
+    });
+    connect(backend, &ChatBackend::dccTransferUpdated, this, [this](const lurker::backend::DccTransfer& t) {
+        ensureDccWindow()->upsert(t);  // a live offer/progress update surfaces the window
+    });
+    connect(backend, &ChatBackend::dccFileSaved, this, [this](int, const QString& path) {
+        statusBar()->showMessage(tr("Saved %1").arg(path), 8000);
+    });
     configurePreviews();
 }
 

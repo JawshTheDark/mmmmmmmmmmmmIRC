@@ -29,12 +29,36 @@ IrcEventType typeFromString(const QString& t) {
 }
 }  // namespace
 
+DccTransfer LurkerChatBackend::parseDccTransfer(const QJsonObject& row) {
+    DccTransfer t;
+    t.id = row.value("id").toInt();
+    t.networkId = row.value("network_id").toInt(-1);
+    t.peer = row.value("peer_nick").toString();
+    t.direction = row.value("direction").toString();
+    t.filename = row.value("filename").toString();
+    t.size = static_cast<qlonglong>(row.value("advertised_size").toDouble());
+    t.received = static_cast<qlonglong>(row.value("received_bytes").toDouble());
+    t.state = row.value("state").toString();
+    t.error = row.value("error").toString();
+    t.fileDeleted = !row.value("file_deleted_at").isNull() && !row.value("file_deleted_at").toString().isEmpty();
+    return t;
+}
+
 LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     connect(&m_client, &LurkerClient::statusText, this, &ChatBackend::statusText);
     connect(&m_client, &LurkerClient::restError, this, [this](const QString& t) { emit statusText(t); });
     connect(&m_client, &LurkerClient::dccChatStarted, this, [this](int net, const QString& target) {
         emit bufferOpened(net, target, static_cast<int>(BufferKind::Dm));
     });
+    connect(&m_client, &LurkerClient::dccTransfersList, this, [this](const QJsonArray& arr) {
+        QList<DccTransfer> list;
+        for (const QJsonValue& v : arr) list.push_back(parseDccTransfer(v.toObject()));
+        emit dccTransferList(list);
+    });
+    connect(&m_client, &LurkerClient::dccTransfer, this,
+            [this](const QJsonObject& row) { emit dccTransferUpdated(parseDccTransfer(row)); });
+    connect(&m_client, &LurkerClient::dccFileSaved, this,
+            [this](int id, const QString& path) { emit dccFileSaved(id, path); });
     connect(&m_client, &LurkerClient::networksReceived, this, [this](const QJsonArray& nets) {
         for (const QJsonValue& v : nets) {
             const QJsonObject o = v.toObject();
@@ -52,6 +76,7 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     connect(&m_client, &LurkerClient::connected, this, [this] {
         m_ready = true;
         emit readyChanged();
+        m_client.fetchDccTransfers();  // seed the Transfers view with existing rows
     });
     connect(&m_client, &LurkerClient::closed, this, [this] {
         m_ready = false;

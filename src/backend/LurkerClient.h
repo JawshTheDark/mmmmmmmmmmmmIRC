@@ -72,6 +72,17 @@ public:
     // lands in the "=nick" buffer over the WS; dccChatStarted fires on the 200.
     void startDccChat(int networkId, const QString& nick);
 
+    // DCC file transfers (/api/dcc). The list seeds the Transfers view; live
+    // updates arrive as `dcc-transfer` frames (→ dccTransfer).
+    void fetchDccTransfers();
+    void dccAccept(int id);
+    void dccReject(int id);
+    void dccCancel(int id);
+    void deleteDccFile(int id);
+    // Download a completed transfer's bytes (GET /api/dcc/:id/file, Bearer) and
+    // write them to `path`; emits dccFileSaved or restError.
+    void saveDccFile(int id, const QString& path);
+
 signals:
     void configReceived(const lurker::backend::LurkerConfig& config);
     void networksReceived(const QJsonArray& networks);
@@ -87,6 +98,9 @@ signals:
     void statusText(const QString& text);
     void restError(const QString& text);
     void dccChatStarted(int networkId, const QString& target);  // "=nick" buffer to open
+    void dccTransfersList(const QJsonArray& transfers);          // GET /api/dcc result
+    void dccTransfer(const QJsonObject& transfer);               // one live `dcc-transfer` row
+    void dccFileSaved(int id, const QString& path);              // a received file written locally
     void closed();
 
 private:

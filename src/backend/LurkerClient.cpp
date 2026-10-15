@@ -5,6 +5,7 @@
 #include "backend/LurkerClient.h"
 
 #include <QCryptographicHash>
+#include <QFile>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -118,6 +119,79 @@ void LurkerClient::startDccChat(int networkId, const QString& nick) {
     });
 }
 
+void LurkerClient::fetchDccTransfers() {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) + QStringLiteral("/api/dcc"))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    QNetworkReply* reply = m_net->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) return;  // feature off / not granted → quiet
+        const QJsonObject o = QJsonDocument::fromJson(reply->readAll()).object();
+        emit dccTransfersList(o.value(QStringLiteral("transfers")).toArray());
+    });
+}
+
+void LurkerClient::dccAccept(int id) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) +
+                            QStringLiteral("/api/dcc/%1/accept").arg(id))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkReply* reply = m_net->post(req, QByteArray("{}"));
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError)
+            emit restError(tr("DCC accept: %1").arg(reply->errorString()));
+    });
+}
+
+void LurkerClient::dccReject(int id) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) +
+                            QStringLiteral("/api/dcc/%1/reject").arg(id))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkReply* reply = m_net->post(req, QByteArray("{}"));
+    connect(reply, &QNetworkReply::finished, this, [reply] { reply->deleteLater(); });
+}
+
+void LurkerClient::dccCancel(int id) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) +
+                            QStringLiteral("/api/dcc/%1/cancel").arg(id))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkReply* reply = m_net->post(req, QByteArray("{}"));
+    connect(reply, &QNetworkReply::finished, this, [reply] { reply->deleteLater(); });
+}
+
+void LurkerClient::deleteDccFile(int id) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) +
+                            QStringLiteral("/api/dcc/%1/file").arg(id))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    QNetworkReply* reply = m_net->deleteResource(req);
+    connect(reply, &QNetworkReply::finished, this, [reply] { reply->deleteLater(); });
+}
+
+void LurkerClient::saveDccFile(int id, const QString& path) {
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) +
+                            QStringLiteral("/api/dcc/%1/file").arg(id))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    QNetworkReply* reply = m_net->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, id, path] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            emit restError(tr("DCC download: %1").arg(reply->errorString()));
+            return;
+        }
+        QFile f(path);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            emit restError(tr("DCC: cannot write %1").arg(path));
+            return;
+        }
+        f.write(reply->readAll());
+        f.close();
+        emit dccFileSaved(id, path);
+    });
+}
+
 void LurkerClient::applyTlsConfig() {
     if (!m_settings.tls) return;
     connect(m_ws, &QWebSocket::sslErrors, this, [this](const QList<QSslError>& errors) {
@@ -203,6 +277,8 @@ void LurkerClient::onTextFrame(const QString& text) {
         emit readState(frame);
     } else if (kind == QStringLiteral("send-result")) {
         emit sendResult(frame);
+    } else if (kind == QStringLiteral("dcc-transfer")) {
+        emit dccTransfer(frame.value(QStringLiteral("transfer")).toObject());
     } else if (kind == QStringLiteral("error")) {
         emit restError(frame.value(QStringLiteral("text")).toString());
     }

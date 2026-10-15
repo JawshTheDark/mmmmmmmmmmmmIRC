@@ -65,6 +65,7 @@ public:
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
     void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
     void previewDemo();        // dev/screenshot: seed synthetic link/media previews
+    void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
 
 private:
     struct Buffer {
@@ -172,6 +173,9 @@ private:
     int m_channelListNet = -1;                         // network the current list is for
     QTreeWidgetItem* m_channelListItem = nullptr;      // its treebar entry
     class ChannelListWindow* ensureChannelList(int net);
+    class DccTransfersWindow* m_dccWindow = nullptr;   // DCC Transfers window
+    QTreeWidgetItem* m_dccItem = nullptr;              // its treebar entry
+    class DccTransfersWindow* ensureDccWindow();
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;
 };

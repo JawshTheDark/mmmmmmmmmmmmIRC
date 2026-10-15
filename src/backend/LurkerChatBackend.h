@@ -44,6 +44,13 @@ public:
     bool supportsPreviews() const override { return m_client.hasFeature(QStringLiteral("linkPreviews")); }
     QString previewBase() const override { return m_client.restBase(); }
     QString authToken() const override { return m_client.token(); }
+    bool supportsDccTransfers() const override { return true; }
+    void requestDccTransfers() override { m_client.fetchDccTransfers(); }
+    void acceptDcc(int id) override { m_client.dccAccept(id); }
+    void rejectDcc(int id) override { m_client.dccReject(id); }
+    void cancelDcc(int id) override { m_client.dccCancel(id); }
+    void deleteDccFile(int id) override { m_client.deleteDccFile(id); }
+    void saveDccFile(int id, const QString& path) override { m_client.saveDccFile(id, path); }
 
 private:
     struct Member {
@@ -62,6 +69,7 @@ private:
     void onLive(const QJsonObject& frame);
     void translateEvent(const QJsonObject& ev, bool live);
 
+    static DccTransfer parseDccTransfer(const QJsonObject& row);  // JSON row → UI struct
     QString key(int net, const QString& target) const;
     int guessKind(const QString& target) const;  // BufferKind as int
     void emitMembers(int net, const QString& target);
