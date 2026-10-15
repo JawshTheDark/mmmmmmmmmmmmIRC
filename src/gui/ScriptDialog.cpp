@@ -8,6 +8,7 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFontMetrics>
+#include <QFrame>
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
@@ -48,13 +49,21 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
                            std::function<void(const QString&, int)> eventSink, QWidget* parent)
     : QDialog(parent), m_instance(std::move(instance)), m_sink(std::move(eventSink)) {
     setWindowTitle(QString::fromStdString(table.title.empty() ? table.name : table.title));
+    // mIRC dialogs use a small (~8pt) font and lay controls out in base units
+    // sized for it; cap ours to match so tight dbu layouts stay compact and fit.
+    QFont dlgFont = font();
+    if (dlgFont.pointSizeF() > 8.0) dlgFont.setPointSizeF(8.0);
+    setFont(dlgFont);
+    // mIRC's check/radio indicators are narrower than Qt's default; trim them so
+    // captions keep the room the (tight, mIRC-sized) dbu layout allots.
+    setStyleSheet(QStringLiteral("QCheckBox::indicator, QRadioButton::indicator { width: 12px; height: 12px; }"));
     // Derive the dbu→px scale from this dialog's font so control sizes track the
     // text they must hold (otherwise a larger-than-reference font overflows the
     // dbu-sized boxes — truncated labels/radios). Floor at the reference scale.
     const QFontMetrics fm(font());
     // The ~1.2 horizontal margin absorbs the extra room Qt's radio/checkbox
     // indicators and wider glyphs need over the author's tight (mIRC-font) widths.
-    const double sx = qMax(kSx, fm.averageCharWidth() / 4.0) * 1.2;
+    const double sx = qMax(kSx, fm.averageCharWidth() / 4.0) * 1.3;
     const double sy = qMax(kSy, fm.height() / 8.0);
     setFixedSize(px(table.w, sx), px(table.h, sy));
 
@@ -118,13 +127,24 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             cbx->setEditable(c.hasStyle("edit"));
             w = cbx;
         } else if (c.type == "box") {
-            auto* gb = new QGroupBox(cap, this);
-            // A box is a visual frame drawn around other controls. It's declared
-            // after them, so it stacks on top — make it ignore mouse events so
-            // clicks fall through to the buttons/edits it frames (keyboard focus
-            // already bypassed it, which is why Tab+Enter worked but clicks didn't).
-            gb->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-            w = gb;
+            // Render as a plain frame with the title breaking its top-left line
+            // (mIRC style), rather than a QGroupBox whose platform title margin
+            // overlaps the controls positioned inside it. Mouse-transparent so
+            // clicks reach the framed controls.
+            auto* frame = new QFrame(this);
+            frame->setFrameShape(QFrame::Box);
+            frame->setFrameShadow(QFrame::Plain);
+            frame->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            w = frame;
+            if (!cap.isEmpty()) {
+                auto* title = new QLabel(cap, this);
+                title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+                title->setAutoFillBackground(true);  // opaque bg breaks the frame line
+                const QSize ts = title->sizeHint();
+                title->setGeometry(px(c.x, sx) + px(5, sx), px(c.y, sy) - ts.height() / 2, ts.width() + 4,
+                                   ts.height());
+                title->raise();
+            }
         } else if (c.type == "icon" || c.type == "image") {
             w = new QLabel(this);  // image loading comes with the theming work
         }
