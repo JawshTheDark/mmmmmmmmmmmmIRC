@@ -52,6 +52,7 @@ public:
     void openLogsFolder();        // reveal the logging folder
     void showAbout();             // About box
     void promptLoadScript();      // file picker → loadScriptFile
+    void importMircFolder(const QString& dir);  // import a mIRC folder's config/scripts
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
     void useBackend(lurker::backend::ChatBackend* backend);
     // Open (creating if needed) and focus a conversation; also used by dev flags.

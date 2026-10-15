@@ -133,6 +133,9 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.dccDemo(); });
         } else if (arg == QStringLiteral("--urldemo")) {
             QTimer::singleShot(500, &window, [&window] { window.urlDemo(); });
+        } else if (arg.startsWith(QStringLiteral("--importmirc="))) {
+            const QString dir = arg.section(QLatin1Char('='), 1);
+            QTimer::singleShot(400, &window, [&window, dir] { window.importMircFolder(dir); });
         } else if (arg == QStringLiteral("--connect")) {
             QTimer::singleShot(500, &window, [&window] { window.showConnectDialog(); });
         } else if (arg.startsWith(QStringLiteral("--simulate="))) {

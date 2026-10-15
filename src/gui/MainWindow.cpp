@@ -206,6 +206,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             showDccInfo();  // no conversation focused — show the DCC manager instead
     });
     file->addAction(tr("&Load Script..."), this, &MainWindow::promptLoadScript);
+    file->addAction(tr("&Import from mIRC..."), this, [this] {
+        const QString dir = QFileDialog::getExistingDirectory(this, tr("Select your mIRC folder"));
+        if (!dir.isEmpty()) importMircFolder(dir);
+    });
     file->addAction(tr("&Scripts Editor..."), QKeySequence(QStringLiteral("Alt+R")), this,
                     &MainWindow::openScriptEditor);
     file->addAction(tr("&Options..."), QKeySequence(QStringLiteral("Alt+O")), this,
@@ -388,6 +392,160 @@ void MainWindow::saveVariables() {
     }
     s.endArray();
     s.endGroup();
+}
+
+namespace {
+// Parse a mIRC-style .ini into section → ordered [key,value] pairs. mIRC uses
+// numbered keys (n0, n1, …) whose file order matters, so we keep insertion order
+// rather than using QSettings (which sorts and mangles).
+QHash<QString, QList<QPair<QString, QString>>> parseMircIni(const QString& path) {
+    QHash<QString, QList<QPair<QString, QString>>> out;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return out;
+    QString section;
+    while (!f.atEnd()) {
+        QString line = QString::fromUtf8(f.readLine());
+        while (line.endsWith('\n') || line.endsWith('\r')) line.chop(1);
+        const QString t = line.trimmed();
+        if (t.startsWith('[') && t.endsWith(']')) {
+            section = t.mid(1, t.size() - 2).toLower();
+        } else if (!section.isEmpty()) {
+            const int eq = line.indexOf('=');
+            if (eq > 0) out[section].append({line.left(eq).trimmed(), line.mid(eq + 1)});
+        }
+    }
+    return out;
+}
+
+// A mIRC server spec: "...SERVER:host:[+]port[:]GROUP:net" → host, port, ssl.
+void parseMircServer(const QString& spec, QString& host, int& port, bool& ssl) {
+    const int si = spec.indexOf(QStringLiteral("SERVER:"));
+    if (si < 0) return;
+    QString rest = spec.mid(si + 7);
+    const int gi = rest.indexOf(QStringLiteral("GROUP"));
+    if (gi >= 0) rest = rest.left(gi);
+    while (rest.endsWith(':')) rest.chop(1);
+    const QStringList parts = rest.split(':');
+    if (!parts.isEmpty()) host = parts[0];
+    if (parts.size() >= 2) {
+        QString p = parts[1];
+        ssl = p.startsWith('+');
+        if (ssl) p.remove(0, 1);
+        port = p.toInt();
+    }
+}
+}  // namespace
+
+void MainWindow::importMircFolder(const QString& dir) {
+    QDir d(dir);
+    const auto mircIni = parseMircIni(d.filePath(QStringLiteral("mirc.ini")));
+    QSettings s;
+    int nVars = 0, nChans = 0, nAliases = 0, nServers = 0;
+    QString nick;
+
+    // Identity + current server from [mirc].
+    for (const auto& kv : mircIni.value(QStringLiteral("mirc"))) {
+        if (kv.first == QLatin1String("nick") && !kv.second.isEmpty()) {
+            nick = kv.second;
+            s.setValue(QStringLiteral("connect/nick"), kv.second);
+        } else if (kv.first == QLatin1String("anick") && !kv.second.isEmpty()) {
+            s.setValue(QStringLiteral("connect/altnick"), kv.second);
+        } else if (kv.first == QLatin1String("email") && !kv.second.isEmpty()) {
+            s.setValue(QStringLiteral("connect/email"), kv.second);
+        } else if (kv.first == QLatin1String("user") && !kv.second.isEmpty()) {
+            s.setValue(QStringLiteral("connect/name"), kv.second);
+        } else if (kv.first == QLatin1String("host") && kv.second.contains(QStringLiteral("SERVER:"))) {
+            QString h;
+            int p = 6667;
+            bool ssl = false;
+            parseMircServer(kv.second, h, p, ssl);
+            if (!h.isEmpty()) {
+                s.setValue(QStringLiteral("connect/host"), h);
+                s.setValue(QStringLiteral("connect/port"), p);
+                s.setValue(QStringLiteral("connect/ssl"), ssl);
+            }
+        }
+    }
+
+    // Variables (vars.ini can live in the folder or its scripts/ subdir): "%name value".
+    QString varsPath = d.filePath(QStringLiteral("scripts/vars.ini"));
+    if (!QFile::exists(varsPath)) varsPath = d.filePath(QStringLiteral("vars.ini"));
+    if (m_msl) {
+        lurker::msl::Scope scope;
+        for (const auto& kv : parseMircIni(varsPath).value(QStringLiteral("variables"))) {
+            QString v = kv.second.trimmed();
+            if (!v.startsWith('%')) continue;
+            v.remove(0, 1);
+            const int sp = v.indexOf(' ');
+            const QString name = sp < 0 ? v : v.left(sp);
+            const QString value = sp < 0 ? QString() : v.mid(sp + 1);
+            if (name.isEmpty()) continue;
+            m_msl->setVariable(name.toStdString(), value.toStdString(), false, scope);
+            ++nVars;
+        }
+        saveVariables();
+    }
+
+    // Favourite channels from channels.ini: "#chan,,,"nets"".
+    QStringList fav = s.value(QStringLiteral("favourites/channels")).toStringList();
+    for (const auto& kv : parseMircIni(d.filePath(QStringLiteral("channels.ini"))).value(QStringLiteral("channels"))) {
+        const QString chan = kv.second.section(',', 0, 0).trimmed();
+        if (chan.startsWith('#') && !fav.contains(chan, Qt::CaseInsensitive)) {
+            fav << chan;
+            ++nChans;
+        }
+    }
+    s.setValue(QStringLiteral("favourites/channels"), fav);
+
+    // Aliases from aliases.ini: "/name /body" → our "alias name { body }".
+    QString mrc;
+    for (const auto& kv : parseMircIni(d.filePath(QStringLiteral("scripts/aliases.ini"))).value(QStringLiteral("aliases"))) {
+        QString line = kv.second.trimmed();
+        if (!line.startsWith('/')) continue;
+        line.remove(0, 1);
+        const int sp = line.indexOf(' ');
+        if (sp <= 0) continue;
+        const QString name = line.left(sp);
+        QString body = line.mid(sp + 1).trimmed();
+        if (body.startsWith('/')) body.remove(0, 1);
+        if (name.isEmpty() || body.isEmpty()) continue;
+        mrc += QStringLiteral("alias %1 { %2 }\n").arg(name, body);
+        ++nAliases;
+    }
+    if (!mrc.isEmpty()) {
+        const QString outDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/scripts");
+        QDir().mkpath(outDir);
+        const QString outPath = outDir + QStringLiteral("/imported-mirc.mrc");
+        QFile of(outPath);
+        if (of.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            of.write(mrc.toUtf8());
+            of.close();
+            loadScriptFile(outPath);
+        }
+    }
+
+    // Servers from servers.ini → a stored list (for the connect dialog later).
+    QStringList srv;
+    for (const auto& kv : parseMircIni(d.filePath(QStringLiteral("servers.ini"))).value(QStringLiteral("servers"))) {
+        QString h;
+        int p = 6667;
+        bool ssl = false;
+        parseMircServer(kv.second, h, p, ssl);
+        if (!h.isEmpty()) {
+            srv << QStringLiteral("%1:%2%3").arg(h).arg(p).arg(ssl ? QStringLiteral(" (SSL)") : QString());
+            ++nServers;
+        }
+    }
+    if (!srv.isEmpty()) s.setValue(QStringLiteral("servers/imported"), srv);
+
+    const QString msg = tr("Imported from mIRC:\n• %1 variables\n• %2 favourite channels\n• %3 aliases\n• %4 servers%5")
+                            .arg(nVars)
+                            .arg(nChans)
+                            .arg(nAliases)
+                            .arg(nServers)
+                            .arg(nick.isEmpty() ? QString() : tr("\n• identity: %1").arg(nick));
+    onStatusText(msg);
+    QMessageBox::information(this, tr("Import from mIRC"), msg);
 }
 
 void MainWindow::loadVariables() {
