@@ -40,12 +40,12 @@ QString readTrimmed(const QString& path) {
 }  // namespace
 
 ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
-    setWindowTitle(tr("Connect to Lurker"));
+    setWindowTitle(tr("Connect"));
     setModal(true);
 
     auto* form = new QFormLayout(this);
     m_mode = new QComboBox(this);
-    m_mode->addItems({tr("Lurker (WebSocket — all networks)"), tr("Bouncer (raw IRC — one network)")});
+    m_mode->addItems({tr("Lurker (WebSocket — all networks)"), tr("Direct IRC (one network)")});
     m_host = new QLineEdit(this);
     m_host->setPlaceholderText(QStringLiteral("chat.example.com"));
     m_port = new QLineEdit(QStringLiteral("1025"), this);
@@ -187,7 +187,7 @@ lurker::backend::ChatBackend* ConnectDialog::createBackend(QObject* parent) cons
         s.tls = m_tls->isChecked();
         s.pinnedSha256 = m_pin->text().trimmed();
         s.nick = m_nick->text().trimmed();
-        s.realname = QStringLiteral("Lurker Desktop");
+        s.realname = QStringLiteral("mmmmmmmmmmmmIRC");
         s.password = m_password->text();
         QString user = m_username->text().trimmed();
         const QString net = m_network->currentText().trimmed();
@@ -233,7 +233,7 @@ lurker::backend::ChatBackend* ConnectDialog::createBackendFromSettings(QObject* 
         cs.tls = tls;
         cs.pinnedSha256 = pin;
         cs.nick = nick;
-        cs.realname = QStringLiteral("Lurker Desktop");
+        cs.realname = QStringLiteral("mmmmmmmmmmmmIRC");
         cs.password = password;
         cs.username = net.isEmpty() ? user : user + QLatin1Char('/') + net;
         b->connectToHost(cs);

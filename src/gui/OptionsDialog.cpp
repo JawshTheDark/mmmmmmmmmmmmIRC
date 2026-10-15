@@ -68,7 +68,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         f->addRow(tr("Nickname"), boundEdit(QStringLiteral("id/nick")));
         f->addRow(tr("Alternative"), boundEdit(QStringLiteral("id/altNick")));
         f->addRow(tr("Email"), boundEdit(QStringLiteral("id/email")));
-        f->addRow(tr("Full name"), boundEdit(QStringLiteral("id/realname"), tr("Lurker Desktop")));
+        f->addRow(tr("Full name"), boundEdit(QStringLiteral("id/realname"), tr("mmmmmmmmmmmmIRC")));
     });
     QTreeWidgetItem* connectNode = addCategory(nullptr, tr("Connect"), connectTop);
 
@@ -115,7 +115,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         f->addRow(boundCheck(tr("Show mode changes"), QStringLiteral("irc/showModes"), true));
         f->addRow(boundCheck(tr("Show join/part/quit events"), QStringLiteral("irc/showJoins"), true));
         f->addRow(tr("Quit message"),
-                  boundEdit(QStringLiteral("irc/quitMessage"), tr("Lurker Desktop")));
+                  boundEdit(QStringLiteral("irc/quitMessage"), tr("mmmmmmmmmmmmIRC")));
     });
     QTreeWidgetItem* ircNode = addCategory(nullptr, tr("IRC"), ircTop);
     addCategory(ircNode, tr("Messages"),

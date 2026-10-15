@@ -1,13 +1,14 @@
-# Lurker Desktop
+# mmmmmmmmmmmmIRC
 
-A cross-platform (Linux + Windows) desktop IRC client in the **mIRC tradition**, built for
-[Lurker](https://github.com/amiantos/lurker): MDI windows, treebar, switchbar, nicklists, a real
-**mIRC Scripting Language (MSL)** engine, and total theming. C++20 + Qt 6, MPL-2.0. Clean-room — no
-mIRC code or assets.
+A cross-platform (Linux + Windows) desktop IRC client in the **mIRC tradition**: connect **directly
+to any IRC network**, with first-class [Lurker](https://github.com/amiantos/lurker) support baked in
+(WebSocket/REST for stored history, previews, uploads, DCC). MDI windows, treebar, switchbar,
+nicklists, a real **mIRC Scripting Language (MSL)** engine, and total theming. C++20 + Qt 6, MPL-2.0.
+Clean-room — no mIRC code or assets.
 
-The goal is an **exact mIRC replica** that also speaks Lurker's bouncer and WebSocket/REST APIs. See
-[docs/PLAN.md](docs/PLAN.md) for the phased plan and [docs/PARITY.md](docs/PARITY.md) for the live
-scoreboard.
+The goal is an **exact mIRC replica** that speaks both plain IRC and Lurker's bouncer and
+WebSocket/REST APIs. See [docs/PLAN.md](docs/PLAN.md) for the phased plan and
+[docs/PARITY.md](docs/PARITY.md) for the live scoreboard.
 
 ## What works today
 

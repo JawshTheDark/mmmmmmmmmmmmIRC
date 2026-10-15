@@ -23,10 +23,10 @@ namespace lurker {
 struct SessionConfig {
     std::string nick;
     std::string username;        // USER name and SASL authcid (bouncer: "user" or "user/network")
-    std::string realname = "Lurker Desktop";
+    std::string realname = "mmmmmmmmmmmmIRC";
     std::string password;        // SASL PLAIN password; empty = don't negotiate sasl
     std::string serverPassword;  // PASS, sent before registration when non-empty
-    std::string ctcpVersionReply = "Lurker Desktop";
+    std::string ctcpVersionReply = "mmmmmmmmmmmmIRC";
 };
 
 struct PrefixPair {

@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=Lurker Desktop
+Name=mmmmmmmmmmmmIRC
 GenericName=IRC Client
-Comment=Clean-room mIRC-compatible IRC client for Lurker
+Comment=Clean-room mIRC-compatible IRC client with Lurker support
 Exec=lurker-desktop
 Icon=lurker-desktop
 Terminal=false

@@ -86,7 +86,7 @@ void BouncerBackend::disconnectFromHost() {
     m_reconnectTimer.stop();
     if (m_socket) {
         if (m_socket->state() == QAbstractSocket::ConnectedState) {
-            m_socket->write("QUIT :Lurker Desktop closing\r\n");
+            m_socket->write("QUIT :mmmmmmmmmmmmIRC closing\r\n");
             m_socket->flush();
         }
         m_socket->disconnect(this);

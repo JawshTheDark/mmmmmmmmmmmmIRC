@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     // so config — loaded scripts, variables, theme, connection — lives in one
     // visible file that persists across versions and is easy to back up.
     QSettings::setDefaultFormat(QSettings::IniFormat);
-    QApplication::setApplicationDisplayName(QStringLiteral("Lurker Desktop"));
+    QApplication::setApplicationDisplayName(QStringLiteral("mmmmmmmmmmmmIRC"));
     QApplication::setWindowIcon(lurker::gui::appIcon());
 
     const QStringList args = QCoreApplication::arguments();

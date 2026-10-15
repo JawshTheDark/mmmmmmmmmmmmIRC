@@ -96,7 +96,7 @@ QString normTarget(const QString& t) {
 }  // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle(QStringLiteral("Lurker Desktop"));
+    setWindowTitle(QStringLiteral("mmmmmmmmmmmmIRC"));
     resize(1180, 760);
 
     m_previews = new PreviewService(this);  // created before any ChatView wants it
@@ -270,7 +270,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (!m_updater) m_updater = new Updater(this);
         m_updater->checkForUpdates(false);
     });
-    helpMenu->addAction(tr("&About Lurker Desktop..."), this, &MainWindow::showAbout);
+    helpMenu->addAction(tr("&About mmmmmmmmmmmmIRC..."), this, &MainWindow::showAbout);
 
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
         if (m_closing) return;
@@ -345,7 +345,7 @@ void MainWindow::setupToolbar() {
     add(Glyph::DccChat, tr("DCC Chat"), &MainWindow::startDccChat);
     add(Glyph::Logs, tr("Open logs folder"), &MainWindow::openLogsFolder);
     m_toolbar->addSeparator();
-    add(Glyph::About, tr("About Lurker Desktop"), &MainWindow::showAbout);
+    add(Glyph::About, tr("About mmmmmmmmmmmmIRC"), &MainWindow::showAbout);
 }
 
 void MainWindow::updateMdiBackground() {
@@ -949,10 +949,11 @@ void MainWindow::openLogsFolder() {
 void MainWindow::showAbout() {
     const QString version = QStringLiteral(LURKER_DESKTOP_VERSION);
     QMessageBox::about(
-        this, tr("About Lurker Desktop"),
-        tr("<h3>Lurker Desktop %1</h3>"
-           "<p>A clean-room, cross-platform IRC client for Lurker, built for full mIRC "
-           "feature and scripting (MSL) parity.</p>"
+        this, tr("About mmmmmmmmmmmmIRC"),
+        tr("<h3>mmmmmmmmmmmmIRC %1</h3>"
+           "<p>A clean-room, cross-platform IRC client — connect directly to any IRC network, "
+           "with first-class Lurker support baked in — built for full mIRC feature and "
+           "scripting (MSL) parity.</p>"
            "<p>Qt %2 · built %3</p>"
            "<p>Licensed under the Mozilla Public License 2.0. Not affiliated with or derived "
            "from mIRC; no mIRC code or artwork is used.</p>")
