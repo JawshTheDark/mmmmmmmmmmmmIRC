@@ -4,11 +4,17 @@
 
 #include "gui/ChatView.h"
 
+#include <QClipboard>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFontDatabase>
 #include <QFontDialog>
+#include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QImage>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QMimeData>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QLabel>
@@ -176,6 +182,11 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
                                                      : tr("Message, or /command"));
     outer->addWidget(m_input);
     m_input->installEventFilter(this);
+    // Drag a file/image onto the window (or the editbox), or paste one, to share
+    // it via Lurker's upload. Accept drops on the view, and filter the editbox so
+    // a file drop there uploads rather than pasting its path as text.
+    setAcceptDrops(true);
+    m_messages->installEventFilter(this);
     connect(m_input, &QLineEdit::returnPressed, this, [this] {
         const QString text = m_input->text();
         if (text.isEmpty()) return;
@@ -251,8 +262,41 @@ void ChatView::applyDisplaySettings() {
 }
 
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {
+    // A file/image dropped on the editbox or the message area shares it rather
+    // than letting the child widget paste the path or ignore the drop.
+    if (watched == m_input || watched == m_messages) {
+        if (event->type() == QEvent::DragEnter) {
+            auto* de = static_cast<QDragEnterEvent*>(event);
+            if (de->mimeData() && (de->mimeData()->hasUrls() || de->mimeData()->hasImage())) {
+                de->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::Drop) {
+            auto* de = static_cast<QDropEvent*>(event);
+            if (shareMimeData(de->mimeData())) {
+                de->acceptProposedAction();
+                return true;
+            }
+        }
+    }
     if (watched == m_input && event->type() == QEvent::KeyPress) {
         auto* key = static_cast<QKeyEvent*>(event);
+        // Paste (Ctrl+V / Shift+Insert) of a bare image or local files → share it,
+        // instead of pasting a path as text. Ordinary text pastes fall through.
+        const bool paste = ((key->modifiers() & Qt::ControlModifier) && key->key() == Qt::Key_V) ||
+                           ((key->modifiers() & Qt::ShiftModifier) && key->key() == Qt::Key_Insert);
+        if (paste) {
+            const QMimeData* cb = QGuiApplication::clipboard()->mimeData();
+            bool localFiles = false;
+            if (cb && cb->hasUrls())
+                for (const QUrl& u : cb->urls())
+                    if (u.isLocalFile()) {
+                        localFiles = true;
+                        break;
+                    }
+            const bool bareImage = cb && cb->hasImage() && !cb->hasText() && !cb->hasUrls();
+            if ((localFiles || bareImage) && shareMimeData(cb)) return true;
+        }
         // mIRC editbox formatting: Ctrl+B/U/I/R/O/K insert the control codes so
         // formatted text can be composed (FormattedText renders them on send).
         if ((key->modifiers() & Qt::ControlModifier) && !(key->modifiers() & Qt::AltModifier)) {
@@ -287,6 +331,36 @@ bool ChatView::eventFilter(QObject* watched, QEvent* event) {
         }
     }
     return QWidget::eventFilter(watched, event);
+}
+
+void ChatView::dragEnterEvent(QDragEnterEvent* event) {
+    if (event->mimeData() && (event->mimeData()->hasUrls() || event->mimeData()->hasImage()))
+        event->acceptProposedAction();
+}
+
+void ChatView::dropEvent(QDropEvent* event) {
+    if (shareMimeData(event->mimeData())) event->acceptProposedAction();
+}
+
+bool ChatView::shareMimeData(const QMimeData* mime) {
+    if (!mime) return false;
+    if (mime->hasUrls()) {  // files dragged from a file manager, or copied to the clipboard
+        QStringList paths;
+        for (const QUrl& u : mime->urls())
+            if (u.isLocalFile()) paths << u.toLocalFile();
+        if (!paths.isEmpty()) {
+            emit shareFiles(paths);
+            return true;
+        }
+    }
+    if (mime->hasImage()) {  // a screenshot or a copied bitmap with no backing file
+        const QImage img = qvariant_cast<QImage>(mime->imageData());
+        if (!img.isNull()) {
+            emit shareImage(img);
+            return true;
+        }
+    }
+    return false;
 }
 
 void ChatView::recallHistory(int direction) {

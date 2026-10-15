@@ -18,6 +18,7 @@
 
 class QAction;
 class QActionGroup;
+class QImage;
 class QMdiArea;
 class QMdiSubWindow;
 class QToolBar;
@@ -50,7 +51,10 @@ public:
     void showAddressBook();       // favourite channels (add / remove / join)
     void showDccInfo();           // DCC status (transfers proxied through Lurker)
     void startDccChat();          // offer a DCC chat (proxied through Lurker)
-    void sendFileTo(int net, const QString& target);  // upload a file via Lurker and share the link
+    void sendFileTo(int net, const QString& target);  // pick a file, upload via Lurker, share the link
+    bool ensureFileSend();                             // true if the backend can upload (else explains)
+    void uploadFileTo(int net, const QString& target, const QString& path);  // upload a known path
+    void shareImageTo(int net, const QString& target, const QImage& image);  // save+upload a pasted image
     void openLogsFolder();        // reveal the logging folder
     void showAbout();             // About box
     void promptLoadScript();      // file picker → loadScriptFile

@@ -5,16 +5,22 @@
 #include <QApplication>
 #include <QDialog>
 #include <QDir>
+#include <QDropEvent>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMimeData>
+#include <QTemporaryFile>
 #include <QTimer>
+#include <QUrl>
 
 #include <QSettings>
 
 #include "backend/LurkerChatBackend.h"
 #include "gui/AppIcon.h"
+#include "gui/ChatView.h"
 #include "gui/ConnectDialog.h"
 #include "gui/MainWindow.h"
 #include "gui/OptionsDialog.h"
@@ -48,6 +54,13 @@ bool devLurkerSettings(lurker::backend::LurkerConnectSettings& out) {
     }
     return !out.host.isEmpty() && !out.token.isEmpty();
 }
+
+// Exposes QWidget::event() (protected) so --sharetest can deliver a synthetic
+// QDropEvent directly — QApplication::notify only routes DnD during a live drag.
+struct TestChatView : lurker::gui::ChatView {
+    using ChatView::ChatView;
+    bool deliver(QEvent* e) { return event(e); }
+};
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -71,6 +84,41 @@ int main(int argc, char* argv[]) {
             return 0;
         }
     }
+    // --sharetest: drive real QDropEvents through a ChatView and confirm the
+    // share signals fire (offscreen-safe self-check for issue #4's drag-drop path).
+    if (args.contains(QStringLiteral("--sharetest"))) {
+        using lurker::gui::ChatView;
+        TestChatView view(ChatView::Kind::Channel);
+        bool gotFiles = false, gotImage = false;
+        QStringList files;
+        QObject::connect(&view, &ChatView::shareFiles, [&](const QStringList& p) {
+            gotFiles = true;
+            files = p;
+        });
+        QObject::connect(&view, &ChatView::shareImage, [&](const QImage&) { gotImage = true; });
+
+        QTemporaryFile tmp(QDir::tempPath() + QStringLiteral("/mmirc-XXXXXX.txt"));
+        tmp.open();
+        tmp.write("hi");
+        tmp.flush();
+        QMimeData m1;
+        m1.setUrls({QUrl::fromLocalFile(tmp.fileName())});
+        QDropEvent de1(QPointF(10, 10), Qt::CopyAction, &m1, Qt::LeftButton, Qt::NoModifier);
+        view.deliver(&de1);
+
+        QImage img(8, 8, QImage::Format_RGB32);
+        img.fill(Qt::red);
+        QMimeData m2;
+        m2.setImageData(img);
+        QDropEvent de2(QPointF(10, 10), Qt::CopyAction, &m2, Qt::LeftButton, Qt::NoModifier);
+        view.deliver(&de2);
+
+        const bool ok = gotFiles && gotImage && files.size() == 1 && files.value(0) == tmp.fileName();
+        fprintf(stderr, "sharetest: files=%d image=%d path=%s => %s\n", gotFiles, gotImage,
+                qUtf8Printable(files.value(0)), ok ? "PASS" : "FAIL");
+        return ok ? 0 : 1;
+    }
+
     // Apply the saved theme (or --theme=<id> for dev) before building the window.
     QString themeId = QSettings().value(QStringLiteral("theme"), QStringLiteral("default")).toString();
     for (const QString& a : args) {

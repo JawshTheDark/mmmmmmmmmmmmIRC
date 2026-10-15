@@ -881,17 +881,39 @@ void MainWindow::showDccInfo() {
     if (m_backend) m_backend->requestDccTransfers();   // refresh the list
 }
 
-void MainWindow::sendFileTo(int net, const QString& target) {
-    if (!m_backend || !m_backend->supportsFileSend()) {
-        QMessageBox::information(this, tr("Send File"),
-                                tr("Connect via the Lurker backend to send files (uploaded through "
-                                   "Lurker's file host, then shared as a link)."));
-        return;
-    }
-    const QString path = QFileDialog::getOpenFileName(this, tr("Send file to %1").arg(target));
-    if (path.isEmpty()) return;
+bool MainWindow::ensureFileSend() {
+    if (m_backend && m_backend->supportsFileSend()) return true;
+    QMessageBox::information(this, tr("Send File"),
+                            tr("Connect via the Lurker backend to send files (uploaded through "
+                               "Lurker's file host, then shared as a link)."));
+    return false;
+}
+
+void MainWindow::uploadFileTo(int net, const QString& target, const QString& path) {
+    if (path.isEmpty() || !m_backend || !m_backend->supportsFileSend()) return;
     statusBar()->showMessage(tr("Uploading %1…").arg(QFileInfo(path).fileName()));
     m_backend->sendFile(net, target, path);
+}
+
+void MainWindow::shareImageTo(int net, const QString& target, const QImage& image) {
+    if (image.isNull() || !ensureFileSend()) return;
+    // A pasted/dragged bitmap has no backing file; persist it to a temp PNG that
+    // outlives this call (sendFile streams it asynchronously), then upload that.
+    const QString path =
+        QDir(QDir::tempPath())
+            .filePath(QStringLiteral("mmirc-paste-%1.png")
+                          .arg(QDateTime::currentMSecsSinceEpoch()));
+    if (!image.save(path, "PNG")) {
+        statusBar()->showMessage(tr("Could not save the pasted image for upload"), 6000);
+        return;
+    }
+    uploadFileTo(net, target, path);
+}
+
+void MainWindow::sendFileTo(int net, const QString& target) {
+    if (!ensureFileSend()) return;
+    const QString path = QFileDialog::getOpenFileName(this, tr("Send file to %1").arg(target));
+    uploadFileTo(net, target, path);
 }
 
 DccTransfersWindow* MainWindow::ensureDccWindow(bool raise) {
@@ -1863,6 +1885,15 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     });
     connect(b.view, &ChatView::nickContextAction, this, [this, net, key_](const QString& nick, const QString& action) {
         handleNickAction(net, key_, nick, action);
+    });
+    // Drag-drop / paste of files or an image → upload via Lurker, share the link here.
+    connect(b.view, &ChatView::shareFiles, this, [this, key_](const QStringList& paths) {
+        Buffer* buf = findBuffer(key_);
+        if (!buf || paths.isEmpty() || !ensureFileSend()) return;
+        for (const QString& p : paths) uploadFileTo(buf->networkId, buf->display, p);
+    });
+    connect(b.view, &ChatView::shareImage, this, [this, key_](const QImage& image) {
+        if (Buffer* buf = findBuffer(key_)) shareImageTo(buf->networkId, buf->display, image);
     });
     connect(b.sub, &QObject::destroyed, this, [this, key_](QObject*) {
         if (m_closing) return;

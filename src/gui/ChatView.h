@@ -11,11 +11,14 @@
 #include <QWidget>
 #include <functional>
 
+class QDragEnterEvent;
+class QDropEvent;
 class QEvent;
 class QImage;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QMimeData;
 class QObject;
 class QTextBrowser;
 class QTextCursor;
@@ -100,9 +103,14 @@ signals:
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void dragEnterEvent(QDragEnterEvent* event) override;  // accept file/image drags
+    void dropEvent(QDropEvent* event) override;            // drop anywhere on the window
 
 private:
     void appendBlock();
+    // Emit shareFiles/shareImage for the files or image a mime payload carries
+    // (a drop, or a clipboard paste). Returns true if it consumed the payload.
+    bool shareMimeData(const QMimeData* mime);
     void recallHistory(int direction);  // -1 older, +1 newer
     void doTabCompletion();
     void chooseFont();  // pick this window's font (per-channel scope, or global for status)
