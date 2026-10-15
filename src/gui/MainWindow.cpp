@@ -38,6 +38,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QTime>
 #include <QResizeEvent>
 #include <QSet>
 #include <QSettings>
@@ -127,6 +128,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             }
             return;
         }
+        if (item && item == m_urlCatcherItem && m_urlCatcher) {
+            if (auto* sub = qobject_cast<QMdiSubWindow*>(m_urlCatcher->parentWidget())) {
+                if (sub->isMinimized()) sub->showNormal();
+                sub->show();
+                m_mdi->setActiveSubWindow(sub);
+            }
+            return;
+        }
         for (auto& b : m_buffers) {
             if (b.treeItem == item) {
                 activateBuffer(&b);
@@ -209,6 +218,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                          &MainWindow::showJoinDialog);
     toolsMenu->addAction(tr("Channels &List"), this, &MainWindow::requestChannelList);
     toolsMenu->addAction(tr("&Address Book..."), this, &MainWindow::showAddressBook);
+    toolsMenu->addAction(tr("&URL Catcher"), this, [this] { ensureUrlCatcher(true); });
     toolsMenu->addSeparator();
     toolsMenu->addAction(tr("&DCC..."), this, &MainWindow::showDccInfo);
     toolsMenu->addAction(tr("Open Logs &Folder"), this, &MainWindow::openLogsFolder);
@@ -459,6 +469,61 @@ lurker::gui::ChannelListWindow* MainWindow::ensureChannelList(int net) {
         m_mdi->setActiveSubWindow(sub);
     }
     return m_channelList;
+}
+
+UrlCatcherWindow* MainWindow::ensureUrlCatcher(bool raise) {
+    if (!m_urlCatcher) {
+        m_urlCatcher = new UrlCatcherWindow;
+        auto* sub = m_mdi->addSubWindow(m_urlCatcher);
+        sub->setWindowTitle(tr("URL Catcher"));
+        sub->setAttribute(Qt::WA_DeleteOnClose);
+        sub->resize(640, 400);
+        sub->move(110, 90);
+        m_urlCatcher->setUrls(m_caughtUrls);  // show the history collected before it was opened
+        connect(m_urlCatcher, &UrlCatcherWindow::cleared, this, [this] { m_caughtUrls.clear(); });
+        connect(m_urlCatcher, &QObject::destroyed, this, [this](QObject*) {
+            if (m_closing) return;
+            m_urlCatcher = nullptr;
+            delete m_urlCatcherItem;
+            m_urlCatcherItem = nullptr;
+        });
+        m_urlCatcherItem = new QTreeWidgetItem(m_treebar, {tr("URL Catcher")});
+    }
+    if (raise) {
+        if (auto* sub = qobject_cast<QMdiSubWindow*>(m_urlCatcher->parentWidget())) {
+            if (sub->isMinimized()) sub->showNormal();
+            sub->show();
+            m_mdi->setActiveSubWindow(sub);
+        }
+    }
+    return m_urlCatcher;
+}
+
+void MainWindow::catchUrls(const QString& from, const QString& target, const QString& plainText) {
+    if (!QSettings().value(QStringLiteral("display/urlCatcher"), true).toBool()) return;
+    static const QRegularExpression re(QStringLiteral(R"(https?://[^\s<>"')]+)"));
+    auto it = re.globalMatch(plainText);
+    const QString ts = QTime::currentTime().toString(QStringLiteral("HH:mm"));
+    while (it.hasNext()) {
+        QString url = it.next().captured(0);
+        while (!url.isEmpty() && QStringLiteral(".,;:!?]}'\"").contains(url.back())) url.chop(1);
+        if (url.isEmpty()) continue;
+        const CaughtUrl u{ts, from, target, url};
+        m_caughtUrls.prepend(u);
+        while (m_caughtUrls.size() > 500) m_caughtUrls.removeLast();  // cap the history
+        if (m_urlCatcher) m_urlCatcher->addUrl(u);
+    }
+}
+
+void MainWindow::urlDemo() {
+    catchUrls(QStringLiteral("slakker"), QStringLiteral("#lurker"),
+              QStringLiteral("check the repo https://github.com/JawshTheDark/mmmmmmmmmmmmIRC and the archive "
+                             "https://archive.irc.so/"));
+    catchUrls(QStringLiteral("jawsh"), QStringLiteral("#lurker"),
+              QStringLiteral("docs at https://modern.ircdocs.horse/ and a clip https://example.com/clip.mp4"));
+    catchUrls(QStringLiteral("friend"), QStringLiteral("#dev"),
+              QStringLiteral("nice read: https://en.wikipedia.org/wiki/Internet_Relay_Chat"));
+    ensureUrlCatcher(true);
 }
 
 void MainWindow::requestChannelList() {
@@ -1811,6 +1876,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
                 if (!hl && !event.self) hl = highlightMatch(net, plain);
                 buf->view->addMessage(ts, nick, text, act, event.self, hl);
                 noteMessage(buf, event.id);
+                catchUrls(nick, buf->display, plain);
                 logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, plain)
                                  : QStringLiteral("<%1> %2").arg(nick, plain));
                 if (hl && !event.self && !bufferIsActive(*buf)) {
@@ -1841,6 +1907,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (buf) {
                 buf->view->addNotice(ts, nick.isEmpty() ? tr("server") : nick, text, serverNotice);
                 noteMessage(buf, event.id);
+                catchUrls(nick.isEmpty() ? tr("server") : nick, buf->display, stripFormattingQt(text));
                 logLine(buf, QStringLiteral("-%1- %2").arg(nick, stripFormattingQt(text)));
             }
             break;

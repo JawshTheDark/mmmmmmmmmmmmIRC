@@ -11,6 +11,8 @@ qt_add_executable(lurker-desktop
     ChannelListWindow.h
     DccTransfersWindow.cpp
     DccTransfersWindow.h
+    UrlCatcherWindow.cpp
+    UrlCatcherWindow.h
     PreviewService.cpp
     PreviewService.h
     ConnectDialog.cpp

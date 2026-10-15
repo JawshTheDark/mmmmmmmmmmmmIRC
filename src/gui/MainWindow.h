@@ -13,6 +13,7 @@
 #include "core/msl/Interpreter.h"
 #include "gui/ChatView.h"
 #include "gui/GuiScriptHost.h"
+#include "gui/UrlCatcherWindow.h"  // CaughtUrl, kept by value in the catch history
 
 class QAction;
 class QActionGroup;
@@ -67,6 +68,7 @@ public:
     void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
     void previewDemo();        // dev/screenshot: seed synthetic link/media previews
     void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
+    void urlDemo();            // dev/screenshot: seed synthetic caught URLs
 
 private:
     struct Buffer {
@@ -177,6 +179,11 @@ private:
     class DccTransfersWindow* m_dccWindow = nullptr;   // DCC Transfers window
     QTreeWidgetItem* m_dccItem = nullptr;              // its treebar entry
     class DccTransfersWindow* ensureDccWindow(bool raise = true);
+    class UrlCatcherWindow* m_urlCatcher = nullptr;    // URL Catcher window
+    QTreeWidgetItem* m_urlCatcherItem = nullptr;       // its treebar entry
+    QList<CaughtUrl> m_caughtUrls;                     // kept link history (newest first)
+    class UrlCatcherWindow* ensureUrlCatcher(bool raise = true);
+    void catchUrls(const QString& from, const QString& target, const QString& plainText);
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;
 };

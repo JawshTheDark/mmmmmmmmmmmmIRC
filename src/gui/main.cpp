@@ -131,6 +131,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.previewDemo(); });
         } else if (arg == QStringLiteral("--dccdemo")) {
             QTimer::singleShot(500, &window, [&window] { window.dccDemo(); });
+        } else if (arg == QStringLiteral("--urldemo")) {
+            QTimer::singleShot(500, &window, [&window] { window.urlDemo(); });
         } else if (arg == QStringLiteral("--connect")) {
             QTimer::singleShot(500, &window, [&window] { window.showConnectDialog(); });
         } else if (arg.startsWith(QStringLiteral("--simulate="))) {
