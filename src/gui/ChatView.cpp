@@ -214,6 +214,24 @@ void ChatView::applyDisplaySettings() {
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {
     if (watched == m_input && event->type() == QEvent::KeyPress) {
         auto* key = static_cast<QKeyEvent*>(event);
+        // mIRC editbox formatting: Ctrl+B/U/I/R/O/K insert the control codes so
+        // formatted text can be composed (FormattedText renders them on send).
+        if ((key->modifiers() & Qt::ControlModifier) && !(key->modifiers() & Qt::AltModifier)) {
+            QChar code;
+            switch (key->key()) {
+                case Qt::Key_B: code = QChar(0x02); break;  // bold
+                case Qt::Key_K: code = QChar(0x03); break;  // colour (fg[,bg] follows)
+                case Qt::Key_O: code = QChar(0x0F); break;  // reset
+                case Qt::Key_R: code = QChar(0x16); break;  // reverse
+                case Qt::Key_I: code = QChar(0x1D); break;  // italic
+                case Qt::Key_U: code = QChar(0x1F); break;  // underline
+                default: break;
+            }
+            if (!code.isNull()) {
+                m_input->insert(QString(code));
+                return true;
+            }
+        }
         switch (key->key()) {
             case Qt::Key_Tab:
                 doTabCompletion();

@@ -224,6 +224,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     toolsMenu->addAction(tr("Open Logs &Folder"), this, &MainWindow::openLogsFolder);
 
     auto* windowMenu = menuBar()->addMenu(tr("&Window"));
+    windowMenu->addAction(tr("&Next Window"), QKeySequence(QStringLiteral("Ctrl+Tab")), this,
+                          [this] { m_mdi->activateNextSubWindow(); });
+    windowMenu->addAction(tr("&Previous Window"), QKeySequence(QStringLiteral("Ctrl+Shift+Tab")), this,
+                          [this] { m_mdi->activatePreviousSubWindow(); });
+    windowMenu->addSeparator();
     windowMenu->addAction(tr("&Cascade"), this, [this] { arrangeWindows(false); });
     windowMenu->addAction(tr("&Tile"), this, [this] { arrangeWindows(true); });
     windowMenu->addAction(tr("Ma&ximize"), this, &MainWindow::maximizeWindows);
