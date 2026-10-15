@@ -53,6 +53,7 @@
 #include <QVBoxLayout>
 
 #include "core/CommandParser.h"
+#include "gui/AddressBookDialog.h"
 #include "gui/ChannelCentralDialog.h"
 #include "gui/ChannelListWindow.h"
 #include "gui/DccTransfersWindow.h"
@@ -285,6 +286,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     ensureSectionScripts();  // load the mIRC-style section files so user aliases persist
     loadPersistedScripts();  // reload the scripts loaded last session
     loadVariables();         // restore saved %globals
+    m_ignoreMasks = AddressBookDialog::ignoreList();  // apply the saved ignore list
     // mIRC fires `on START` once the client is up and all scripts are loaded.
     {
         lurker::msl::Scope sc;
@@ -745,64 +747,69 @@ void MainWindow::requestChannelList() {
 }
 
 void MainWindow::showAddressBook() {
-    QDialog dlg(this);
-    dlg.setWindowTitle(tr("Favourites"));
-    dlg.resize(360, 320);
-    auto* v = new QVBoxLayout(&dlg);
-    v->addWidget(new QLabel(tr("Favourite channels — double-click to join:"), &dlg));
-    auto* list = new QListWidget(&dlg);
-    QSettings s;
-    list->addItems(s.value(QStringLiteral("favourites/channels")).toStringList());
-    v->addWidget(list, 1);
-    auto* row = new QHBoxLayout;
-    auto* addBtn = new QPushButton(tr("Add..."), &dlg);
-    auto* delBtn = new QPushButton(tr("Remove"), &dlg);
-    auto* joinBtn = new QPushButton(tr("Join"), &dlg);
-    row->addWidget(addBtn);
-    row->addWidget(delBtn);
-    row->addStretch(1);
-    row->addWidget(joinBtn);
-    v->addLayout(row);
-    auto* bb = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
-    v->addWidget(bb);
-    connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::accept);
+    if (m_addressBook) {
+        m_addressBook->raise();
+        m_addressBook->activateWindow();
+        return;
+    }
+    m_addressBook = new AddressBookDialog(this);
+    m_addressBook->setAttribute(Qt::WA_DeleteOnClose);
+    connect(m_addressBook, &AddressBookDialog::joinRequested, this, [this](const QString& chan) {
+        int net = -1;
+        if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+        if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+        if (net >= 0 && m_backend && m_backend->isReady()) {
+            m_backend->joinChannel(net, chan, QString());
+            openConversation(net, chan);
+        } else {
+            statusBar()->showMessage(tr("Connect to a server first"), 6000);
+        }
+    });
+    connect(m_addressBook, &AddressBookDialog::listsChanged, this, [this] {
+        m_ignoreMasks = AddressBookDialog::ignoreList();  // apply edited ignore list immediately
+        pollNotify();                                     // pick up notify-list edits
+    });
+    connect(m_addressBook, &QObject::destroyed, this, [this](QObject*) {
+        if (!m_closing) m_addressBook = nullptr;
+    });
+    m_addressBook->setNotifyOnline(m_notifyOnline.values());
+    m_addressBook->show();
+}
 
-    auto persist = [list] {
-        QStringList items;
-        for (int i = 0; i < list->count(); ++i) items << list->item(i)->text();
-        QSettings().setValue(QStringLiteral("favourites/channels"), items);
-    };
-    connect(addBtn, &QPushButton::clicked, &dlg, [&] {
-        bool ok = false;
-        QString c = QInputDialog::getText(&dlg, tr("Add Favourite"), tr("Channel:"), QLineEdit::Normal,
-                                          QStringLiteral("#"), &ok);
-        c = c.trimmed();
-        if (ok && !c.isEmpty() && c != QLatin1String("#")) {
-            list->addItem(c);
-            persist();
-        }
-    });
-    connect(delBtn, &QPushButton::clicked, &dlg, [&] {
-        qDeleteAll(list->selectedItems());
-        persist();
-    });
-    auto joinSel = [&] {
-        if (auto* it = list->currentItem()) {
-            int net = -1;
-            if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
-            if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
-            if (net >= 0 && m_backend && m_backend->isReady()) {
-                m_backend->joinChannel(net, it->text(), QString());
-                openConversation(net, it->text());
-                dlg.accept();
-            } else {
-                statusBar()->showMessage(tr("Connect to a server first"), 6000);
-            }
-        }
-    };
-    connect(joinBtn, &QPushButton::clicked, &dlg, joinSel);
-    connect(list, &QListWidget::itemDoubleClicked, &dlg, joinSel);
-    dlg.exec();
+bool MainWindow::isIgnored(const lurker::IrcEvent& event) const {
+    if (m_ignoreMasks.isEmpty() || event.self) return false;
+    const QString nick = QString::fromStdString(event.nick);
+    const QString full = QStringLiteral("%1!%2@%3")
+                             .arg(nick, QString::fromStdString(event.user), QString::fromStdString(event.host));
+    for (const QString& mask : m_ignoreMasks) {
+        // A mask without !/@ matches the nick alone; otherwise the full nick!user@host.
+        const bool bare = !mask.contains(QLatin1Char('!')) && !mask.contains(QLatin1Char('@'));
+        const QString target = bare ? nick : full;
+        const QRegularExpression rx(QRegularExpression::wildcardToRegularExpression(mask),
+                                    QRegularExpression::CaseInsensitiveOption);
+        if (rx.match(target).hasMatch()) return true;
+    }
+    return false;
+}
+
+void MainWindow::pollNotify() {
+    m_notifyList = AddressBookDialog::notifyList();
+    if (!m_notifyTimer) {
+        m_notifyTimer = new QTimer(this);
+        m_notifyTimer->setInterval(30000);  // ISON poll every 30s
+        connect(m_notifyTimer, &QTimer::timeout, this, &MainWindow::pollNotify);
+    }
+    if (m_notifyList.isEmpty()) {
+        m_notifyTimer->stop();
+        return;
+    }
+    if (!m_notifyTimer->isActive()) m_notifyTimer->start();
+    if (m_backend && m_backend->isReady()) {
+        int net = -1;
+        if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
+        if (net < 0 && !m_networkNames.isEmpty()) net = m_networkNames.keys().first();
+        if (net >= 0) m_backend->sendRaw(net, QStringLiteral("ISON %1").arg(m_notifyList.join(QLatin1Char(' '))));
+    }
 }
 
 void MainWindow::startDccChat() {
@@ -1814,6 +1821,7 @@ void MainWindow::useBackend(ChatBackend* backend) {
         if (m_tbDisconnect) m_tbDisconnect->setEnabled(ready);
         statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
         configurePreviews();  // the feature flag + token are known once ready
+        if (ready) pollNotify();  // begin watching the notify list
     });
     connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
     connect(backend, &ChatBackend::dccTransferList, this, [this](const QList<lurker::backend::DccTransfer>& list) {
@@ -2070,6 +2078,25 @@ void MainWindow::onEvent(const IrcEvent& event) {
         return;
     }
 
+    // Notify list: RPL_ISON (303) lists which watched nicks are online. Diff
+    // against what we held and announce the transitions.
+    if (event.type == IrcEventType::ServerText && event.numeric == 303) {
+        QString body = QString::fromStdString(event.raw.param(1));
+        if (body.isEmpty()) body = QString::fromUtf8(text);
+        const QStringList online = body.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        QSet<QString> nowOnline;
+        for (const QString& n : online) nowOnline.insert(n.toLower());
+        for (const QString& n : m_notifyList) {
+            const bool was = m_notifyOnline.contains(n.toLower());
+            const bool is = nowOnline.contains(n.toLower());
+            if (is && !was) onStatusText(tr("%1 is on IRC").arg(n));
+            else if (!is && was) onStatusText(tr("%1 is no longer on IRC").arg(n));
+        }
+        m_notifyOnline = nowOnline;
+        if (m_addressBook) m_addressBook->setNotifyOnline(online);
+        return;
+    }
+
     // Channel Central: current modes (RPL_CHANNELMODEIS 324) and the ban list
     // (RPL_BANLIST 367 / end 368) feed the open dialog instead of the status window.
     if (event.type == IrcEventType::ServerText &&
@@ -2106,6 +2133,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
     switch (event.type) {
         case IrcEventType::Message:
         case IrcEventType::Action: {
+            if (isIgnored(event)) break;  // Address Book ignore list: drop silently
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
             if (buf) {
                 const bool act = event.type == IrcEventType::Action;
@@ -2125,6 +2153,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
             break;
         }
         case IrcEventType::Notice: {
+            if (isIgnored(event)) break;  // ignore list applies to notices too
             // A notice from a source with no user@host is a *server* notice
             // (SNOTICE) — route it to the status/server window and mark it so,
             // rather than rendering it like a user's notice.

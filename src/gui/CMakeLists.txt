@@ -7,6 +7,8 @@ qt_add_executable(lurker-desktop
     MainWindow.h
     ChatView.cpp
     ChatView.h
+    AddressBookDialog.cpp
+    AddressBookDialog.h
     ChannelCentralDialog.cpp
     ChannelCentralDialog.h
     ChannelListWindow.cpp

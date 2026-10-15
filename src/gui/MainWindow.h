@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QList>
 #include <QMainWindow>
+#include <QSet>
 #include <memory>
 
 #include "backend/ChatBackend.h"
@@ -183,6 +184,13 @@ private:
     class DccTransfersWindow* ensureDccWindow(bool raise = true);
     QHash<QString, class ChannelCentralDialog*> m_channelCentrals;  // open Channel Central dialogs by buffer key
     void showChannelCentral(int net, const QString& channel);
+    class AddressBookDialog* m_addressBook = nullptr;  // Address Book (channels/notify/ignore)
+    QStringList m_ignoreMasks;                         // active ignore masks (from the Address Book)
+    QStringList m_notifyList;                          // nicks being watched
+    QSet<QString> m_notifyOnline;                      // which notify nicks are currently online
+    class QTimer* m_notifyTimer = nullptr;             // ISON poll timer
+    bool isIgnored(const lurker::IrcEvent& event) const;  // true if the source matches an ignore mask
+    void pollNotify();                                 // (re)load the notify list and send an ISON
     class UrlCatcherWindow* m_urlCatcher = nullptr;    // URL Catcher window
     QTreeWidgetItem* m_urlCatcherItem = nullptr;       // its treebar entry
     QList<CaughtUrl> m_caughtUrls;                     // kept link history (newest first)
