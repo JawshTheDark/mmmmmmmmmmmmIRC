@@ -86,12 +86,15 @@ ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    auto updateRows = [this] {
-        const bool bouncer = m_mode->currentIndex() == 1;
-        m_port->setText(bouncer ? QStringLiteral("1025") : QStringLiteral("443"));
-        m_token->setEnabled(!bouncer);
-    };
-    connect(m_mode, &QComboBox::currentIndexChanged, this, [updateRows](int) { updateRows(); });
+    auto updateRows = [this] { m_token->setEnabled(m_mode->currentIndex() != 1); };
+    connect(m_mode, &QComboBox::currentIndexChanged, this, [this, updateRows](int) {
+        updateRows();
+        // Offer the mode's default port only when the user hasn't set a custom one
+        // (so an entered/saved port like 1025 is never clobbered).
+        const QString p = m_port->text().trimmed();
+        if (p.isEmpty() || p == QStringLiteral("443") || p == QStringLiteral("1025"))
+            m_port->setText(m_mode->currentIndex() == 1 ? QStringLiteral("1025") : QStringLiteral("443"));
+    });
 
     loadDevProfile();   // dev convenience (.secrets/dev-profile.json), if present
     loadSettings();     // the user's last-used connection takes precedence
@@ -109,7 +112,9 @@ void ConnectDialog::loadSettings() {
         s.endGroup();
         return;
     }
+    m_mode->blockSignals(true);  // don't let the mode handler rewrite the saved port
     m_mode->setCurrentIndex(s.value(QStringLiteral("mode"), 0).toInt());
+    m_mode->blockSignals(false);
     m_host->setText(s.value(QStringLiteral("host")).toString());
     if (s.contains(QStringLiteral("port"))) m_port->setText(s.value(QStringLiteral("port")).toString());
     m_tls->setChecked(s.value(QStringLiteral("tls"), true).toBool());
@@ -199,6 +204,51 @@ lurker::backend::ChatBackend* ConnectDialog::createBackend(QObject* parent) cons
     s.username = m_username->text().trimmed();
     s.password = m_password->text();
     b->connectToLurker(s);
+    return b;
+}
+
+lurker::backend::ChatBackend* ConnectDialog::createBackendFromSettings(QObject* parent) {
+    QSettings s;
+    s.beginGroup(QStringLiteral("connect"));
+    const QString host = s.value(QStringLiteral("host")).toString().trimmed();
+    const bool remember = s.value(QStringLiteral("remember"), false).toBool();
+    const int mode = s.value(QStringLiteral("mode"), 0).toInt();
+    const QString password = remember ? s.value(QStringLiteral("password")).toString() : QString();
+    const QString token = remember ? s.value(QStringLiteral("token")).toString() : QString();
+    const bool tls = s.value(QStringLiteral("tls"), true).toBool();
+    const QString pin = s.value(QStringLiteral("pin")).toString().trimmed();
+    const QString nick = s.value(QStringLiteral("nick")).toString().trimmed();
+    QString user = s.value(QStringLiteral("username")).toString().trimmed();
+    const QString net = s.value(QStringLiteral("network")).toString().trimmed();
+    const uint port = s.value(QStringLiteral("port"), QStringLiteral("1025")).toUInt();
+    s.endGroup();
+    if (host.isEmpty()) return nullptr;  // nothing to connect to
+
+    if (mode == 1) {  // bouncer (raw IRC) — needs a secret to auto-connect
+        if (password.isEmpty()) return nullptr;
+        auto* b = new lurker::backend::BouncerChatBackend(parent);
+        lurker::backend::ConnectSettings cs;
+        cs.host = host;
+        cs.port = static_cast<quint16>(port);
+        cs.tls = tls;
+        cs.pinnedSha256 = pin;
+        cs.nick = nick;
+        cs.realname = QStringLiteral("Lurker Desktop");
+        cs.password = password;
+        cs.username = net.isEmpty() ? user : user + QLatin1Char('/') + net;
+        b->connectToHost(cs);
+        return b;
+    }
+    // Lurker (WS): needs a token, or a password to mint one.
+    if (token.isEmpty() && password.isEmpty()) return nullptr;
+    auto* b = new lurker::backend::LurkerChatBackend(parent);
+    lurker::backend::LurkerConnectSettings ls;
+    ls.host = host;
+    ls.tls = tls;
+    ls.token = token;
+    ls.password = password;
+    ls.username = user;
+    b->connectToLurker(ls);
     return b;
 }
 

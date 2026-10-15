@@ -31,6 +31,10 @@ public:
     // (passes it to MainWindow::useBackend, which reparents it).
     lurker::backend::ChatBackend* createBackend(QObject* parent) const;
 
+    // Build a connected backend from the last-saved connection (QSettings) for
+    // auto-connect at launch. Returns nullptr if no server or no stored creds.
+    static lurker::backend::ChatBackend* createBackendFromSettings(QObject* parent);
+
 private:
     void loadDevProfile();
     void loadSettings();  // restore the last-used connection from QSettings

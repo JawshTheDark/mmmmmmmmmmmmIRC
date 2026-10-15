@@ -88,7 +88,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
                     f->addRow(tr("Retry delay (s)"), boundSpin(QStringLiteral("connect/retryDelay"), 1, 600, 20));
                     f->addRow(boundCheck(tr("Rejoin channels on connect"), QStringLiteral("connect/rejoin"), true));
                     f->addRow(boundCheck(tr("Connect to server on startup"), QStringLiteral("connect/onStartup"),
-                                         false));
+                                         true));
                 }));
     addCategory(connectNode, tr("Identd"),
                 buildPage(tr("Identd"), tr("Ident server replies."), [&](QFormLayout* f) {

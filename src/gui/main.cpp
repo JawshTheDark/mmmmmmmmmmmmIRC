@@ -15,6 +15,7 @@
 
 #include "backend/LurkerChatBackend.h"
 #include "gui/AppIcon.h"
+#include "gui/ConnectDialog.h"
 #include "gui/MainWindow.h"
 #include "gui/OptionsDialog.h"
 #include "gui/Theme.h"
@@ -84,6 +85,10 @@ int main(int argc, char* argv[]) {
             window.useBackend(backend);
             backend->connectToLurker(s);
         }
+    } else if (!args.contains(QStringLiteral("--smoke-test")) && !args.contains(QStringLiteral("--no-autoconnect")) &&
+               QSettings().value(QStringLiteral("connect/onStartup"), true).toBool()) {
+        // Auto-connect at launch to the last-saved server (if creds were remembered).
+        if (auto* backend = lurker::gui::ConnectDialog::createBackendFromSettings(&window)) window.useBackend(backend);
     }
 
     // --open=NET/TARGET: after connecting, open and hydrate that conversation
