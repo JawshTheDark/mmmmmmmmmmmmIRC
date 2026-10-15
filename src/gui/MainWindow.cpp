@@ -177,8 +177,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     toolsMenu->addAction(tr("Open Logs &Folder"), this, &MainWindow::openLogsFolder);
 
     auto* windowMenu = menuBar()->addMenu(tr("&Window"));
-    windowMenu->addAction(tr("&Cascade"), m_mdi, &QMdiArea::cascadeSubWindows);
-    windowMenu->addAction(tr("&Tile"), m_mdi, &QMdiArea::tileSubWindows);
+    windowMenu->addAction(tr("&Cascade"), this, [this] { arrangeWindows(false); });
+    windowMenu->addAction(tr("&Tile"), this, [this] { arrangeWindows(true); });
+    windowMenu->addAction(tr("Ma&ximize"), this, &MainWindow::maximizeWindows);
+    windowMenu->addAction(tr("Minimi&ze All"), this, [this] {
+        for (auto& b : m_buffers)
+            if (b.sub && b.sub->isVisible()) b.sub->showMinimized();
+    });
+    windowMenu->addSeparator();
     windowMenu->addAction(treeDock->toggleViewAction());
 
     auto* viewMenu = menuBar()->addMenu(tr("&View"));
@@ -1008,11 +1014,16 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     b.sub->setWindowTitle(display);
     b.sub->setAttribute(Qt::WA_DeleteOnClose);
     b.sub->resize(760, 480);
-    // The first window (status) opens normally; later buffers open minimized so
-    // dozens of channels don't bury the workspace — the treebar/switchbar drive
-    // navigation and restore a window when its buffer is selected.
-    if (m_buffers.isEmpty()) b.sub->show();
-    else b.sub->showMinimized();
+    // mIRC keeps one window filling the workspace and switches between them. The
+    // first window shows (maximized if that's the current mode); later buffers are
+    // created hidden so opening dozens of channels doesn't litter the MDI with
+    // minimized stubs — activateBuffer shows one when its row/tab is selected.
+    if (m_buffers.isEmpty()) {
+        if (m_windowsMaximized) b.sub->showMaximized();
+        else b.sub->show();
+    } else {
+        b.sub->hide();
+    }
 
     // Tree placement: a network's server buffer IS its top-level node; channels
     // and queries hang under that node; the global status sits at the top.
@@ -1153,9 +1164,39 @@ void MainWindow::noteMessage(Buffer* buffer, long long id) {
     }
 }
 
+void MainWindow::arrangeWindows(bool tile) {
+    // Tile/Cascade only arrange visible, non-minimized subwindows — so first show
+    // every buffer and restore it to normal, then let QMdiArea lay them out.
+    m_windowsMaximized = false;
+    for (auto& b : m_buffers) {
+        if (!b.sub) continue;
+        if (!b.sub->isVisible()) b.sub->show();
+        if (b.sub->isMinimized() || b.sub->isMaximized()) b.sub->showNormal();
+    }
+    if (tile) m_mdi->tileSubWindows();
+    else m_mdi->cascadeSubWindows();
+}
+
+void MainWindow::maximizeWindows() {
+    m_windowsMaximized = true;
+    if (QMdiSubWindow* active = m_mdi->activeSubWindow()) {
+        active->showMaximized();
+    } else if (!m_buffers.isEmpty()) {
+        for (auto& b : m_buffers)
+            if (b.sub && b.sub->isVisible()) {
+                b.sub->showMaximized();
+                break;
+            }
+    }
+}
+
 void MainWindow::activateBuffer(Buffer* buffer) {
     if (!buffer || !buffer->sub) return;
-    if (buffer->sub->isMinimized()) buffer->sub->showNormal();
+    if (!buffer->sub->isVisible()) buffer->sub->show();
+    // Match the current workspace mode: maximized (mIRC default — one window fills
+    // the area and switching swaps it) or free-floating after a Tile/Cascade.
+    if (m_windowsMaximized) buffer->sub->showMaximized();
+    else if (buffer->sub->isMinimized()) buffer->sub->showNormal();
     m_mdi->setActiveSubWindow(buffer->sub);
     buffer->view->focusInput();
     hydrateBuffer(buffer);

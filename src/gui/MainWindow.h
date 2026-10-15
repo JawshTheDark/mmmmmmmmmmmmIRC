@@ -115,6 +115,8 @@ private:
     bool highlightMatch(int net, const QString& plainText) const;  // Options ▸ Highlight word/nick match
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
+    void arrangeWindows(bool tile);       // show all buffers then cascade/tile them
+    void maximizeWindows();               // mIRC default: active window fills the workspace
     void hydrateBuffer(Buffer* buffer);   // fetch backlog once
 
     Buffer* routeTarget(int net, const QString& target, ChatView::Kind fallback);
@@ -136,6 +138,7 @@ private:
     QHash<int, QString> m_networkNames;            // networkId -> display name
     QHash<int, QString> m_networkNicks;            // networkId -> our nick (for $me)
     bool m_closing = false;
+    bool m_windowsMaximized = true;  // MDI mode: active window fills the workspace (mIRC default)
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
