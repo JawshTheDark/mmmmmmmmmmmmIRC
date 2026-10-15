@@ -654,10 +654,24 @@ void registerBuiltins(Interpreter& in) {
         return s;
     });
     in.registerIdent("pos", [](Interpreter&, S&, const A& a, const std::string&) {
+        // $pos(string,substring,N): position (1-based) of the Nth occurrence.
+        // N defaults to 1; N=0 returns the number of occurrences (mIRC).
         const std::string& s = arg(a, 0);
         const std::string& sub = arg(a, 1);
-        std::size_t p = s.find(sub);
-        return std::to_string(p == std::string::npos ? 0 : p + 1);
+        if (sub.empty()) return std::string("0");
+        const int n = argInt(a, 2, 1);
+        if (n == 0) {
+            int c = 0;
+            for (std::size_t p = s.find(sub); p != std::string::npos; p = s.find(sub, p + sub.size())) ++c;
+            return std::to_string(c);
+        }
+        std::size_t p = std::string::npos, from = 0;
+        for (int i = 0; i < n; ++i) {
+            p = s.find(sub, from);
+            if (p == std::string::npos) return std::string("0");
+            from = p + sub.size();  // non-overlapping, like mIRC
+        }
+        return std::to_string(p + 1);
     });
     in.registerIdent("count", [](Interpreter&, S&, const A& a, const std::string&) {
         const std::string& s = arg(a, 0);
@@ -1181,7 +1195,7 @@ void registerBuiltins(Interpreter& in) {
             long long v = std::stoll(arg(a, 0), nullptr, argInt(a, 1, 10));
             int to = argInt(a, 2, 10);
             if (v == 0) return std::string("0");
-            const char* digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+            const char* digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";  // mIRC emits uppercase
             bool neg = v < 0;
             unsigned long long u = neg ? -v : v;
             std::string out;
@@ -1201,15 +1215,19 @@ void registerBuiltins(Interpreter& in) {
         long long s = 0;
         try { s = std::stoll(arg(a, 0)); } catch (...) { return std::string(); }
         if (a.size() >= 2 && argInt(a, 1) == 2) return std::to_string(s);  // numeric form
+        long long w = s / 604800; s %= 604800;
         long long d = s / 86400; s %= 86400;
         long long h = s / 3600; s %= 3600;
         long long m = s / 60; s %= 60;
         std::string out;
-        auto add = [&](long long n, const char* u) {
-            if (n > 0) { if (!out.empty()) out += ' '; out += std::to_string(n) + u; }
+        // mIRC uses the word forms wk/day/hr/min/sec, pluralised, no space before
+        // the unit, e.g. "1day 1hr 1min 1sec"; zero duration is "0secs".
+        auto add = [&](long long n, const char* sing, const char* plur) {
+            if (n > 0) { if (!out.empty()) out += ' '; out += std::to_string(n) + (n == 1 ? sing : plur); }
         };
-        add(d, "d"); add(h, "h"); add(m, "m");
-        if (out.empty() || s > 0) add(s, "s");
+        add(w, "wk", "wks"); add(d, "day", "days"); add(h, "hr", "hrs"); add(m, "min", "mins");
+        add(s, "sec", "secs");
+        if (out.empty()) out = "0secs";
         return out;
     });
 

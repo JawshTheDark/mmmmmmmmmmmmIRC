@@ -442,9 +442,11 @@ bool asNumber(const std::string& s, double& out) {
 bool compare(const std::string& a, const std::string& op, const std::string& b) {
     double na, nb;
     const bool numeric = asNumber(a, na) && asNumber(b, nb);
-    if (op == "==") return toLowerAscii(a) == toLowerAscii(b);  // mIRC == is case-insensitive
+    // mIRC == compares numerically when both sides are numbers (so 05 == 5), and
+    // case-insensitively otherwise; != is its negation.
+    if (op == "==") return numeric ? na == nb : toLowerAscii(a) == toLowerAscii(b);
     if (op == "===") return a == b;                             // case-sensitive exact
-    if (op == "!=") return toLowerAscii(a) != toLowerAscii(b);  // case-insensitive, opposite of ==
+    if (op == "!=") return numeric ? na != nb : toLowerAscii(a) != toLowerAscii(b);
     if (op == "<") return numeric ? na < nb : a < b;
     if (op == ">") return numeric ? na > nb : a > b;
     if (op == "<=") return numeric ? na <= nb : a <= b;

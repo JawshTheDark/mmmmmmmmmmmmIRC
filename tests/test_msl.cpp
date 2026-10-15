@@ -104,6 +104,8 @@ int main() {
     CHECK_EQ(eval(in, "$replace(aXbXc,X,-)"), std::string("a-b-c"));
     CHECK_EQ(eval(in, "$remove(hello,l)"), std::string("heo"));
     CHECK_EQ(eval(in, "$pos(hello,ll)"), std::string("3"));
+    CHECK_EQ(eval(in, "$pos(banana,a,2)"), std::string("4"));  // Nth occurrence
+    CHECK_EQ(eval(in, "$pos(banana,a,0)"), std::string("3"));  // N=0 => count
     CHECK_EQ(eval(in, "$count(banana,a)"), std::string("3"));
 
     // $calc arithmetic and precedence.
@@ -236,6 +238,8 @@ int main() {
         Scope s;
         s.locals["a"] = "5";
         CHECK(in.evalCondition("%a == 5", s));
+        CHECK(in.evalCondition("05 == 5", s));    // == compares numerically when both are numbers
+        CHECK(in.evalCondition("abc == ABC", s));  // ...and case-insensitively otherwise
         CHECK(in.evalCondition("%a >= 5 && %a < 10", s));
         CHECK(!in.evalCondition("%a > 5", s));
         CHECK(in.evalCondition("abc isin xxabcxx", s));
@@ -336,9 +340,9 @@ int main() {
     CHECK_EQ(eval(in, "$ceil(3.2)"), std::string("4"));
     CHECK_EQ(eval(in, "$floor(3.8)"), std::string("3"));
     CHECK_EQ(eval(in, "$sqrt(144)"), std::string("12"));
-    CHECK_EQ(eval(in, "$base(255,10,16)"), std::string("ff"));
+    CHECK_EQ(eval(in, "$base(255,10,16)"), std::string("FF"));  // mIRC emits uppercase hex
     CHECK_EQ(eval(in, "$base(ff,16,10)"), std::string("255"));
-    CHECK_EQ(eval(in, "$duration(3661)"), std::string("1h 1m 1s"));
+    CHECK_EQ(eval(in, "$duration(3661)"), std::string("1hr 1min 1sec"));
     CHECK_EQ(eval(in, "$duration(90,2)"), std::string("90"));
     CHECK_EQ(eval(in, "$deltok(a.b.c.d,2,46)"), std::string("a.c.d"));
     CHECK_EQ(eval(in, "$sorttok(c.a.b,46)"), std::string("a.b.c"));
