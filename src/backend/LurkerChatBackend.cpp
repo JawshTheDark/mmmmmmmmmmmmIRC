@@ -77,7 +77,16 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     // -progress/-end) arrives as kind:'irc' and is caught in translateEvent.
     connect(&m_client, &LurkerClient::frameReceived, this,
             [this](const QString& kind, const QJsonObject& frame) {
-                if (kind.startsWith(QStringLiteral("chanlist-"))) handleChanlistFrame(kind, frame);
+                if (kind.startsWith(QStringLiteral("chanlist-"))) {
+                    handleChanlistFrame(kind, frame);
+                } else if (kind == QStringLiteral("reaction")) {
+                    // A live reaction on a stored line (someone reacted after we
+                    // rendered it): add/remove it on the matching message.
+                    emit reactionUpdated(frame.value("networkId").toInt(-1), frame.value("target").toString(),
+                                         static_cast<qlonglong>(frame.value("messageId").toDouble()),
+                                         frame.value("nick").toString(), frame.value("value").toString(),
+                                         frame.value("self").toBool(), frame.value("remove").toBool());
+                }
             });
     connect(&m_client, &LurkerClient::readState, this, [this](const QJsonObject& f) {
         emit readStateChanged(f.value("networkId").toInt(-1), f.value("target").toString(),
@@ -289,6 +298,24 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
         }
     }
 
+    // IRCv3 reactions riding on this row, and the reply context if it answers one.
+    for (const QJsonValue& rv : ev.value("reactions").toArray()) {
+        const QJsonObject r = rv.toObject();
+        lurker::Reaction reaction;
+        reaction.nick = r.value("nick").toString().toStdString();
+        reaction.value = r.value("value").toString().toStdString();
+        reaction.self = r.value("self").toBool();
+        if (!reaction.value.empty()) out.reactions.push_back(reaction);
+    }
+    const QJsonObject parent = ev.value("replyTo").toObject().value("parent").toObject();
+    if (!parent.isEmpty()) {
+        out.replyParent.valid = true;
+        out.replyParent.id = static_cast<long long>(parent.value("id").toDouble());
+        out.replyParent.nick = parent.value("nick").toString().toStdString();
+        out.replyParent.text = parent.value("text").toString().toStdString();
+        out.replyParent.self = parent.value("self").toBool();
+    }
+
     if (type == IrcEventType::Topic) emit topicChanged(net, target, QString::fromStdString(out.text).toUtf8());
     if (type != IrcEventType::Unknown) emit event(out);
 }
@@ -335,6 +362,12 @@ void LurkerChatBackend::markRead(int net, const QString& target, qlonglong messa
     m_client.markRead(net, target, messageId);
 }
 void LurkerChatBackend::disconnectAll() { m_client.disconnect(); }
+
+void LurkerChatBackend::react(qlonglong messageId, const QString& value, bool remove) {
+    QJsonObject v{{"type", "react"}, {"messageId", static_cast<qint64>(messageId)}, {"value", value}};
+    if (remove) v.insert("remove", true);
+    m_client.sendVerb(v);
+}
 
 // --- channel list --------------------------------------------------------
 

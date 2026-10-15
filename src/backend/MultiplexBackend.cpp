@@ -43,6 +43,11 @@ void MultiplexBackend::addChild(ChatBackend* child) {
             [this, idx](int net, const QString& target, int unread, int highlights) {
                 emit readStateChanged(globalNet(idx, net), target, unread, highlights);
             });
+    connect(child, &ChatBackend::reactionUpdated, this,
+            [this, idx](int net, const QString& target, qlonglong id, const QString& nick, const QString& value,
+                        bool self, bool remove) {
+                emit reactionUpdated(globalNet(idx, net), target, id, nick, value, self, remove);
+            });
     connect(child, &ChatBackend::networkUpdated, this, [this, idx](const NetworkInfo& info) {
         NetworkInfo g = info;
         g.id = globalNet(idx, info.id);
@@ -94,6 +99,12 @@ ChatBackend* MultiplexBackend::previewChild() const {
 ChatBackend* MultiplexBackend::dccChild() const {
     for (ChatBackend* c : m_children)
         if (c->supportsDccTransfers()) return c;
+    return nullptr;
+}
+
+ChatBackend* MultiplexBackend::reactsChild() const {
+    for (ChatBackend* c : m_children)
+        if (c->supportsReactions()) return c;
     return nullptr;
 }
 
@@ -214,6 +225,10 @@ bool MultiplexBackend::supportsFileSend() const {
     for (ChatBackend* c : m_children)
         if (c->supportsFileSend()) return true;
     return false;
+}
+bool MultiplexBackend::supportsReactions() const { return reactsChild() != nullptr; }
+void MultiplexBackend::react(qlonglong messageId, const QString& value, bool remove) {
+    if (ChatBackend* c = reactsChild()) c->react(messageId, value, remove);
 }
 
 }  // namespace lurker::backend

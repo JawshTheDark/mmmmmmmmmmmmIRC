@@ -56,6 +56,8 @@ public:
     void sendFile(int net, const QString& target, const QString& localPath) override {
         m_client.sendFile(net, target, localPath);
     }
+    bool supportsReactions() const override { return true; }
+    void react(qlonglong messageId, const QString& value, bool remove) override;
 
 private:
     struct Member {

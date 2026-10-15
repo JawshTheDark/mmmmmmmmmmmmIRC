@@ -1938,6 +1938,12 @@ void MainWindow::useBackend(ChatBackend* backend) {
         connect(m_mux, &ChatBackend::membersReplaced, this, &MainWindow::onMembersReplaced);
         connect(m_mux, &ChatBackend::topicChanged, this, &MainWindow::onTopicChanged);
         connect(m_mux, &ChatBackend::readStateChanged, this, &MainWindow::onReadStateChanged);
+        connect(m_mux, &ChatBackend::reactionUpdated, this,
+                [this](int net, const QString& target, qlonglong messageId, const QString& nick,
+                       const QString& value, bool self, bool remove) {
+                    if (Buffer* b = findBuffer(keyFor(net, target)))
+                        b->view->applyReaction(messageId, nick, value, self, remove);
+                });
         connect(m_mux, &ChatBackend::readyChanged, this, [this] {
             const bool ready = m_backend && m_backend->isReady();
             m_disconnectAction->setEnabled(ready);
@@ -2003,6 +2009,33 @@ PictureWindow* MainWindow::ensurePictureWindow(const QString& name) {
         if (!m_closing) m_pictureWindows.remove(name);
     });
     return pw;
+}
+
+void MainWindow::reactionsDemo() {
+    m_networkNames.insert(1, QStringLiteral("Lurker"));
+    openConversation(1, QStringLiteral("#chat"));
+    Buffer* b = findBuffer(keyFor(1, QStringLiteral("#chat")));
+    if (!b) return;
+    ChatView* v = b->view;
+    const QString thumbsUp = QString::fromUtf8("\xF0\x9F\x91\x8D");
+    const QString heart = QString::fromUtf8("\xE2\x9D\xA4");
+    const QString party = QString::fromUtf8("\xF0\x9F\x8E\x89");
+    v->addMessage(QStringLiteral("12:00"), QStringLiteral("synmuffin"),
+                  QByteArray("has anyone tried the new build?"), false, false, false, 101);
+    v->applyReaction(101, QStringLiteral("bob"), heart, true, false);  // ❤ on the question (ours)
+    v->addMessage(QStringLiteral("12:01"), QStringLiteral("alice"), QByteArray("yeah, works great here"), false,
+                  false, false, 102);
+    // A reply to 101, with two 👍 reactions already standing on it.
+    v->addMessage(QStringLiteral("12:02"), QStringLiteral("bob"), QByteArray("same — the previews are slick"), false,
+                  false, false, 103, QStringLiteral("synmuffin"), QStringLiteral("has anyone tried the new build?"));
+    v->applyReaction(103, QStringLiteral("alice"), thumbsUp, false, false);
+    v->applyReaction(103, QStringLiteral("carol"), thumbsUp, false, false);
+    activateBuffer(b);
+    // A reaction arriving live after the lines were drawn.
+    QTimer::singleShot(400, this, [this, party] {
+        if (Buffer* buf = findBuffer(keyFor(1, QStringLiteral("#chat"))))
+            buf->view->applyReaction(103, QStringLiteral("dave"), party, false, false);
+    });
 }
 
 void MainWindow::openConversation(int net, const QString& target) {
@@ -2279,7 +2312,18 @@ void MainWindow::onEvent(const IrcEvent& event) {
                 const QString plain = stripFormattingQt(text);
                 bool hl = event.highlight;
                 if (!hl && !event.self) hl = highlightMatch(net, plain);
-                buf->view->addMessage(ts, nick, text, act, event.self, hl);
+                // Reply context (a dim quote above the line) and any reactions
+                // already standing on it (IRCv3 replies/reactions, #5).
+                const QString replyNick =
+                    event.replyParent.valid ? QString::fromStdString(event.replyParent.nick) : QString();
+                const QString replyText =
+                    event.replyParent.valid
+                        ? stripFormattingQt(QByteArray::fromStdString(event.replyParent.text))
+                        : QString();
+                buf->view->addMessage(ts, nick, text, act, event.self, hl, event.id, replyNick, replyText);
+                for (const auto& r : event.reactions)
+                    buf->view->applyReaction(event.id, QString::fromStdString(r.nick),
+                                             QString::fromStdString(r.value), r.self, false);
                 noteMessage(buf, event.id);
                 catchUrls(nick, buf->display, plain);
                 logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, plain)
@@ -2446,6 +2490,21 @@ void MainWindow::onReadStateChanged(int net, const QString& rawTarget, int unrea
 
 void MainWindow::onInput(Buffer* buffer, const QString& text) {
     if (!buffer) return;
+    // /react <value> and /unreact <value>: (un)react to this buffer's most recent
+    // message with an IRCv3 reaction (Lurker). Client-only, so handle it here
+    // before the IRC/MSL dispatch. The server echoes a reaction frame that draws
+    // the chip; nothing is rendered optimistically.
+    if (text.startsWith(QStringLiteral("/react ")) || text.startsWith(QStringLiteral("/unreact "))) {
+        const bool remove = text.startsWith(QStringLiteral("/unreact"));
+        const QString value = text.section(QLatin1Char(' '), 1).trimmed();
+        if (!m_backend || !m_backend->supportsReactions())
+            buffer->view->addSystemLine(tr("Reactions need a Lurker connection.").toUtf8());
+        else if (buffer->lastMessageId <= 0)
+            buffer->view->addSystemLine(tr("No message here to react to yet.").toUtf8());
+        else if (!value.isEmpty())
+            m_backend->react(buffer->lastMessageId, value, remove);
+        return;
+    }
     // MSL entry points: "//" forces evaluation; a bare "/alias" invokes a
     // user-defined alias. Everything else goes through the IRC command parser.
     if (text.startsWith(QStringLiteral("//"))) {

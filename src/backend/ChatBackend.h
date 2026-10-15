@@ -84,6 +84,15 @@ public:
     virtual void markRead(int net, const QString& target, qlonglong messageId) = 0;
     virtual void disconnectAll() = 0;
 
+    // IRCv3 reactions (+draft/react). Default: unsupported (raw bouncer has no
+    // stored message ids to react to). `messageId` is the persisted line's id.
+    virtual bool supportsReactions() const { return false; }
+    virtual void react(qlonglong messageId, const QString& value, bool remove) {
+        (void)messageId;
+        (void)value;
+        (void)remove;
+    }
+
     // Ask the network for its channel list. Default is a raw /LIST, whose
     // 321/322/323 numerics the GUI already routes to the Channels List window —
     // correct for real IRC (the bouncer). Backends with a structured
@@ -135,6 +144,9 @@ signals:
     void membersReplaced(int net, const QString& target, const QList<lurker::backend::DisplayMember>& members);
     void topicChanged(int net, const QString& target, const QByteArray& topic);
     void readStateChanged(int net, const QString& target, int unread, int highlights);
+    // One IRCv3 reaction was added (or, with remove, taken back) on a stored line.
+    void reactionUpdated(int net, const QString& target, qlonglong messageId, const QString& nick,
+                         const QString& value, bool self, bool remove);
     void readyChanged();
     void closed();
     // DCC: the full list (initial load) and single-row live updates.

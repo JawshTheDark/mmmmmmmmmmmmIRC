@@ -75,6 +75,8 @@ public:
     void saveDccFile(int id, const QString& path) override;
     bool supportsFileSend() const override;
     void sendFile(int net, const QString& target, const QString& localPath) override;
+    bool supportsReactions() const override;
+    void react(qlonglong messageId, const QString& value, bool remove) override;
 
 private:
     static constexpr int kStride = 1000000;  // network-id slice per child
@@ -84,6 +86,7 @@ private:
     ChatBackend* childForNet(int globalNet, int& localNet) const;
     ChatBackend* previewChild() const;  // first child that supports previews
     ChatBackend* dccChild() const;      // first child that supports DCC transfers
+    ChatBackend* reactsChild() const;   // first child that supports reactions
 
     QList<ChatBackend*> m_children;
 };

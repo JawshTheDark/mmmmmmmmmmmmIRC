@@ -83,6 +83,7 @@ public:
     void urlDemo();            // dev/screenshot: seed synthetic caught URLs
     void channelCentralDemo(); // dev/screenshot: open Channel Central with synthetic state
     void cascadeDemo();        // dev/screenshot: open many buffers + cascade; buffer list must stay readable
+    void reactionsDemo();      // dev/screenshot: a reply quote + reaction chips + a live reaction (#5)
 
 private:
     struct Buffer {

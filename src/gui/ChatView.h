@@ -7,7 +7,11 @@
 // serves status, channel and query buffers; the kind decides which parts show.
 #pragma once
 
+#include <QHash>
+#include <QMap>
+#include <QSet>
 #include <QStringList>
+#include <QTextCursor>
 #include <QWidget>
 #include <functional>
 
@@ -40,7 +44,11 @@ public:
     // One rendered line. `nick` empty => a system/server line (dimmer, no <>).
     // `utf8Text` may carry IRC formatting codes. `selfEcho` tints your own lines.
     void addMessage(const QString& timestamp, const QString& nick, const QByteArray& utf8Text,
-                    bool action = false, bool selfEcho = false, bool highlight = false);
+                    bool action = false, bool selfEcho = false, bool highlight = false, qlonglong msgId = 0,
+                    const QString& replyNick = QString(), const QString& replyText = QString());
+    // Add/remove one IRCv3 reaction on an already-rendered message (msgId), and
+    // re-draw its reaction chips in place. No-op if that message isn't shown here.
+    void applyReaction(qlonglong msgId, const QString& nick, const QString& value, bool selfReact, bool remove);
     // System/event lines (join/part/quit/...). `kind` selects the configurable
     // event colour (Options ▸ Display ▸ Event Colours).
     enum class SystemKind { Generic, Join, Part, Quit, Nick, Mode, Kick, Topic };
@@ -118,6 +126,18 @@ private:
     // the result just under the line (the `slot` cursor tracks that position).
     void requestPreviews(const QString& plainText);
     void insertPreview(QTextCursor slot, const PreviewDescriptor& d, const QImage& img);
+    void renderChips(qlonglong msgId);  // (re)draw the reaction chips under a message
+
+    // Per-rendered-message reaction state, so reactions arriving later can be
+    // drawn in place. `anchor` sits just after the message text (keeps its spot
+    // as the log grows); the chip run occupies [anchor, anchor+chipLen].
+    struct ReactSlot {
+        QTextCursor anchor;
+        int chipLen = 0;
+        QMap<QString, QSet<QString>> nicks;  // reaction value -> nicks who reacted
+        QSet<QString> selfValues;            // values we reacted with
+    };
+    QHash<qlonglong, ReactSlot> m_reactSlots;
 
     Kind m_kind;
     QString m_settingsScope;  // per-channel theme override prefix, empty = globals only

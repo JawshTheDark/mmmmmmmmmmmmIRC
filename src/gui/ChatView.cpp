@@ -422,12 +422,22 @@ void ChatView::appendBlock() {
 }
 
 void ChatView::addMessage(const QString& timestamp, const QString& nick, const QByteArray& utf8Text, bool action,
-                          bool selfEcho, bool highlight) {
+                          bool selfEcho, bool highlight, qlonglong msgId, const QString& replyNick,
+                          const QString& replyText) {
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
     QTextCursor cursor(m_messages->document());
     cursor.movePosition(QTextCursor::End);
     const QPalette pal = m_messages->palette();
+
+    // A reply: draw a dim quote of the answered line above this one.
+    if (!replyNick.isEmpty()) {
+        QTextCharFormat quote;
+        quote.setForeground(pal.color(QPalette::Disabled, QPalette::Text));
+        QString t = replyText;
+        if (t.size() > 80) t = t.left(79) + QChar(0x2026);  // clip with an ellipsis
+        cursor.insertText(QStringLiteral("↱ %1: %2\n").arg(replyNick, t), quote);
+    }
 
     QTextCharFormat meta;
     meta.setForeground(eventColor(m_settingsScope, QStringLiteral("timestamp"),
@@ -463,8 +473,69 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
                         {eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)),
                          pal.color(QPalette::Base)});
     }
+    // Remember where this message ends so reactions arriving later can be drawn
+    // under it. keepPositionOnInsert pins the anchor as more lines append below.
+    if (msgId != 0) {
+        ReactSlot slot;
+        slot.anchor = QTextCursor(m_messages->document());
+        slot.anchor.setPosition(cursor.position());
+        slot.anchor.setKeepPositionOnInsert(true);
+        m_reactSlots.insert(msgId, slot);
+    }
+
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
     requestPreviews(stripFormattingQt(utf8Text));
+}
+
+void ChatView::applyReaction(qlonglong msgId, const QString& nick, const QString& value, bool selfReact,
+                             bool remove) {
+    auto it = m_reactSlots.find(msgId);
+    if (it == m_reactSlots.end() || value.isEmpty()) return;  // message not shown here
+    ReactSlot& s = it.value();
+    if (remove) {
+        auto vi = s.nicks.find(value);
+        if (vi != s.nicks.end()) {
+            vi.value().remove(nick);
+            if (vi.value().isEmpty()) s.nicks.erase(vi);
+        }
+        if (selfReact) s.selfValues.remove(value);
+    } else {
+        s.nicks[value].insert(nick);
+        if (selfReact) s.selfValues.insert(value);
+    }
+    renderChips(msgId);
+}
+
+void ChatView::renderChips(qlonglong msgId) {
+    auto it = m_reactSlots.find(msgId);
+    if (it == m_reactSlots.end()) return;
+    ReactSlot& s = it.value();
+
+    QString chips;
+    for (auto vi = s.nicks.constBegin(); vi != s.nicks.constEnd(); ++vi) {
+        if (vi.value().isEmpty()) continue;
+        if (!chips.isEmpty()) chips += QStringLiteral("  ");
+        chips += vi.key() + QLatin1Char(' ') + QString::number(vi.value().size());
+        if (s.selfValues.contains(vi.key())) chips += QChar(0x2713);  // ✓ marks our own reaction
+    }
+    const QString run = chips.isEmpty() ? QString() : (QStringLiteral("\n   ") + chips);
+
+    const bool atBottom =
+        m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
+    QTextCursor c(m_messages->document());
+    c.setPosition(s.anchor.position());
+    if (s.chipLen > 0) {  // delete the previously-drawn chip run
+        c.setPosition(s.anchor.position() + s.chipLen, QTextCursor::KeepAnchor);
+        c.removeSelectedText();
+        c.setPosition(s.anchor.position());
+    }
+    if (!run.isEmpty()) {
+        QTextCharFormat fmt;
+        fmt.setForeground(m_messages->palette().color(QPalette::Disabled, QPalette::Text));
+        c.insertText(run, fmt);
+    }
+    s.chipLen = run.size();
+    if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
 void ChatView::addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server) {
@@ -527,7 +598,10 @@ void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
-void ChatView::clearMessages() { m_messages->clear(); }
+void ChatView::clearMessages() {
+    m_messages->clear();
+    m_reactSlots.clear();  // the anchors point into the now-cleared document
+}
 
 int ChatView::lineCount() const {
     const QTextDocument* doc = m_messages->document();

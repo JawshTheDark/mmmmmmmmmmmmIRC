@@ -240,6 +240,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.channelCentralDemo(); });
         } else if (arg == QStringLiteral("--cascadedemo")) {
             QTimer::singleShot(500, &window, [&window] { window.cascadeDemo(); });
+        } else if (arg == QStringLiteral("--reactdemo")) {
+            QTimer::singleShot(500, &window, [&window] { window.reactionsDemo(); });
         } else if (arg == QStringLiteral("--multidemo")) {
             QTimer::singleShot(500, &window, [&window] {
                 auto* d1 = new DemoBackend(QStringLiteral("Lurker"), QStringLiteral("#lurker"));
