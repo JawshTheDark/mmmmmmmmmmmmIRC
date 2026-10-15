@@ -159,7 +159,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_disconnectAction->setEnabled(false);
     file->addSeparator();
     file->addAction(tr("&Load Script..."), this, &MainWindow::promptLoadScript);
-    file->addAction(tr("&Scripts Editor..."), this, &MainWindow::openScriptEditor);
+    file->addAction(tr("&Scripts Editor..."), QKeySequence(QStringLiteral("Alt+R")), this,
+                    &MainWindow::openScriptEditor);
     file->addAction(tr("&Options..."), QKeySequence(QStringLiteral("Alt+O")), this,
                     [this] { showOptions(); });
     file->addSeparator();
@@ -840,8 +841,9 @@ void MainWindow::reloadScripts() {
 }
 
 void MainWindow::openScriptEditor() {
-    auto* ed = new ScriptEditor(this, [this] { return m_scriptFiles; }, [this] { reloadScripts(); },
-                                [this] { return scriptSummary(); });
+    auto* ed = new ScriptEditor(
+        this, [this] { return m_scriptFiles; }, [this] { reloadScripts(); }, [this] { return scriptSummary(); },
+        [this](const QString& path) { loadScriptFile(path); });
     ed->setAttribute(Qt::WA_DeleteOnClose);
     ed->show();
 }
