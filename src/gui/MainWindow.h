@@ -74,6 +74,7 @@ public:
     void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
     void urlDemo();            // dev/screenshot: seed synthetic caught URLs
     void channelCentralDemo(); // dev/screenshot: open Channel Central with synthetic state
+    void cascadeDemo();        // dev/screenshot: open many buffers + cascade; buffer list must stay readable
 
 private:
     struct Buffer {

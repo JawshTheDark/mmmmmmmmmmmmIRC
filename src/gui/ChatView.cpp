@@ -106,14 +106,18 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
 
     if (kind == Kind::Channel) {
         auto* split = new QSplitter(Qt::Horizontal, this);
+        m_messages->setMinimumWidth(120);  // chat pane always stays usable
         split->addWidget(m_messages);
         m_nicklist = new QListWidget(split);
         m_nicklist->setFont(configuredChatFont());
+        m_nicklist->setMinimumWidth(90);   // nicklist stays readable, independent of content
         m_nicklist->setMaximumWidth(220);
         m_nicklist->setUniformItemSizes(true);
         split->addWidget(m_nicklist);
         split->setStretchFactor(0, 1);
         split->setStretchFactor(1, 0);
+        // Neither pane may be dragged/squeezed shut; both keep their minimum width.
+        split->setChildrenCollapsible(false);
         split->setSizes({560, 160});
         outer->addWidget(split, 1);
         connect(m_nicklist, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {

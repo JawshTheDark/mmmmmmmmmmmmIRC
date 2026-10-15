@@ -110,6 +110,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_treeDock = treeDock;
     m_treebar = new QTreeWidget(treeDock);
     m_treebar->setHeaderHidden(true);
+    // The buffer list must stay readable: never let a layout pass (e.g. Cascade/Tile
+    // asking the MDI area for more room) squeeze the dock below a legible width.
+    m_treebar->setMinimumWidth(140);
     treeDock->setWidget(m_treebar);
     addDockWidget(Qt::LeftDockWidgetArea, treeDock);
     // Single click switches to a window (mIRC behaviour); itemActivated also
@@ -1945,6 +1948,20 @@ PictureWindow* MainWindow::ensurePictureWindow(const QString& name) {
 void MainWindow::openConversation(int net, const QString& target) {
     const ChatView::Kind kind = looksLikeChannel(target) ? ChatView::Kind::Channel : ChatView::Kind::Query;
     activateBuffer(&ensureBuffer(net, kind, target, keyFor(net, target)));
+}
+
+void MainWindow::cascadeDemo() {
+    // dev/screenshot (issue #1): open several channels across two networks and
+    // cascade them. Before the fix, Cascade squeezed the Networks dock until the
+    // channel names were unreadable; now the treebar and nicklists keep a minimum.
+    m_networkNames.insert(1, QStringLiteral("Libera.Chat"));
+    m_networkNames.insert(2, QStringLiteral("Rizon"));
+    const struct { int net; const char* chan; } chans[] = {
+        {1, "#mmmmmmmmmmmmIRC"}, {1, "#linux"}, {1, "#qt-development"}, {1, "##c++"},
+        {2, "#help"}, {2, "#lobby"},
+    };
+    for (const auto& c : chans) openConversation(c.net, QString::fromLatin1(c.chan));
+    arrangeWindows(/*tile=*/false);  // cascade — this is what used to shrink the dock
 }
 
 void MainWindow::noteMessage(Buffer* buffer, long long id) {

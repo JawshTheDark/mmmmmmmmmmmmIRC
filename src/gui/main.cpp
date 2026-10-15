@@ -137,6 +137,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.urlDemo(); });
         } else if (arg == QStringLiteral("--ccdemo")) {
             QTimer::singleShot(500, &window, [&window] { window.channelCentralDemo(); });
+        } else if (arg == QStringLiteral("--cascadedemo")) {
+            QTimer::singleShot(500, &window, [&window] { window.cascadeDemo(); });
         } else if (arg == QStringLiteral("--addressbook")) {
             QTimer::singleShot(500, &window, [&window] { window.showAddressBook(); });
         } else if (arg == QStringLiteral("--serverlist")) {
