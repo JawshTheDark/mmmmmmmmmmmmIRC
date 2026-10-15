@@ -64,6 +64,11 @@ public:
     // Wall-clock, overridable in tests ($ctime, $time, timers).
     virtual long long unixTime() const = 0;
 
+    // Directories for $mircdir (app/config dir) and $scriptdir (the running
+    // script's folder). Both include a trailing separator when non-empty.
+    virtual std::string appDir() const { return {}; }
+    virtual std::string scriptDir() const { return {}; }
+
     // Timers: /timer. `name` empty picks an auto name; returns the name used.
     virtual std::string startTimer(const std::string& name, int repeat, double intervalSeconds,
                                    const std::string& command) = 0;

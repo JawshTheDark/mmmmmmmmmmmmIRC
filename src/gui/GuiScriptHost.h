@@ -10,6 +10,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QString>
 #include <ctime>
 #include <functional>
@@ -77,6 +78,13 @@ public:
         return isOnFn ? isOnFn(net, QString::fromStdString(chan), QString::fromStdString(nick)) : false;
     }
     long long unixTime() const override { return static_cast<long long>(::time(nullptr)); }
+    std::string appDir() const override {
+        const QString d = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        return d.isEmpty() ? std::string() : (d + QLatin1Char('/')).toStdString();
+    }
+    std::string scriptDir() const override {
+        return baseDir.isEmpty() ? std::string() : (baseDir + QLatin1Char('/')).toStdString();
+    }
     std::string startTimer(const std::string& name, int repeat, double interval, const std::string& cmd) override {
         return startTimerFn ? startTimerFn(QString::fromStdString(name), repeat, interval, QString::fromStdString(cmd))
                                   .toStdString()

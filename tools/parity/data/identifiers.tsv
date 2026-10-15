@@ -144,7 +144,7 @@ $get	planned		window_identifiers.html	5
 $getdir	planned		file_directory_identifiers.html	0		
 $getdot	planned		picture_windows.html	12		
 $gettok	done		token_identifiers.html	563	test_msl	
-$gmt	planned		time_date_identifiers.html	0		
+$gmt	done		time_date_identifiers.html	0	test_msl	
 $group	planned		remote_identifiers.html	11		
 $halted	planned		halting_text.html	0		
 $hash	planned		other_identifiers.html	0		
@@ -242,7 +242,7 @@ $menutype	planned		popups.html	0
 $mid	done		text_number_identifiers.html	133	test_msl	
 $mididir	planned		file_directory_identifiers.html	0		
 $min	done		text_number_identifiers.html	8	test_msl	
-$mircdir	planned		file_directory_identifiers.html	8		
+$mircdir	done		file_directory_identifiers.html	8	test_msl	
 $mircexe	planned		file_directory_identifiers.html	1		
 $mircini	planned		file_directory_identifiers.html	1		
 $mircpid	planned		other_identifiers.html	0		
@@ -328,7 +328,7 @@ $samepath	planned		file_directory_identifiers.html	0
 $scid	planned		multimserver.html	35		
 $scon	planned		multimserver.html	7		
 $script	planned		remote_identifiers.html	45		
-$scriptdir	planned		remote_identifiers.html	112		
+$scriptdir	done		remote_identifiers.html	112	test_msl	
 $scriptline	planned		remote_identifiers.html	0		
 $sdir	planned		file_directory_identifiers.html	13		
 $send	planned		window_identifiers.html	51		

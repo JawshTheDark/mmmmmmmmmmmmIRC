@@ -7,11 +7,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
 | Commands | 63 | 235 | 26.8% | 23 |
-| Identifiers | 93 | 406 | 22.9% | 15 |
+| Identifiers | 96 | 406 | 23.6% | 15 |
 | Events | 14 | 84 | 16.7% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 26 | 390 | 6.7% | 0 |
-| **Total** | **202** | **1129** | **17.9%** | |
+| **Total** | **205** | **1129** | **18.2%** | |
 
 ## Commands
 
@@ -290,7 +290,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (313)
+### planned (310)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -298,7 +298,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$window` | 169 |  | custom_windows.html |  |  |
 | `$version` | 128 |  | other_identifiers.html |  |  |
 | `$chat` | 121 |  | window_identifiers.html |  |  |
-| `$scriptdir` | 112 |  | remote_identifiers.html |  |  |
 | `$server` | 110 |  | other_identifiers.html |  |  |
 | `$mouse` | 80 |  | picture_windows.html |  |  |
 | `$opnick` | 78 |  | on_opodeop.html |  |  |
@@ -343,7 +342,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$titlebar` | 11 |  | other_identifiers.html |  |  |
 | `$keyval` | 9 |  | on_keydownoup.html |  |  |
 | `$ip` | 8 |  | other_identifiers.html |  |  |
-| `$mircdir` | 8 |  | file_directory_identifiers.html |  |  |
 | `$pic` | 8 |  | picture_windows.html |  |  |
 | `$readn` | 8 |  | file_directory_identifiers.html |  |  |
 | `$didtok` | 7 |  | dialogs.html |  |  |
@@ -459,7 +457,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$fullscreen` | 0 |  | window_identifiers.html |  |  |
 | `$gcd` | 0 |  | text_number_identifiers.html |  |  |
 | `$getdir` | 0 |  | file_directory_identifiers.html |  |  |
-| `$gmt` | 0 |  | time_date_identifiers.html |  |  |
 | `$halted` | 0 |  | halting_text.html |  |  |
 | `$hash` | 0 |  | other_identifiers.html |  |  |
 | `$height` | 0 |  | picture_windows.html |  |  |
@@ -608,7 +605,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (93)
+### done (96)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -643,6 +640,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$findtok` | 7 |  | token_identifiers.html | test_msl |  |
 | `$floor` | 0 |  | text_number_identifiers.html | test_msl |  |
 | `$gettok` | 563 |  | token_identifiers.html | test_msl |  |
+| `$gmt` | 0 |  | time_date_identifiers.html | test_msl |  |
 | `$hfind` | 0 |  | hash_tables.html | test_msl |  |
 | `$hget` | 51 |  | hash_tables.html | test_msl |  |
 | `$iif` | 719 |  | other_identifiers.html | test_msl |  |
@@ -664,6 +662,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$me` | 1042 |  | nick_address_identifiers.html | test_msl |  |
 | `$mid` | 133 |  | text_number_identifiers.html | test_msl |  |
 | `$min` | 8 |  | text_number_identifiers.html | test_msl |  |
+| `$mircdir` | 8 |  | file_directory_identifiers.html | test_msl |  |
 | `$nick` | 2968 |  | remote_identifiers.html | test_msl |  |
 | `$nofile` | 10 |  | file_directory_identifiers.html | test_msl |  |
 | `$nopath` | 46 |  | file_directory_identifiers.html | test_msl |  |
@@ -686,6 +685,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$reptok` | 3 |  | token_identifiers.html | test_msl |  |
 | `$right` | 406 |  | text_number_identifiers.html | test_msl |  |
 | `$round` | 200 |  | text_number_identifiers.html | test_msl |  |
+| `$scriptdir` | 112 |  | remote_identifiers.html | test_msl |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html | test_msl | substitute: no 8.3 names on Linux; returns the long name |
 | `$signal` | 0 |  | signals.html | test_msl |  |
 | `$site` | 36 |  | remote_identifiers.html | test_msl |  |

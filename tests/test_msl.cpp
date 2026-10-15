@@ -41,6 +41,8 @@ struct FakeHost : Host {
     ScriptTarget activeTarget() const override { return active; }
     std::string me(int) const override { return "jawsh"; }
     long long unixTime() const override { return now; }
+    std::string appDir() const override { return "/app/"; }
+    std::string scriptDir() const override { return "/scripts/"; }
     std::vector<std::string> timers;  // "repeat\tinterval\tcommand"
     std::string startTimer(const std::string&, int repeat, double interval, const std::string& cmd) override {
         timers.push_back(std::to_string(repeat) + "\t" + std::to_string(interval) + "\t" + cmd);
@@ -548,6 +550,12 @@ int main() {
             CHECK_EQ((*m)[3].children[1].caption, std::string("Deop"));
         }
     }
+
+    // Directory identifiers.
+    CHECK_EQ(eval(in, "$mircdir"), std::string("/app/"));
+    CHECK_EQ(eval(in, "$mircdir(logs/x.txt)"), std::string("/app/logs/x.txt"));
+    CHECK_EQ(eval(in, "$scriptdir"), std::string("/scripts/"));
+    CHECK_EQ(eval(in, "$gmt"), std::string("1000"));
 
     // on NICK fires with $nick (old) and $newnick (new).
     {
