@@ -120,6 +120,7 @@ private:
 
     QMdiArea* m_mdi = nullptr;
     QTreeWidget* m_treebar = nullptr;
+    class QDockWidget* m_treeDock = nullptr;  // the networks tree dock
     QToolBar* m_switchbar = nullptr;
     QToolBar* m_toolbar = nullptr;   // top icon toolbar
     QActionGroup* m_switchGroup = nullptr;

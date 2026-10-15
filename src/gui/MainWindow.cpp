@@ -34,6 +34,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -91,6 +92,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto* treeDock = new QDockWidget(tr("Networks"), this);
     treeDock->setObjectName(QStringLiteral("treebar"));
+    m_treeDock = treeDock;
     m_treebar = new QTreeWidget(treeDock);
     m_treebar->setHeaderHidden(true);
     treeDock->setWidget(m_treebar);
@@ -709,6 +711,20 @@ void MainWindow::setupScripting() {
         }
         if (Buffer* b = findBuffer(keyFor(-1, name))) b->view->clearMessages();
     };
+    m_scriptHost.setBarVisibleFn = [this](const QString& bar, int mode) {
+        QWidget* w = nullptr;
+        if (bar == QLatin1String("switchbar")) w = m_switchbar;
+        else if (bar == QLatin1String("toolbar")) w = m_toolbar;
+        else if (bar == QLatin1String("treebar")) w = m_treeDock;
+        else if (bar == QLatin1String("menubar")) w = menuBar();
+        else if (bar == QLatin1String("nicklist")) {
+            if (Buffer* b = activeBuffer()) b->view->setNicklistVisible(mode == 2 ? -1 : mode);
+            return;
+        }
+        if (!w) return;
+        const bool show = (mode == 2) ? !w->isVisible() : (mode == 1);
+        w->setVisible(show);
+    };
     m_scriptHost.drawOpFn = [this](const QString& win, const QString& op, const QStringList& args) {
         ensurePictureWindow(win)->drawOp(op, args);
     };
@@ -1278,9 +1294,28 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
         runScript(text);
         return;
     }
-    if (text.startsWith(QLatin1Char('/')) && m_msl) {
+    if (text.startsWith(QLatin1Char('/')) && !text.startsWith(QStringLiteral("//")) && m_msl) {
         const QString word = text.mid(1).section(QLatin1Char(' '), 0, 0).toLower();
-        if (m_msl->hasAlias(word.toStdString())) {
+        // User aliases always win. For built-in commands, let the integrated IRC
+        // command parser keep the ones it handles best (buffer-aware /join, /msg,
+        // /query, …) and route everything else the MSL engine knows to MSL — so
+        // /switchbar, /toolbar, /amsg, /echo, /window, /timer, … work from the box.
+        static const QSet<QString> keepParser = {
+            QStringLiteral("join"),    QStringLiteral("j"),       QStringLiteral("part"),
+            QStringLiteral("leave"),   QStringLiteral("msg"),     QStringLiteral("m"),
+            QStringLiteral("me"),      QStringLiteral("query"),   QStringLiteral("q"),
+            QStringLiteral("notice"),  QStringLiteral("topic"),   QStringLiteral("away"),
+            QStringLiteral("back"),    QStringLiteral("mode"),    QStringLiteral("kick"),
+            QStringLiteral("invite"),  QStringLiteral("op"),      QStringLiteral("deop"),
+            QStringLiteral("voice"),   QStringLiteral("devoice"), QStringLiteral("whois"),
+            QStringLiteral("who"),     QStringLiteral("w"),       QStringLiteral("quit"),
+            QStringLiteral("quote"),   QStringLiteral("raw"),     QStringLiteral("ctcp"),
+            QStringLiteral("describe"),QStringLiteral("list"),    QStringLiteral("clear"),
+            QStringLiteral("close"),   QStringLiteral("server"),  QStringLiteral("disconnect"),
+            QStringLiteral("nick"),    QStringLiteral("version"), QStringLiteral("time"),
+            QStringLiteral("exit"),    QStringLiteral("help")};
+        if (m_msl->hasAlias(word.toStdString()) ||
+            (m_msl->hasCommand(word.toStdString()) && !keepParser.contains(word))) {
             runScript(text.mid(1));
             return;
         }
@@ -1296,14 +1331,26 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
         buffer->view->addSystemLine(QByteArray("⚠ ") + QByteArray::fromStdString(result.error));
         return;
     }
-    if (!m_backend || !m_backend->isReady()) {
-        buffer->view->addSystemLine(tr("Not connected.").toUtf8());
-        return;
-    }
     const int net = buffer->networkId;
     for (const lurker::Action& a : result.actions) {
         using lurker::ActionKind;
         const QString target = QString::fromStdString(a.target);
+        // Local actions work whether or not a network is connected.
+        switch (a.kind) {
+            case ActionKind::CloseBuffer: closeBuffer(buffer); continue;
+            case ActionKind::LocalClear: buffer->view->clearMessages(); continue;
+            case ActionKind::LocalHelp:
+                buffer->view->addSystemLine(QByteArray::fromStdString(lurker::helpText()));
+                continue;
+            case ActionKind::OpenBuffer:
+                activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, target, keyFor(net, target)));
+                continue;
+            default: break;  // the rest need the network
+        }
+        if (!m_backend || !m_backend->isReady()) {
+            buffer->view->addSystemLine(tr("Not connected.").toUtf8());
+            continue;
+        }
         switch (a.kind) {
             case ActionKind::Send: m_backend->sendMessage(net, target, QString::fromStdString(a.text)); break;
             case ActionKind::Action: m_backend->sendAction(net, target, QString::fromStdString(a.text)); break;
@@ -1316,12 +1363,7 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
             case ActionKind::Back: m_backend->clearAway(net); break;
             case ActionKind::Ctcp: m_backend->sendCtcp(net, target, QString::fromStdString(a.ctcpType), QString::fromStdString(a.text)); break;
             case ActionKind::ListChannels: m_backend->sendRaw(net, QStringLiteral("LIST")); break;
-            case ActionKind::OpenBuffer:
-                activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, target, keyFor(net, target)));
-                break;
-            case ActionKind::CloseBuffer: closeBuffer(buffer); break;
-            case ActionKind::LocalClear: buffer->view->addSystemLine(tr("(cleared)").toUtf8()); break;
-            case ActionKind::LocalHelp: buffer->view->addSystemLine(QByteArray::fromStdString(lurker::helpText())); break;
+            default: break;  // local actions handled above
         }
     }
 }

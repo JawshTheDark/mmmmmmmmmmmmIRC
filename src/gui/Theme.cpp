@@ -72,6 +72,17 @@ void applyTheme(QApplication& app, const QString& id) {
     if (isDark) {
         app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
         app.setPalette(darkPalette(skin.base, skin.window, skin.text, skin.accent));
+        // Item views (the treebar, nicklists) and dock titles don't always
+        // repaint from a palette change alone — especially when switching themes
+        // at runtime or on Windows — so pin their colours with a stylesheet,
+        // which forces a repolish. (Per-channel chat backgrounds are set on the
+        // QTextBrowser itself, a widget-level stylesheet that still wins.)
+        app.setStyleSheet(
+            QStringLiteral("QTreeView,QTreeWidget,QListView,QListWidget{background:%1;color:%2;}"
+                           "QHeaderView::section{background:%3;color:%2;}"
+                           "QDockWidget{color:%2;}"
+                           "QDockWidget::title{background:%3;}")
+                .arg(skin.base.name(), skin.text.name(), skin.window.name()));
         // The MDI workspace backdrop is set programmatically (MainWindow reacts
         // to the palette change) because QMdiArea ignores a stylesheet background.
         return;

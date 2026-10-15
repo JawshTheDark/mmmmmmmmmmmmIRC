@@ -161,6 +161,12 @@ void ChatView::setSettingsScope(const QString& scope) {
     applyDisplaySettings();  // re-apply with any per-channel overrides
 }
 
+void ChatView::setNicklistVisible(int mode) {
+    if (!m_nicklist) return;  // status/query windows have no nicklist
+    const bool show = (mode < 0) ? !m_nicklist->isVisible() : (mode != 0);
+    m_nicklist->setVisible(show);
+}
+
 void ChatView::applyDisplaySettings() {
     const QFont f = configuredChatFont(m_settingsScope);
     m_messages->setFont(f);

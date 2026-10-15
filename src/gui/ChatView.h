@@ -43,6 +43,7 @@ public:
     int memberCount() const;
 
     void focusInput();
+    void setNicklistVisible(int mode);  // -1 toggle, 0 hide, 1 show (channels only)
 
     // Re-read Options ▸ Display (font, scrollback) and apply to this view, so
     // theming changes take effect without reopening the window.

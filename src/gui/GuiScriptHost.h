@@ -36,6 +36,7 @@ public:
     std::function<void(const QString&)> stopTimerFn;
     std::function<void(const QString&, const QString&)> openWindowFn;
     std::function<void(const QString&)> clearWindowFn;
+    std::function<void(const QString&, int)> setBarVisibleFn;
     std::function<void(const QString&, const QString&, const QStringList&)> drawOpFn;
     std::function<void(const QString&, const QString&, int, bool)> sockOpenFn;
     std::function<void(const QString&, const QString&, bool)> sockWriteFn;
@@ -92,6 +93,9 @@ public:
     }
     void stopTimer(const std::string& name) override {
         if (stopTimerFn) stopTimerFn(QString::fromStdString(name));
+    }
+    void setBarVisible(const std::string& bar, int mode) override {
+        if (setBarVisibleFn) setBarVisibleFn(QString::fromStdString(bar), mode);
     }
     void openWindow(const std::string& name, const std::string& sw) override {
         if (openWindowFn) openWindowFn(QString::fromStdString(name), QString::fromStdString(sw));

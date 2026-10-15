@@ -136,6 +136,13 @@ public:
         return {};
     }
 
+    // Toggle a main-window UI bar (/switchbar, /toolbar, /treebar, /menubar,
+    // /nicklist, /titlebar). mode: 0 hide, 1 show, 2 toggle. Default no-op.
+    virtual void setBarVisible(const std::string& bar, int mode) {
+        (void)bar;
+        (void)mode;
+    }
+
     // Custom windows (/window @name, /clear). Default no-ops.
     virtual void openWindow(const std::string& name, const std::string& switches) {
         (void)name;

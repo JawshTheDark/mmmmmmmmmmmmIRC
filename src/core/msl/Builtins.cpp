@@ -1165,6 +1165,23 @@ void registerBuiltins(Interpreter& in) {
         const std::string win = a.empty() ? i.host().activeTarget().window : i.evaluate(a, sc);
         i.host().clearWindow(win);
     });
+    // UI bar toggles: /switchbar /toolbar /treebar /menubar /nicklist /titlebar.
+    // No arg toggles; on/+/show shows; off/-/hide hides.
+    auto barCmd = [](const std::string& bar) {
+        return [bar](Interpreter& i, S& sc, const std::string& a) {
+            const std::string s = toLowerAscii(i.evaluate(a, sc));
+            int mode = 2;  // toggle
+            if (s == "on" || s == "+" || s == "show" || s == "1") mode = 1;
+            else if (s == "off" || s == "-" || s == "hide" || s == "0") mode = 0;
+            i.host().setBarVisible(bar, mode);
+        };
+    };
+    in.registerCommand("switchbar", barCmd("switchbar"));
+    in.registerCommand("toolbar", barCmd("toolbar"));
+    in.registerCommand("treebar", barCmd("treebar"));
+    in.registerCommand("menubar", barCmd("menubar"));
+    in.registerCommand("nicklist", barCmd("nicklist"));
+    in.registerCommand("titlebar", barCmd("titlebar"));
 
     // variables
     auto parseSetName = [](const std::string& args, std::string& name, std::string& value, bool& hasValue) {
