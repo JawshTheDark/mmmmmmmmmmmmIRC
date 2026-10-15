@@ -1,6 +1,6 @@
 # Plan: a cross-platform mIRC replica with Lurker interoperability
 
-This is the execution plan for `lurker-desktop`. It is written so that an agent or a person can
+This is the execution plan for `mmmmmmmmmmmmirc`. It is written so that an agent or a person can
 pick up any work package (WP) cold. Read [DESIGN.md](DESIGN.md) for the architecture and the
 clean-room rules first; this document says *what* to build, *in which order*, and *how we know
 it is done*.

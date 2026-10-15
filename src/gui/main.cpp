@@ -65,13 +65,25 @@ struct TestChatView : lurker::gui::ChatView {
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("lurker-desktop"));
-    QApplication::setOrganizationName(QStringLiteral("lurker-desktop"));
+    QApplication::setApplicationName(QStringLiteral("mmmmmmmmmmmmIRC"));
+    QApplication::setOrganizationName(QStringLiteral("mmmmmmmmmmmmIRC"));
+    QApplication::setDesktopFileName(QStringLiteral("mmmmmmmmmmmmirc"));  // matches the .desktop basename
     // Store settings in a portable .ini config file (not the Windows registry),
     // so config — loaded scripts, variables, theme, connection — lives in one
     // visible file that persists across versions and is easy to back up.
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QApplication::setApplicationDisplayName(QStringLiteral("mmmmmmmmmmmmIRC"));
+    // One-time migration from the old "lurker-desktop" config location so a
+    // user's themes, identity, favourites and connection carry over the rename.
+    {
+        QSettings now;  // new org/app (mmmmmmmmmmmmIRC), IniFormat
+        if (!now.value(QStringLiteral("_migratedFromLurkerDesktop")).toBool() && now.allKeys().isEmpty()) {
+            QSettings old(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("lurker-desktop"),
+                          QStringLiteral("lurker-desktop"));
+            for (const QString& k : old.allKeys()) now.setValue(k, old.value(k));
+        }
+        now.setValue(QStringLiteral("_migratedFromLurkerDesktop"), true);
+    }
     QApplication::setWindowIcon(lurker::gui::appIcon());
 
     const QStringList args = QCoreApplication::arguments();

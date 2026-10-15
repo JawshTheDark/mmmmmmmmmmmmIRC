@@ -1,4 +1,4 @@
-# lurker-desktop — working notes for agents
+# mmmmmmmmmmmmirc — working notes for agents
 
 A clean-room, native Linux desktop IRC client for Lurker (github.com/amiantos/lurker) in the
 mIRC tradition, with the goal of **100% mIRC 7.85 parity including running existing mIRC
@@ -29,7 +29,7 @@ Start here: [docs/PLAN.md](docs/PLAN.md) (phased plan, work packages, exit gates
 cmake --preset dev                 # Qt at ~/Qt/6.11.3/gcc_64 (CMakeUserPresets.json, local only)
 cmake --build --preset dev
 ctest --preset dev                 # all tests
-QT_QPA_PLATFORM=offscreen ./build/src/gui/lurker-desktop --screenshot=out.png   # headless UI check
+QT_QPA_PLATFORM=offscreen ./build/src/gui/mmmmmmmmmmmmirc --screenshot=out.png   # headless UI check
 python3 tools/parity/render.py     # regenerate docs/PARITY.md after editing tools/parity/data/*.tsv
 ```
 

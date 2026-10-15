@@ -40,35 +40,35 @@ jobs:
       - name: Build (GUI only)
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLURKER_BUILD_GUI=ON
-          cmake --build build --target lurker-desktop
+          cmake --build build --target mmmmmmmmmmmmirc
 
       - name: Deploy with windeployqt
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $exe = Get-ChildItem -Path build -Recurse -Filter lurker-desktop.exe | Select-Object -First 1
-          if (-not $exe) { throw "lurker-desktop.exe not found under build/" }
+          $exe = Get-ChildItem -Path build -Recurse -Filter mmmmmmmmmmmmirc.exe | Select-Object -First 1
+          if (-not $exe) { throw "mmmmmmmmmmmmirc.exe not found under build/" }
           Write-Host "Found $($exe.FullName)"
           Copy-Item $exe.FullName dist\
-          windeployqt --release --no-translations --no-system-d3d-compiler dist\lurker-desktop.exe
+          windeployqt --release --no-translations --no-system-d3d-compiler dist\mmmmmmmmmmmmirc.exe
 
       - name: Package zip
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
-          Compress-Archive -Path dist\* -DestinationPath "lurker-desktop-$tag-windows-x64.zip"
+          Compress-Archive -Path dist\* -DestinationPath "mmmmmmmmmmmmirc-$tag-windows-x64.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-zip
-          path: lurker-desktop-*-windows-x64.zip
+          path: mmmmmmmmmmmmirc-*-windows-x64.zip
           if-no-files-found: error
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: lurker-desktop-*-windows-x64.zip
+          files: mmmmmmmmmmmmirc-*-windows-x64.zip
           generate_release_notes: true
           fail_on_unmatched_files: true
 
@@ -93,14 +93,14 @@ jobs:
       - name: Build (GUI only)
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --target lurker-desktop
+          cmake --build build --target mmmmmmmmmmmmirc
 
       - name: Stage AppDir
         run: |
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-          cp build/src/gui/lurker-desktop AppDir/usr/bin/
-          cp packaging/lurker-desktop.desktop AppDir/usr/share/applications/
-          cp packaging/lurker-desktop.png AppDir/usr/share/icons/hicolor/256x256/apps/lurker-desktop.png
+          cp build/src/gui/mmmmmmmmmmmmirc AppDir/usr/bin/
+          cp packaging/mmmmmmmmmmmmirc.desktop AppDir/usr/share/applications/
+          cp packaging/mmmmmmmmmmmmirc.png AppDir/usr/share/icons/hicolor/256x256/apps/mmmmmmmmmmmmirc.png
 
       - name: Fetch linuxdeploy
         run: |
@@ -112,21 +112,21 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
           # linuxdeploy's appimage plugin names the output from $OUTPUT.
-          OUTPUT: lurker-desktop-${{ github.ref_name }}-x86_64.AppImage
+          OUTPUT: mmmmmmmmmmmmirc-${{ github.ref_name }}-x86_64.AppImage
         run: |
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
-          ls -la lurker-desktop-*-x86_64.AppImage
+          ls -la mmmmmmmmmmmmirc-*-x86_64.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: lurker-desktop-*-x86_64.AppImage
+          path: mmmmmmmmmmmmirc-*-x86_64.AppImage
           if-no-files-found: error
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: lurker-desktop-*-x86_64.AppImage
+          files: mmmmmmmmmmmmirc-*-x86_64.AppImage
           generate_release_notes: true
           fail_on_unmatched_files: true

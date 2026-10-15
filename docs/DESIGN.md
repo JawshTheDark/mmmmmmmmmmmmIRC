@@ -1,4 +1,4 @@
-# lurker-desktop design
+# mmmmmmmmmmmmirc design
 
 A native Linux desktop IRC client for [Lurker](https://github.com/amiantos/lurker), in the mIRC
 tradition: MDI windows, treebar, switchbar, nicklists, and the **mIRC scripting language** so

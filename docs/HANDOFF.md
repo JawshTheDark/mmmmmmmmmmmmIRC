@@ -1,4 +1,4 @@
-# Lurker Desktop — handoff / continuation
+# mmmmmmmmmmmmIRC — handoff / continuation
 
 For a person or agent picking this up. A cross-platform (Linux + Windows) mIRC-style IRC client for
 Lurker, C++20 + Qt 6, MPL-2.0, clean-room. Entry points: [CLAUDE.md](../CLAUDE.md) (rules),
@@ -9,7 +9,7 @@ Lurker, C++20 + Qt 6, MPL-2.0, clean-room. Entry points: [CLAUDE.md](../CLAUDE.m
 ```bash
 cmake --preset dev            # or: cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.3/gcc_64
 cmake --build --preset dev
-./build/src/gui/lurker-desktop
+./build/src/gui/mmmmmmmmmmmmirc
 ```
 
 Then **File ▸ Connect** (prefills from `.secrets/dev-profile.json` when present): Lurker mode uses the

@@ -58,7 +58,7 @@ void Updater::checkForUpdates(bool silent) {
     }
     QNetworkRequest req{QUrl(QStringLiteral("https://api.github.com/repos/%1/releases/latest").arg(kRepo))};
     req.setRawHeader("Accept", "application/vnd.github+json");
-    req.setRawHeader("User-Agent", "lurker-desktop-updater");
+    req.setRawHeader("User-Agent", "mmmmmmmmmmmmirc-updater");
     QNetworkReply* reply = m_net->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, silent] {
         reply->deleteLater();
@@ -73,7 +73,7 @@ void Updater::checkForUpdates(bool silent) {
 void Updater::onLatestReceived(const QByteArray& json, bool silent) {
     const QJsonObject o = QJsonDocument::fromJson(json).object();
     const QString tag = o.value(QStringLiteral("tag_name")).toString();
-    const QString current = QStringLiteral(LURKER_DESKTOP_VERSION);
+    const QString current = QStringLiteral(APP_VERSION);
     if (tag.isEmpty()) {
         if (!silent) QMessageBox::warning(m_parent, tr("Updates"), tr("No release information was returned."));
         return;
@@ -120,7 +120,7 @@ void Updater::downloadAsset(const QString& url, const QString& assetName, const 
     progress->setMinimumDuration(0);
 
     QNetworkRequest req{QUrl(url)};
-    req.setRawHeader("User-Agent", "lurker-desktop-updater");
+    req.setRawHeader("User-Agent", "mmmmmmmmmmmmirc-updater");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     QNetworkReply* reply = m_net->get(req);
 

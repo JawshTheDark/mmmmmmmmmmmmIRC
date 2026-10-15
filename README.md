@@ -57,7 +57,7 @@ Needs CMake 3.21+, Ninja, a C++20 compiler, and Qt 6.4+ (Widgets, Network, WebSo
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.3/gcc_64
 cmake --build build
 ctest --test-dir build --output-on-failure
-./build/src/gui/lurker-desktop
+./build/src/gui/mmmmmmmmmmmmirc
 ```
 
 Without Qt, `-DLURKER_BUILD_GUI=OFF` builds and tests just the engine core.

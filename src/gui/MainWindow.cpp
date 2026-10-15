@@ -972,7 +972,7 @@ void MainWindow::openLogsFolder() {
 }
 
 void MainWindow::showAbout() {
-    const QString version = QStringLiteral(LURKER_DESKTOP_VERSION);
+    const QString version = QStringLiteral(APP_VERSION);
     QMessageBox::about(
         this, tr("About mmmmmmmmmmmmIRC"),
         tr("<h3>mmmmmmmmmmmmIRC %1</h3>"
