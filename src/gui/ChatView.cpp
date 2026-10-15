@@ -5,6 +5,7 @@
 #include "gui/ChatView.h"
 
 #include <QFontDatabase>
+#include <QFontDialog>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QMenu>
@@ -86,6 +87,8 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     m_messages->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_messages, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
         QMenu* menu = m_messages->createStandardContextMenu(m_messages->mapToGlobal(pos));
+        menu->addSeparator();
+        menu->addAction(tr("Font…"), this, [this] { chooseFont(); });  // this window's font
         if (m_windowPopupProvider) m_windowPopupProvider(menu);
         menu->exec(m_messages->mapToGlobal(pos));
         menu->deleteLater();
@@ -412,6 +415,21 @@ void ChatView::setTopic(const QByteArray& utf8Topic) {
     const QString topic = QString::fromUtf8(utf8Topic);
     m_topicBar->setText(topic.isEmpty() ? tr("(no topic set)") : stripFormattingQt(utf8Topic));
     m_topicBar->setToolTip(topic);
+}
+
+void ChatView::chooseFont() {
+    bool ok = false;
+    const QFont f = QFontDialog::getFont(&ok, m_messages->font(), this, tr("Window Font"));
+    if (!ok) return;
+    QSettings s;
+    if (!m_settingsScope.isEmpty()) {  // per-channel/query override
+        s.setValue(m_settingsScope + QStringLiteral("/fontFamily"), f.family());
+        s.setValue(m_settingsScope + QStringLiteral("/fontSize"), f.pointSize());
+    } else {  // status window → the global display font
+        s.setValue(QStringLiteral("display/fontFamily"), f.family());
+        s.setValue(QStringLiteral("display/fontSize"), f.pointSize());
+    }
+    applyDisplaySettings();
 }
 
 QString ChatView::currentTopic() const {

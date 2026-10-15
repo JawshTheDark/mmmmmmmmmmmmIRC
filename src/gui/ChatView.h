@@ -98,6 +98,7 @@ private:
     void appendBlock();
     void recallHistory(int direction);  // -1 older, +1 newer
     void doTabCompletion();
+    void chooseFont();  // pick this window's font (per-channel scope, or global for status)
     // Find URLs in a just-rendered line and resolve previews for them, inserting
     // the result just under the line (the `slot` cursor tracks that position).
     void requestPreviews(const QString& plainText);

@@ -9,6 +9,9 @@
 #include <QColor>
 #include <QColorDialog>
 #include <QComboBox>
+#include <QInputDialog>
+#include <QVector>
+#include <memory>
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFontComboBox>
@@ -222,7 +225,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
                                          true));
                 }));
 
-    // Colors page — the 16 mIRC palette swatches, editable.
+    // Colors page — the 16 mIRC palette swatches, editable, with named schemes.
     {
         auto* page = new QWidget;
         auto* v = new QVBoxLayout(page);
@@ -235,32 +238,101 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         v->addWidget(new QLabel(tr("The 16 colours used by mIRC colour codes in messages. Click a swatch to change it.")));
         auto* grid = new QGridLayout;
         QSettings s;
+        auto swatches = std::make_shared<QVector<QToolButton*>>();
+        auto paint = [](QToolButton* btn, const QColor& c) {
+            btn->setStyleSheet(QStringLiteral("QToolButton { background:%1; border:1px solid #555; }").arg(c.name()));
+            btn->setProperty("colorValue", c.name());
+        };
         for (int i = 0; i < 16; ++i) {
-            const QString key = QStringLiteral("colors/%1").arg(i);
             const QString def = QString::fromLatin1(kMircColors[i]);
-            QColor col(s.value(key, def).toString());
+            QColor col(s.value(QStringLiteral("colors/%1").arg(i), def).toString());
             auto* btn = new QToolButton(page);
             btn->setFixedSize(34, 26);
             btn->setAutoRaise(false);
             btn->setToolTip(tr("Colour %1").arg(i));
-            auto paint = [btn](const QColor& c) {
-                btn->setStyleSheet(QStringLiteral("QToolButton { background:%1; border:1px solid #555; }")
-                                       .arg(c.name()));
-                btn->setProperty("colorValue", c.name());
-            };
-            paint(col);
+            paint(btn, col);
             connect(btn, &QToolButton::clicked, page, [btn, paint, i] {
                 const QColor cur(btn->property("colorValue").toString());
                 const QColor chosen = QColorDialog::getColor(cur, btn, tr("Colour %1").arg(i));
                 if (chosen.isValid()) {
-                    paint(chosen);
+                    paint(btn, chosen);
                     QSettings().setValue(QStringLiteral("colors/%1").arg(i), chosen.name());
                 }
             });
+            swatches->append(btn);
             grid->addWidget(new QLabel(QString::number(i)), i / 8 * 2, i % 8, Qt::AlignHCenter);
             grid->addWidget(btn, i / 8 * 2 + 1, i % 8);
         }
         v->addLayout(grid);
+
+        // Apply a full 16-colour palette to the swatches + settings; read current.
+        auto applyPalette = [swatches, paint](const QStringList& cols) {
+            for (int i = 0; i < 16 && i < cols.size(); ++i) {
+                const QColor c(cols[i]);
+                if (!c.isValid()) continue;
+                paint((*swatches)[i], c);
+                QSettings().setValue(QStringLiteral("colors/%1").arg(i), c.name());
+            }
+        };
+        auto current = [swatches] {
+            QStringList o;
+            for (QToolButton* b : *swatches) o << b->property("colorValue").toString();
+            return o;
+        };
+
+        // Scheme row: pick/load a saved palette, save the current one, or delete.
+        auto* schemeRow = new QHBoxLayout;
+        schemeRow->addWidget(new QLabel(tr("Scheme:")));
+        auto* combo = new QComboBox(page);
+        combo->addItems(QSettings().value(QStringLiteral("schemes/_names")).toStringList());
+        schemeRow->addWidget(combo, 1);
+        auto* loadBtn = new QPushButton(tr("Load"), page);
+        auto* saveBtn = new QPushButton(tr("Save As…"), page);
+        auto* delBtn = new QPushButton(tr("Delete"), page);
+        auto* resetBtn = new QPushButton(tr("Defaults"), page);
+        schemeRow->addWidget(loadBtn);
+        schemeRow->addWidget(saveBtn);
+        schemeRow->addWidget(delBtn);
+        schemeRow->addWidget(resetBtn);
+        v->addLayout(schemeRow);
+
+        connect(loadBtn, &QPushButton::clicked, page, [combo, applyPalette] {
+            const QString name = combo->currentText();
+            if (name.isEmpty()) return;
+            applyPalette(QSettings().value(QStringLiteral("schemes/%1").arg(name)).toStringList());
+        });
+        connect(saveBtn, &QPushButton::clicked, page, [combo, current] {
+            bool ok = false;
+            const QString name =
+                QInputDialog::getText(combo, tr("Save Scheme"), tr("Name:"), QLineEdit::Normal, QString(), &ok)
+                    .trimmed();
+            if (!ok || name.isEmpty()) return;
+            QSettings st;
+            st.setValue(QStringLiteral("schemes/%1").arg(name), current());
+            QStringList names = st.value(QStringLiteral("schemes/_names")).toStringList();
+            if (!names.contains(name)) {
+                names << name;
+                st.setValue(QStringLiteral("schemes/_names"), names);
+                combo->addItem(name);
+            }
+            combo->setCurrentText(name);
+        });
+        connect(delBtn, &QPushButton::clicked, page, [combo] {
+            const QString name = combo->currentText();
+            if (name.isEmpty()) return;
+            QSettings st;
+            st.remove(QStringLiteral("schemes/%1").arg(name));
+            QStringList names = st.value(QStringLiteral("schemes/_names")).toStringList();
+            names.removeAll(name);
+            st.setValue(QStringLiteral("schemes/_names"), names);
+            combo->removeItem(combo->currentIndex());
+        });
+        connect(resetBtn, &QPushButton::clicked, page, [applyPalette] {
+            QStringList def;
+            for (int i = 0; i < 16; ++i) def << QString::fromLatin1(kMircColors[i]);
+            applyPalette(def);
+        });
+
         v->addStretch(1);
         addCategory(displayNode, tr("Colors"), page);
     }
