@@ -766,7 +766,7 @@ void MainWindow::requestChannelList() {
         return;
     }
     ensureChannelList(net)->listBegin();  // show "loading..." right away
-    m_backend->sendRaw(net, QStringLiteral("LIST"));
+    m_backend->requestChannelList(net);
     statusBar()->showMessage(tr("Requested channel list..."), 6000);
 }
 
@@ -1530,11 +1530,25 @@ void MainWindow::simulateListReply() {
         ev.raw.params = std::move(params);
         onEvent(ev);
     };
+    // Raw-IRC (bouncer) path: 322 carries parsed params (channel/users/topic).
     fire(321, {"me", "Channel", "Users  Name"});
     fire(322, {"me", "#lurker", "128", "Lurker development and support"});
     fire(322, {"me", "#chat", "57", "General chatter"});
     fire(322, {"me", "#help", "12", "Ask your questions here"});
     fire(322, {"me", "#offtopic", "33", "Anything goes"});
+    // Lurker WS path (issue #2): the backend pages the server-side /LIST cache and
+    // synthesises 322s as text only ("<chan> <users> <topic>", no raw params),
+    // which MainWindow's fallback parser must split back out.
+    auto fireText = [this](const QString& text) {
+        lurker::IrcEvent ev;
+        ev.type = IrcEventType::ServerText;
+        ev.networkId = 1;
+        ev.numeric = 322;
+        ev.text = text.toStdString();
+        onEvent(ev);
+    };
+    fireText(QStringLiteral("##cpp 1337 Modern C++ discussion"));
+    fireText(QStringLiteral("#lurker-ws 404 Served from the chanlist cache"));
     fire(323, {"me", "End of /LIST"});
 }
 
@@ -2464,7 +2478,7 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
             case ActionKind::Away: m_backend->setAway(net, QString::fromStdString(a.text)); break;
             case ActionKind::Back: m_backend->clearAway(net); break;
             case ActionKind::Ctcp: m_backend->sendCtcp(net, target, QString::fromStdString(a.ctcpType), QString::fromStdString(a.text)); break;
-            case ActionKind::ListChannels: m_backend->sendRaw(net, QStringLiteral("LIST")); break;
+            case ActionKind::ListChannels: m_backend->requestChannelList(net); break;
             default: break;  // local actions handled above
         }
     }

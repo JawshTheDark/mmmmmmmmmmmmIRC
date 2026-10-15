@@ -39,6 +39,7 @@ public:
     void requestHistory(int net, const QString& target) override;
     void markRead(int net, const QString& target, qlonglong messageId) override;
     void disconnectAll() override;
+    void requestChannelList(int net) override;
     bool supportsDccChat() const override { return true; }
     void startDccChat(int net, const QString& nick) override { m_client.startDccChat(net, nick); }
     bool supportsPreviews() const override { return m_client.hasFeature(QStringLiteral("linkPreviews")); }
@@ -73,6 +74,19 @@ private:
     void onLive(const QJsonObject& frame);
     void translateEvent(const QJsonObject& ev, bool live);
 
+    // Channel list (Lurker caches /LIST server-side; we start a refresh, wait
+    // for it to finish, then page the cache and replay it to the GUI as the
+    // 322/323 numerics it already understands). One in-flight sweep per network.
+    struct ChanlistReq {
+        bool swept = false;  // a paging sweep has been started for this request
+        int offset = 0;      // next page offset
+        int total = 0;       // total rows reported by the cache
+    };
+    void handleChanlistFrame(const QString& kind, const QJsonObject& frame);  // chanlist-state / -result
+    void beginChanlistSweep(int net);
+    void sendChanlistSearch(int net, int offset);
+    void emitListNumeric(int net, int numeric, const QString& text);  // synthesise 322/323
+
     static DccTransfer parseDccTransfer(const QJsonObject& row);  // JSON row → UI struct
     QString key(int net, const QString& target) const;
     int guessKind(const QString& target) const;  // BufferKind as int
@@ -85,6 +99,7 @@ private:
     QHash<int, QString> m_networkNames;                  // networkId -> display name (from REST)
     QHash<int, PrefixInfo> m_prefix;                     // networkId -> prefix info
     QHash<QString, QMap<QString, Member>> m_members;     // buffer key -> folded nick -> member
+    QHash<int, ChanlistReq> m_chanlist;                  // networkId -> in-flight channel-list request
 };
 
 }  // namespace lurker::backend

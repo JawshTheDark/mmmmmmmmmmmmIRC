@@ -72,6 +72,13 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
     connect(&m_client, &LurkerClient::backlogReceived, this, &LurkerChatBackend::onBacklog);
     connect(&m_client, &LurkerClient::historyReceived, this, &LurkerChatBackend::onHistory);
     connect(&m_client, &LurkerClient::ircEvent, this, &LurkerChatBackend::onLive);
+    // Channel-list responses (chanlist-state echo, chanlist-result pages) arrive
+    // as their own frame kinds, not as irc events; progress (chanlist-start/
+    // -progress/-end) arrives as kind:'irc' and is caught in translateEvent.
+    connect(&m_client, &LurkerClient::frameReceived, this,
+            [this](const QString& kind, const QJsonObject& frame) {
+                if (kind.startsWith(QStringLiteral("chanlist-"))) handleChanlistFrame(kind, frame);
+            });
     connect(&m_client, &LurkerClient::readState, this, [this](const QJsonObject& f) {
         emit readStateChanged(f.value("networkId").toInt(-1), f.value("target").toString(),
                               f.value("unread").toInt(), f.value("highlights").toInt());
@@ -210,6 +217,15 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
     const int net = ev.value("networkId").toInt(-1);
     const QString target = ev.value("target").toString();
 
+    // /LIST progress markers (chanlist-start/-progress/-end). The rows live in
+    // the server-side cache; when the refresh ends we page it out (below).
+    if (typeStr.startsWith(QStringLiteral("chanlist-"))) {
+        if (typeStr == QStringLiteral("chanlist-end") && net >= 0 && m_chanlist.contains(net) &&
+            !m_chanlist[net].swept)
+            beginChanlistSweep(net);
+        return;  // never render these as chat lines
+    }
+
     // Keep the per-channel member set live.
     if (typeStr == "names") {
         replaceMembers(net, target, ev.value("members").toArray(), net);
@@ -319,5 +335,82 @@ void LurkerChatBackend::markRead(int net, const QString& target, qlonglong messa
     m_client.markRead(net, target, messageId);
 }
 void LurkerChatBackend::disconnectAll() { m_client.disconnect(); }
+
+// --- channel list --------------------------------------------------------
+
+void LurkerChatBackend::requestChannelList(int net) {
+    if (net < 0) return;
+    m_chanlist.insert(net, ChanlistReq{});  // fresh request; wait for the refresh to finish
+    // Kick a server-side /LIST. The server clears its cache, relays /LIST, and
+    // reports progress; we sweep the cache on chanlist-end (or on a warm
+    // chanlist-state echo, if the cache is already populated and idle).
+    m_client.sendVerb({{"type", "list-channels"}, {"networkId", net}});
+}
+
+void LurkerChatBackend::handleChanlistFrame(const QString& kind, const QJsonObject& frame) {
+    const int net = frame.value("networkId").toInt(-1);
+    if (net < 0 || !m_chanlist.contains(net)) return;  // not a sweep we started
+
+    if (kind == QStringLiteral("chanlist-state")) {
+        // Echoed when the refresh is requested. If the cache is already warm and
+        // idle, page it out now rather than waiting for a chanlist-end that may
+        // not come (e.g. the refresh was dropped as a duplicate).
+        const bool inProgress = frame.value("inProgress").toBool();
+        const int totalCount = frame.value("totalCount").toInt();
+        if (!inProgress && totalCount > 0 && !m_chanlist[net].swept) beginChanlistSweep(net);
+        return;
+    }
+    if (kind == QStringLiteral("chanlist-result")) {
+        const QJsonArray rows = frame.value("rows").toArray();
+        const int total = frame.value("total").toInt();
+        const int offset = frame.value("offset").toInt();
+        for (const QJsonValue& v : rows) {
+            const QJsonObject row = v.toObject();
+            const QString chan = row.value("channel").toString();
+            if (chan.isEmpty()) continue;
+            const int users = row.value("num_users").toInt();
+            const QString topic = row.value("topic").toString();
+            // 322: "<channel> <users> <topic>" — the GUI's RPL_LIST router parses
+            // this back into (channel, users, topic) for the Channels List window.
+            emitListNumeric(net, 322, chan + QLatin1Char(' ') + QString::number(users) +
+                                          QLatin1Char(' ') + topic);
+        }
+        const int got = offset + rows.size();
+        m_chanlist[net].offset = got;
+        m_chanlist[net].total = total;
+        if (got < total && !rows.isEmpty()) {
+            sendChanlistSearch(net, got);  // next page
+        } else {
+            emitListNumeric(net, 323, QStringLiteral("End of /LIST"));
+            m_chanlist.remove(net);
+        }
+        return;
+    }
+}
+
+void LurkerChatBackend::beginChanlistSweep(int net) {
+    m_chanlist[net].swept = true;
+    m_chanlist[net].offset = 0;
+    sendChanlistSearch(net, 0);
+}
+
+void LurkerChatBackend::sendChanlistSearch(int net, int offset) {
+    m_client.sendVerb({{"type", "chanlist-search"},
+                       {"networkId", net},
+                       {"query", QString()},
+                       {"sortBy", "users"},
+                       {"sortDir", "desc"},
+                       {"offset", offset},
+                       {"limit", 500}});
+}
+
+void LurkerChatBackend::emitListNumeric(int net, int numeric, const QString& text) {
+    IrcEvent out;
+    out.type = IrcEventType::ServerText;
+    out.networkId = net;
+    out.numeric = numeric;
+    out.text = text.toStdString();
+    emit event(out);
+}
 
 }  // namespace lurker::backend

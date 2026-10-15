@@ -84,6 +84,13 @@ public:
     virtual void markRead(int net, const QString& target, qlonglong messageId) = 0;
     virtual void disconnectAll() = 0;
 
+    // Ask the network for its channel list. Default is a raw /LIST, whose
+    // 321/322/323 numerics the GUI already routes to the Channels List window —
+    // correct for real IRC (the bouncer). Backends with a structured
+    // channel-list API (Lurker caches /LIST server-side and serves it over
+    // dedicated frames) override this and synthesise the same numerics.
+    virtual void requestChannelList(int net) { sendRaw(net, QStringLiteral("LIST")); }
+
     // DCC chat proxied through Lurker (default: unsupported, e.g. raw bouncer).
     virtual bool supportsDccChat() const { return false; }
     virtual void startDccChat(int networkId, const QString& nick) {
