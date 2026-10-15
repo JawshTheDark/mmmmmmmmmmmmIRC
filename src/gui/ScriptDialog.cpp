@@ -141,6 +141,13 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             if (!cap.isEmpty()) {
                 auto* title = new QLabel(cap, this);
                 title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+                // Boxes leave a tight band for the caption (e.g. 7 dbu before the
+                // first framed control). Shrink the caption font a step so it
+                // clears both the top border and the control below it, with a
+                // little breathing room, rather than crowding or overlapping them.
+                QFont tf = title->font();
+                tf.setPointSizeF(qMax(6.5, tf.pointSizeF() - 1.0));
+                title->setFont(tf);
                 const QSize ts = title->sizeHint();
                 // Inside the frame, below the top line, top-left.
                 title->setGeometry(px(c.x, sx) + px(4, sx), px(c.y, sy) + px(1, sy), ts.width(),
