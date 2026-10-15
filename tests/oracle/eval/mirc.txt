@@ -1,0 +1,43 @@
+4	0.333333
+5	1024
+6	1
+7	10
+8	14
+9	-2
+10	0
+11	11
+12	b
+13	b.c
+14	d
+15	
+16	4
+17	a b c
+18	hel
+19	hel
+20	lo
+21	llo
+22	ell
+23	ello
+24	ababab
+25	A
+26	65
+27	HELLO
+28	hello
+29	bonono
+30	bnn
+31	4
+32	3
+33	yes
+34	yes
+35	eq
+36	eq
+37	abc
+38	3
+39	-3
+40	3.14
+41	3
+42	5
+43	FF
+44	255
+45	1hr 1min 1sec
+46	1day 1hr 1min 1sec

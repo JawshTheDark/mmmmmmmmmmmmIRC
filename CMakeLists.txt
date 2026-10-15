@@ -32,6 +32,11 @@ add_library(lurker_core STATIC
 target_include_directories(lurker_core PUBLIC src)
 target_compile_options(lurker_core PRIVATE ${LURKER_WARNINGS})
 
+# engine-probe: evaluate oracle cases with our MSL engine (diff vs real mIRC).
+add_executable(engine-probe tools/oracle/engine_probe.cpp)
+target_link_libraries(engine-probe PRIVATE lurker_core)
+target_compile_options(engine-probe PRIVATE ${LURKER_WARNINGS})
+
 enable_testing()
 add_subdirectory(tests)
 

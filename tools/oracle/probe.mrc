@@ -33,6 +33,9 @@ alias probe {
 alias probe.next {
   if (%probe.i > $lines(%probe.cases)) {
     echo -s probe: finished, results in %probe.out
+    ; drop a sentinel next to the results so an unattended runner (run-headless.sh)
+    ; knows the run is complete and can collect results.txt.
+    write -c $+($nofile(%probe.out),done.txt) done $calc($lines(%probe.cases)) cases
     unset %probe.*
     return
   }
@@ -46,5 +49,5 @@ alias probe.next {
     %case
     return
   }
-  write -n %probe.out %probe.line $+ $chr(9) $+ $eval(%case, 2)
+  write %probe.out %probe.line $+ $chr(9) $+ $eval(%case, 2)
 }
