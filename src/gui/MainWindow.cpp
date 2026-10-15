@@ -163,7 +163,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 break;
             }
         }
-        if (!target) return;
+        if (!target) {
+            // A network parent node (not a buffer): connection-level actions so a
+            // user can drop one network without disconnecting the others (#3).
+            const int nodeNet = m_networkNodes.key(item, -2);
+            if (nodeNet != -2 && m_mux) {
+                QMenu menu(this);
+                menu.addAction(tr("Disconnect this network"), this,
+                               [this, nodeNet] { m_mux->disconnectNetwork(nodeNet); });
+                menu.addAction(tr("Join channel..."), this, &MainWindow::showJoinDialog);
+                menu.exec(m_treebar->mapToGlobal(pos));
+            }
+            return;
+        }
         QMenu menu(this);
         const int net = target->networkId;
         if (target->kind == ChatView::Kind::Channel) {

@@ -170,6 +170,11 @@ void MultiplexBackend::disconnectAll() {
     for (ChatBackend* c : m_children) c->disconnectAll();
 }
 
+void MultiplexBackend::disconnectNetwork(int globalNet) {
+    int ln;
+    if (ChatBackend* c = childForNet(globalNet, ln)) c->disconnectAll();
+}
+
 // --- capability / DCC-by-id (routed to the owning child) -----------------
 
 bool MultiplexBackend::supportsDccChat() const {

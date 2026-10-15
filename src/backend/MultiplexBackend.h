@@ -31,6 +31,12 @@ public:
     void addChild(ChatBackend* child);
     int childCount() const { return static_cast<int>(m_children.size()); }
 
+    // Disconnect just the connection that owns this (global) network — leaving
+    // the other connections live. For a direct-IRC child that is one network;
+    // for the Lurker child (which carries several networks) it drops that whole
+    // connection. disconnectAll() still drops everything.
+    void disconnectNetwork(int globalNet);
+
     // Map a child's local network id to the global id the GUI sees, and back.
     // Negative ids (status/unknown) are shared and never offset.
     int globalNet(int childIndex, int localNet) const {
