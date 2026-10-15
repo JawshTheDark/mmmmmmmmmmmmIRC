@@ -47,6 +47,7 @@
 #include <QVBoxLayout>
 
 #include "core/CommandParser.h"
+#include "gui/ChannelListWindow.h"
 #include "gui/ConnectDialog.h"
 #include "gui/FormattedText.h"
 #include "gui/PictureWindow.h"
@@ -309,6 +310,33 @@ void MainWindow::showJoinDialog() {
     openConversation(net, chan);
 }
 
+lurker::gui::ChannelListWindow* MainWindow::ensureChannelList(int net) {
+    m_channelListNet = net;
+    if (!m_channelList) {
+        m_channelList = new lurker::gui::ChannelListWindow;
+        auto* sub = m_mdi->addSubWindow(m_channelList);
+        sub->setWindowTitle(tr("Channels List"));
+        sub->setAttribute(Qt::WA_DeleteOnClose);
+        sub->resize(640, 460);
+        sub->move(70, 50);
+        connect(m_channelList, &lurker::gui::ChannelListWindow::joinRequested, this, [this](const QString& chan) {
+            if (m_backend && m_backend->isReady() && m_channelListNet >= 0) {
+                m_backend->joinChannel(m_channelListNet, chan, QString());
+                openConversation(m_channelListNet, chan);
+            }
+        });
+        connect(m_channelList, &QObject::destroyed, this, [this](QObject*) {
+            if (!m_closing) m_channelList = nullptr;
+        });
+    }
+    if (auto* sub = qobject_cast<QMdiSubWindow*>(m_channelList->parentWidget())) {
+        if (sub->isMinimized()) sub->showNormal();
+        sub->show();
+        m_mdi->setActiveSubWindow(sub);
+    }
+    return m_channelList;
+}
+
 void MainWindow::requestChannelList() {
     int net = -1;
     if (Buffer* b = activeBuffer(); b && b->networkId >= 0) net = b->networkId;
@@ -317,8 +345,9 @@ void MainWindow::requestChannelList() {
         statusBar()->showMessage(tr("Connect to a server to list channels"), 6000);
         return;
     }
+    ensureChannelList(net);
     m_backend->sendRaw(net, QStringLiteral("LIST"));
-    statusBar()->showMessage(tr("Requested channel list — results appear in the Status window"), 6000);
+    statusBar()->showMessage(tr("Requested channel list..."), 6000);
 }
 
 void MainWindow::showAddressBook() {
@@ -848,6 +877,24 @@ void MainWindow::openScriptEditor() {
     ed->show();
 }
 
+void MainWindow::simulateListReply() {
+    auto fire = [this](int numeric, std::vector<std::string> params) {
+        lurker::IrcEvent ev;
+        ev.type = IrcEventType::ServerText;
+        ev.networkId = 1;
+        ev.numeric = numeric;
+        ev.raw.command = std::to_string(numeric);
+        ev.raw.params = std::move(params);
+        onEvent(ev);
+    };
+    fire(321, {"me", "Channel", "Users  Name"});
+    fire(322, {"me", "#lurker", "128", "Lurker development and support"});
+    fire(322, {"me", "#chat", "57", "General chatter"});
+    fire(322, {"me", "#help", "12", "Ask your questions here"});
+    fire(322, {"me", "#offtopic", "33", "Anything goes"});
+    fire(323, {"me", "End of /LIST"});
+}
+
 void MainWindow::simulateMessage(int net, const QString& nick, const QString& target, const QString& text) {
     lurker::IrcEvent ev;
     ev.type = IrcEventType::Message;
@@ -1156,6 +1203,30 @@ void MainWindow::onEvent(const IrcEvent& event) {
     const QByteArray text = QByteArray::fromStdString(event.text);
     const QString target = QString::fromStdString(event.target);
     const bool showJoins = QSettings().value(QStringLiteral("irc/showJoins"), true).toBool();
+
+    // /list replies (RPL_LISTSTART 321 / RPL_LIST 322 / RPL_LISTEND 323) go to the
+    // dedicated Channels List window instead of spamming the status window.
+    if (event.type == IrcEventType::ServerText &&
+        (event.numeric == 321 || event.numeric == 322 || event.numeric == 323)) {
+        if (event.numeric == 321) {
+            ensureChannelList(net)->listBegin();
+        } else if (event.numeric == 323) {
+            if (m_channelList) m_channelList->listEnd();
+        } else {
+            // 322: <me> <channel> <count> :<topic>
+            QString chan = QString::fromStdString(event.raw.param(1));
+            int users = QString::fromStdString(event.raw.param(2)).toInt();
+            QString topic = QString::fromStdString(event.raw.param(3));
+            if (chan.isEmpty()) {  // WS/other paths may only give rendered text
+                const QStringList parts = QString::fromUtf8(text).split(QLatin1Char(' '), Qt::SkipEmptyParts);
+                if (!parts.isEmpty()) chan = parts[0];
+                if (parts.size() > 1) users = parts[1].toInt();
+                if (parts.size() > 2) topic = QStringList(parts.mid(2)).join(QLatin1Char(' '));
+            }
+            if (!chan.isEmpty()) ensureChannelList(net)->listAdd(chan, users, topic);
+        }
+        return;
+    }
 
     switch (event.type) {
         case IrcEventType::Message:

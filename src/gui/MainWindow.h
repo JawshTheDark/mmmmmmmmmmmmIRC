@@ -40,7 +40,7 @@ protected:
 
 public:
     void showJoinDialog();        // prompt for a channel and JOIN it
-    void requestChannelList();    // /LIST on the active network
+    void requestChannelList();    // /LIST on the active network, into the Channels List window
     void showAddressBook();       // favourite channels (add / remove / join)
     void showDccInfo();           // DCC status (transfers proxied through Lurker)
     void startDccChat();          // offer a DCC chat (proxied through Lurker)
@@ -60,6 +60,7 @@ public:
     QString scriptSummary() const;  // "N aliases, N events, N dialogs"
     // Dev: inject a synthetic incoming message (renders + fires on TEXT).
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
+    void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
 
 private:
     struct Buffer {
@@ -144,6 +145,9 @@ private:
     int m_timerSeq = 0;
     QHash<QString, class PictureWindow*> m_pictureWindows;  // /window -p canvases
     class PictureWindow* ensurePictureWindow(const QString& name);
+    class ChannelListWindow* m_channelList = nullptr;  // /list results window
+    int m_channelListNet = -1;                         // network the current list is for
+    class ChannelListWindow* ensureChannelList(int net);
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;
 };
