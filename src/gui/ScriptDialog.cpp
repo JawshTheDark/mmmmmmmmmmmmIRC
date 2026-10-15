@@ -7,6 +7,7 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QFontMetrics>
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
@@ -21,8 +22,10 @@
 namespace lurker::gui {
 
 namespace {
-// mIRC dialog units → pixels. Windows dialog base units are font-derived; this
-// fixed factor reproduces the proportions closely enough for script layouts.
+// mIRC dialog units → pixels. Windows dialog base units are font-derived — a dbu
+// is baseCharWidth/4 wide and baseCharHeight/8 tall — so the right factor depends
+// on the dialog's font. We derive it per dialog from the actual font metrics; the
+// constants below are the MS Sans Serif 8pt reference (and a sane floor).
 constexpr double kSx = 1.55;
 constexpr double kSy = 1.65;
 int px(int unit, double scale) { return static_cast<int>(unit * scale + 0.5); }
@@ -45,7 +48,15 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
                            std::function<void(const QString&, int)> eventSink, QWidget* parent)
     : QDialog(parent), m_instance(std::move(instance)), m_sink(std::move(eventSink)) {
     setWindowTitle(QString::fromStdString(table.title.empty() ? table.name : table.title));
-    setFixedSize(px(table.w, kSx), px(table.h, kSy));
+    // Derive the dbu→px scale from this dialog's font so control sizes track the
+    // text they must hold (otherwise a larger-than-reference font overflows the
+    // dbu-sized boxes — truncated labels/radios). Floor at the reference scale.
+    const QFontMetrics fm(font());
+    // The ~1.2 horizontal margin absorbs the extra room Qt's radio/checkbox
+    // indicators and wider glyphs need over the author's tight (mIRC-font) widths.
+    const double sx = qMax(kSx, fm.averageCharWidth() / 4.0) * 1.2;
+    const double sy = qMax(kSy, fm.height() / 8.0);
+    setFixedSize(px(table.w, sx), px(table.h, sy));
 
     for (const lurker::msl::DialogControl& c : table.controls) {
         const QString cap = QString::fromStdString(c.caption);
@@ -118,7 +129,17 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             w = new QLabel(this);  // image loading comes with the theming work
         }
         if (!w) continue;
-        w->setGeometry(px(c.x, kSx), px(c.y, kSy), px(c.w, kSx), px(c.h, kSy));
+        w->setGeometry(px(c.x, sx), px(c.y, sy), px(c.w, sx), px(c.h, sy));
+        // If a caption still won't fit its (author-tight) width, grow the control
+        // to its natural width, clamped to the dialog's right edge so it stays in.
+        // Not buttons: they sit adjacent (Add/Del, Ok/Apply) and would overlap.
+        if (c.type == "text" || c.type == "radio" || c.type == "check") {
+            const int need = w->sizeHint().width();
+            if (need > w->width()) {
+                const int maxW = px(table.w, sx) - w->x() - px(1, sx);
+                w->resize(qMin(need, maxW), w->height());
+            }
+        }
         if (c.id > 0) m_byId.insert(c.id, w);
     }
 
