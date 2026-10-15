@@ -129,6 +129,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.simulateListReply(); });
         } else if (arg == QStringLiteral("--previewdemo")) {
             QTimer::singleShot(500, &window, [&window] { window.previewDemo(); });
+        } else if (arg == QStringLiteral("--previewdrift")) {
+            QTimer::singleShot(500, &window, [&window] { window.previewDriftDemo(); });
         } else if (arg == QStringLiteral("--dccdemo")) {
             QTimer::singleShot(500, &window, [&window] { window.dccDemo(); });
         } else if (arg == QStringLiteral("--urldemo")) {

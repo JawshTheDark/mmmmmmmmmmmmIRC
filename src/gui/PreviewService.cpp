@@ -10,6 +10,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QTimer>
 #include <QUrl>
 
 namespace lurker::gui {
@@ -62,7 +63,14 @@ bool PreviewService::sameOrigin(const QString& absUrl) const {
 
 void PreviewService::request(const QString& url, Callback cb) {
     if (!enabled() || url.isEmpty() || !cb) return;
+    if (m_testDelayMs > 0) {  // dev: simulate latency so preview ordering can be verified
+        QTimer::singleShot(m_testDelayMs, this, [this, url, cb] { requestNow(url, cb); });
+        return;
+    }
+    requestNow(url, cb);
+}
 
+void PreviewService::requestNow(const QString& url, Callback cb) {
     const auto cached = m_descCache.constFind(url);
     if (cached != m_descCache.constEnd()) {
         fetchImage(*cached, std::move(cb));

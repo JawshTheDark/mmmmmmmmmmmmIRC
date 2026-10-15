@@ -70,6 +70,7 @@ public:
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
     void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
     void previewDemo();        // dev/screenshot: seed synthetic link/media previews
+    void previewDriftDemo();   // dev/screenshot: verify a late preview lands under its message
     void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
     void urlDemo();            // dev/screenshot: seed synthetic caught URLs
     void channelCentralDemo(); // dev/screenshot: open Channel Central with synthetic state

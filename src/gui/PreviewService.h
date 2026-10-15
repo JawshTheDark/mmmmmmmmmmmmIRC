@@ -65,8 +65,12 @@ public:
     // Dev/demo only: pre-seed the caches so `request` resolves synchronously
     // without the network (used by --previewdemo to screenshot the rendering).
     void seedForTest(const PreviewDescriptor& d, const QImage& img);
+    // Dev/demo only: delay every resolution by `ms`, to simulate network latency
+    // and verify a preview still lands under its own message (not the backlog end).
+    void setTestDelay(int ms) { m_testDelayMs = ms; }
 
 private:
+    void requestNow(const QString& url, Callback cb);  // request() without the dev delay
     QString absolute(const QString& path) const;  // proxy-relative → base+path
     bool sameOrigin(const QString& absUrl) const;  // may we attach the Bearer?
     void fetchImage(const PreviewDescriptor& d, Callback cb);
@@ -76,6 +80,7 @@ private:
     QString m_token;
     bool m_enabled = true;               // user option
     bool m_available = true;             // cleared on a 404 (feature off)
+    int m_testDelayMs = 0;               // dev: simulate latency (see setTestDelay)
     QHash<QString, PreviewDescriptor> m_descCache;  // url -> descriptor
     QHash<QString, QImage> m_imgCache;              // image path -> pixels
     QHash<QString, QList<Callback>> m_pendingDesc;  // url -> waiters (coalesce)

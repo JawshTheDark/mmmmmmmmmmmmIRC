@@ -509,10 +509,12 @@ void ChatView::requestPreviews(const QString& plainText) {
         while (!url.isEmpty() && QStringLiteral(".,;:!?]}'\"").contains(url.back())) url.chop(1);
         if (url.isEmpty()) continue;
         ++count;
-        // Capture a cursor at the end of the message so the preview lands under it
-        // even if it resolves after later lines arrive.
+        // Anchor a cursor at the end of this message. keepPositionOnInsert keeps it
+        // from drifting to the bottom as later lines (e.g. a backlog burst) append,
+        // so the preview lands under the message it belongs to, not at the end.
         QTextCursor slot(m_messages->document());
         slot.movePosition(QTextCursor::End);
+        slot.setKeepPositionOnInsert(true);
         m_previews->request(url, [this, slot](const PreviewDescriptor& d, const QImage& img) {
             insertPreview(slot, d, img);
         });
@@ -570,8 +572,12 @@ void ChatView::insertPreview(QTextCursor slot, const PreviewDescriptor& d, const
                    .arg(cardBg, border, body);
     }
 
-    slot.insertBlock();
-    slot.insertHtml(html);
+    // Insert via a fresh cursor at the anchored position (the slot itself keeps
+    // its position on insert, so it can't be used to insert directly).
+    QTextCursor c(m_messages->document());
+    c.setPosition(slot.position());
+    c.insertBlock();
+    c.insertHtml(html);
     if (atBottom) sb->setValue(sb->maximum());
 }
 

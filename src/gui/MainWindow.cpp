@@ -1618,6 +1618,46 @@ void MainWindow::previewDemo() {
     openConversation(net, QStringLiteral("#previews"));
 }
 
+void MainWindow::previewDriftDemo() {
+    // Reproduce the reported bug: a preview whose URL is in an early message but
+    // which resolves only AFTER later lines have loaded must still land under its
+    // own message, not at the bottom.
+    const int net = 1;
+    m_networkNames.insert(net, QStringLiteral("DemoNet"));
+    m_networkNicks.insert(net, QStringLiteral("jawsh"));
+    m_previews->configure(QStringLiteral("https://demo.invalid"), QStringLiteral("demo"), true);
+    m_previews->setTestDelay(400);  // resolve after the following messages are in
+    QImage im(480, 240, QImage::Format_RGB32);
+    {
+        QPainter p(&im);
+        QLinearGradient g(0, 0, 480, 240);
+        g.setColorAt(0, QColor(0x30, 0x40, 0x60));
+        g.setColorAt(1, QColor(0x10, 0x18, 0x28));
+        p.fillRect(im.rect(), g);
+        p.setPen(Qt::white);
+        QFont f = p.font();
+        f.setPointSize(26);
+        f.setBold(true);
+        p.setFont(f);
+        p.drawText(im.rect(), Qt::AlignCenter, QStringLiteral("shared.png"));
+    }
+    PreviewDescriptor d;
+    d.url = QStringLiteral("https://demo.invalid/shared.png");
+    d.status = QStringLiteral("ok");
+    d.kind = QStringLiteral("image");
+    d.src = QStringLiteral("/media/s1");
+    m_previews->seedForTest(d, im);
+    simulateMessage(net, QStringLiteral("synmuffin"), QStringLiteral("#test"),
+                    QStringLiteral("I added foldable networks! https://demo.invalid/shared.png"));
+    simulateMessage(net, QStringLiteral("quark"), QStringLiteral("#test"), QStringLiteral("nice work"));
+    simulateMessage(net, QStringLiteral("jawsh"), QStringLiteral("#test"), QStringLiteral("looks good"));
+    simulateMessage(net, QStringLiteral("d3fc0n"), QStringLiteral("#test"),
+                    QStringLiteral("I find Claude works well with SSH keys"));
+    simulateMessage(net, QStringLiteral("quark"), QStringLiteral("#test"),
+                    QStringLiteral("the last line, which arrives before the preview resolves"));
+    openConversation(net, QStringLiteral("#test"));
+}
+
 void MainWindow::dccDemo() {
     DccTransfersWindow* w = ensureDccWindow();
     auto mk = [](int id, const QString& dir, const QString& peer, const QString& file, qlonglong size,

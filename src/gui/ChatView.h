@@ -90,6 +90,10 @@ public:
 signals:
     void lineEntered(const QString& text);
     void nickActivated(const QString& nick);  // double-click in the nicklist
+    // A file or image was dropped on, or pasted into, this window — the owner
+    // uploads it through Lurker and shares the link in this conversation.
+    void shareFiles(const QStringList& paths);
+    void shareImage(const QImage& image);
     // Right-click nicklist action; `action` is one of query/whois/slap/op/deop/
     // voice/devoice/kick/ban/kickban/ctcp-<type>. The owner maps it to IRC.
     void nickContextAction(const QString& nick, const QString& action);
