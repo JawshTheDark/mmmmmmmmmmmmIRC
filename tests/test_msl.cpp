@@ -765,5 +765,28 @@ int main() {
         CHECK_EQ(host.echoed.back(), std::string("CMD"));
     }
 
+    // Script groups: /enable /disable gate events; $group reports state.
+    {
+        Interpreter g(host);
+        g.loadScript("#grp on\non *:text:*:#:{ echo -a GROUPED }\n#grp end");
+        Scope s;
+        s.target = "#chan";
+        host.echoed.clear();
+        g.raiseEvent("text", "hi", s);
+        CHECK_EQ(host.echoed.size(), 1u);  // group on → fires
+        CHECK_EQ(eval(g, "$group(#grp).state"), std::string("on"));
+        CHECK_EQ(eval(g, "$group(#grp)"), std::string("on"));
+        CHECK_EQ(eval(g, "$group(0)"), std::string("1"));
+        g.execute("disable #grp", s);
+        host.echoed.clear();
+        g.raiseEvent("text", "hi", s);
+        CHECK_EQ(host.echoed.size(), 0u);  // disabled → doesn't fire
+        CHECK_EQ(eval(g, "$group(#grp)"), std::string("off"));
+        g.execute("enable #grp", s);
+        host.echoed.clear();
+        g.raiseEvent("text", "hi", s);
+        CHECK_EQ(host.echoed.size(), 1u);  // re-enabled → fires
+    }
+
     return check::summary();
 }

@@ -66,6 +66,7 @@ struct EventHandler {
     std::string target;        // "#", "?", "@", "*", "" or a specific name
     std::vector<std::string> fields;  // all colon-fields after the EVENT (for on DIALOG etc)
     std::string body;
+    std::string group;         // enclosing #group (empty = none); skipped while disabled
 };
 
 class Interpreter {
@@ -86,6 +87,12 @@ public:
     // Replaces nothing — definitions accumulate (later ones win by name/append).
     void loadScript(std::string_view text);
     void clearScripts();  // forget loaded aliases and events (for /unload or reload)
+
+    // Script groups (#name on/off ... #name end): /enable, /disable toggle them;
+    // events in a disabled group don't fire. `nameWild` may be a wildcard.
+    void setGroup(const std::string& nameWild, bool on);
+    int groupState(const std::string& name) const;  // 1 = on, 0 = off, -1 = unknown
+    std::vector<std::string> groupNames() const;     // in definition order ($group(N))
 
     // Fire an event: runs every matching `on <EVENT>` handler. `subject` is the
     // text its match wildcard is tested against (e.g. the message for TEXT).
@@ -177,6 +184,7 @@ private:
     std::map<std::string, std::vector<std::string>, CiLess> m_regml;  // $regml captures by name
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
     std::map<std::string, std::vector<MenuItem>, CiLess> m_menus;     // popup menus by type
+    std::vector<std::pair<std::string, bool>> m_groups;              // #group -> enabled, in order
     std::map<std::string, std::vector<unsigned char>, CiLess> m_binvars;  // &binary variables
     int m_callDepth = 0;  // guards alias/identifier recursion across scopes
 };

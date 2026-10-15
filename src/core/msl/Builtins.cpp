@@ -372,6 +372,25 @@ void registerBuiltins(Interpreter& in) {
         if (a.empty()) return std::string();
         return in2.host().didQuery(a[0], 0, prop.empty() ? std::string("isopen") : prop);
     });
+    // $group(0)=count, $group(N)=Nth name, $group(#name)/.state=on|off.
+    in.registerIdent("group", [](Interpreter& in2, S&, const A& a, const std::string& prop) {
+        if (a.empty()) return std::string();
+        const std::vector<std::string> names = in2.groupNames();
+        const std::string& a0 = a[0];
+        const bool byNumber = !a0.empty() && a0.find_first_not_of("0123456789") == std::string::npos;
+        std::string name = a0;
+        if (byNumber) {
+            const int idx = std::atoi(a0.c_str());
+            if (idx == 0) return std::to_string(names.size());
+            if (idx < 1 || idx > static_cast<int>(names.size())) return std::string();
+            name = names[idx - 1];
+        }
+        const int st = in2.groupState(name);
+        if (st < 0) return std::string();  // no such group
+        const std::string state = st == 1 ? "on" : "off";
+        if (prop == "state") return state;
+        return byNumber ? name : state;  // $group(N)=name; $group(#name)=state (mIRC idiom)
+    });
     // Event context: set while an on-handler runs.
     // $nick (event nick) or $nick(#chan,N): N=0 → count, N≥1 → Nth nick.
     in.registerIdent("newnick", [](Interpreter&, S& s, const A&, const std::string&) { return s.newnick; });
@@ -1863,6 +1882,20 @@ void registerBuiltins(Interpreter& in) {
     in.registerCommand("cleardraw", drawCmd("clear"));
 
     // Dialogs.
+    // /enable /disable <#group...>: toggle script groups (events in a disabled
+    // group stop firing). No argument toggles every group. Wildcards allowed.
+    in.registerCommand("enable", [](Interpreter& i, S& s, const std::string& a) {
+        const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.empty()) { i.setGroup("#*", true); return; }
+        for (const std::string& t : toks)
+            if (!t.empty()) i.setGroup(t, true);
+    });
+    in.registerCommand("disable", [](Interpreter& i, S& s, const std::string& a) {
+        const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.empty()) { i.setGroup("#*", false); return; }
+        for (const std::string& t : toks)
+            if (!t.empty()) i.setGroup(t, false);
+    });
     in.registerCommand("dialog", [](Interpreter& i, S& s, const std::string& a) {
         std::string args = i.evaluate(a, s);
         auto toks = splitTokens(args, ' ');

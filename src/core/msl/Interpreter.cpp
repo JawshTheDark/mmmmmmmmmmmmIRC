@@ -888,6 +888,25 @@ void Interpreter::clearScripts() {
     m_events.clear();
     m_menus.clear();
     m_dialogs.clear();
+    m_groups.clear();
+}
+
+void Interpreter::setGroup(const std::string& nameWild, bool on) {
+    for (auto& g : m_groups)
+        if (matchWild(nameWild, g.first)) g.second = on;
+}
+
+int Interpreter::groupState(const std::string& name) const {
+    for (const auto& g : m_groups)
+        if (toLowerAscii(g.first) == toLowerAscii(name)) return g.second ? 1 : 0;
+    return -1;
+}
+
+std::vector<std::string> Interpreter::groupNames() const {
+    std::vector<std::string> out;
+    out.reserve(m_groups.size());
+    for (const auto& g : m_groups) out.push_back(g.first);
+    return out;
 }
 
 bool Interpreter::hasEvent(const std::string& event) const { return m_events.count(toLowerAscii(event)) != 0; }
@@ -984,6 +1003,7 @@ void Interpreter::loadScript(std::string_view text) {
     // by reading a header up to its '{' (or end of line) and the balanced block.
     std::size_t i = 0;
     const std::size_t n = text.size();
+    std::string currentGroup;  // set by "#name on/off", cleared by "#name end"
     auto skipWs = [&] {
         while (i < n && (std::isspace(static_cast<unsigned char>(text[i])))) ++i;
     };
@@ -1009,6 +1029,21 @@ void Interpreter::loadScript(std::string_view text) {
 
         if (header.empty()) continue;
         const std::string kw = toLowerAscii(firstWord(header));
+        if (!kw.empty() && kw[0] == '#') {
+            // Group directive: "#name on" / "#name off" / "#name end".
+            const std::string name = firstWord(header);
+            const std::string state = toLowerAscii(trimmed(header.substr(std::min(name.size(), header.size()))));
+            if (state == "end") {
+                currentGroup.clear();
+            } else {
+                currentGroup = name;
+                bool known = false;
+                for (auto& g : m_groups)
+                    if (toLowerAscii(g.first) == toLowerAscii(name)) known = true;
+                if (!known) m_groups.emplace_back(name, state != "off");  // default on unless "off"
+            }
+            continue;
+        }
         if (kw == "alias") {
             std::string rest = trimmed(header.substr(5));
             const std::string name = firstWord(rest);
@@ -1049,6 +1084,7 @@ void Interpreter::loadScript(std::string_view text) {
                 }
                 if (h.match.empty()) h.match = "*";
                 h.body = body;
+                h.group = currentGroup;  // gated by this #group's enabled state
                 m_events[event].push_back(std::move(h));
             }
         }
@@ -1074,6 +1110,7 @@ void Interpreter::raiseEvent(const std::string& event, const std::string& subjec
     if (it == m_events.end()) return;
     scope.event = event;
     for (const EventHandler& h : it->second) {
+        if (!h.group.empty() && groupState(h.group) == 0) continue;  // group disabled
         if (!targetMatches(h.target, scope)) continue;
         if (!matchWild(h.match, subject)) continue;
         Scope local = scope;  // each handler gets a fresh copy of the context
