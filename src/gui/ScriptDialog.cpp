@@ -14,6 +14,7 @@
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QRadioButton>
 #include <QTreeWidget>
 
@@ -52,7 +53,14 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
         if (c.type == "text" || c.type == "link") {
             auto* label = new QLabel(cap, this);
             label->setWordWrap(true);
-            if (c.type == "link") label->setTextFormat(Qt::RichText);
+            if (c.type == "link") {
+                label->setTextFormat(Qt::RichText);
+                label->setOpenExternalLinks(true);
+            } else {
+                // Plain labels are non-interactive; don't let one drawn over a
+                // control swallow its clicks (same issue as box, below).
+                label->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            }
             w = label;
         } else if (c.type == "edit") {
             if (c.hasStyle("multi")) {
@@ -81,12 +89,12 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
         } else if (c.type == "check") {
             auto* cb = new QCheckBox(cap, this);
             const int id = c.id;
-            connect(cb, &QCheckBox::toggled, this, [this, id] { if (m_sink) m_sink(QStringLiteral("sclick"), id); });
+            connect(cb, &QCheckBox::toggled, this, [this, id] { if (!m_applyingDid && m_sink) m_sink(QStringLiteral("sclick"), id); });
             w = cb;
         } else if (c.type == "radio") {
             auto* rb = new QRadioButton(cap, this);
             const int id = c.id;
-            connect(rb, &QRadioButton::toggled, this, [this, id] { if (m_sink) m_sink(QStringLiteral("sclick"), id); });
+            connect(rb, &QRadioButton::toggled, this, [this, id] { if (!m_applyingDid && m_sink) m_sink(QStringLiteral("sclick"), id); });
             w = rb;
         } else if (c.type == "list") {
             auto* lw = new QListWidget(this);
@@ -99,7 +107,13 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             cbx->setEditable(c.hasStyle("edit"));
             w = cbx;
         } else if (c.type == "box") {
-            w = new QGroupBox(cap, this);
+            auto* gb = new QGroupBox(cap, this);
+            // A box is a visual frame drawn around other controls. It's declared
+            // after them, so it stacks on top — make it ignore mouse events so
+            // clicks fall through to the buttons/edits it frames (keyboard focus
+            // already bypassed it, which is why Tab+Enter worked but clicks didn't).
+            gb->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            w = gb;
         } else if (c.type == "icon" || c.type == "image") {
             w = new QLabel(this);  // image loading comes with the theming work
         }
@@ -203,9 +217,16 @@ void ScriptDialog::applyDid(int id, const QString& sw, const QString& text) {
         if (!reset) lbl->setText(text);
         else lbl->clear();
     } else if (auto* btn = qobject_cast<QAbstractButton*>(w)) {
-        if (sw.contains('c')) btn->setChecked(true);
-        else if (sw.contains('u')) btn->setChecked(false);
-        else if (!text.isEmpty()) btn->setText(text);
+        if (sw.contains('c') || sw.contains('u')) {
+            // A script setting the state (did -c/-u) must NOT fire sclick — mIRC
+            // only raises it for user clicks. The flag also covers the sibling
+            // radios Qt auto-unchecks in the same group.
+            m_applyingDid = true;
+            btn->setChecked(sw.contains('c'));
+            m_applyingDid = false;
+        } else if (!text.isEmpty()) {
+            btn->setText(text);
+        }
     }
     if (sw.contains('e')) w->setEnabled(true);
     if (sw.contains('b')) w->setEnabled(false);

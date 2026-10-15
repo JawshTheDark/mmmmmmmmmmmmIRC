@@ -45,6 +45,7 @@ private:
     QString m_instance;
     std::function<void(const QString&, int)> m_sink;
     QHash<int, QWidget*> m_byId;
+    bool m_applyingDid = false;  // true while a /did sets a control's state (suppress sclick)
     bool m_closeFired = false;
 };
 
