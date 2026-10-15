@@ -174,7 +174,7 @@ $ini	done		file_directory_identifiers.html	28	test_msl
 $inmidi	planned		playing_sounds.html	0		substitute: MIDI needs an optional synthesizer (Phase 6)
 $inpaste	planned		other_identifiers.html	0		
 $inpoly	planned		picture_windows.html	0		
-$input	planned		other_identifiers.html	18		
+$input	done		other_identifiers.html	18	test_msl	
 $inrect	planned		picture_windows.html	37		
 $inroundrect	planned		picture_windows.html	0		
 $insong	planned		playing_sounds.html	0		
@@ -330,12 +330,12 @@ $scon	planned		multimserver.html	7
 $script	done		remote_identifiers.html	45	test_msl	
 $scriptdir	done		remote_identifiers.html	112	test_msl	
 $scriptline	planned		remote_identifiers.html	0		
-$sdir	planned		file_directory_identifiers.html	13		
+$sdir	done		file_directory_identifiers.html	13	test_msl	
 $send	planned		window_identifiers.html	51		
 $server	done		other_identifiers.html	110	test_msl	
 $serverip	planned		other_identifiers.html	0		
 $servertarget	planned		other_identifiers.html	0		
-$sfile	planned		file_directory_identifiers.html	2		
+$sfile	done		file_directory_identifiers.html	2	test_msl	
 $sfstate	planned		file_directory_identifiers.html	0		
 $sha1	planned		other_identifiers.html	0		
 $sha256	planned		other_identifiers.html	0		

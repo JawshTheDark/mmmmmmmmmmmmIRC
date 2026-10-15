@@ -542,6 +542,18 @@ void registerBuiltins(Interpreter& in) {
             return text;
         }
     });
+    // $input(prompt,[type],...): modal input dialog ('p' in type = password).
+    in.registerIdent("input", [](Interpreter& i, S&, const A& a, const std::string&) {
+        const bool masked = toLowerAscii(arg(a, 1)).find('p') != std::string::npos;
+        return i.host().inputDialog(arg(a, 0), masked);
+    });
+    // $sdir(dir,title) / $sfile(path,title,filter): chooser dialogs.
+    in.registerIdent("sdir", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return i.host().chooseDir(arg(a, 0), arg(a, 1));
+    });
+    in.registerIdent("sfile", [](Interpreter& i, S&, const A& a, const std::string&) {
+        return i.host().chooseFile(arg(a, 0), arg(a, 1), arg(a, 2));
+    });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
         return s.target.empty() ? i.host().activeTarget().window : s.target;
     });

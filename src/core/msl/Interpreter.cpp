@@ -288,6 +288,38 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
                 i = k;
                 continue;
             }
+            // $? / $$? : prompt the user for input ($$? is required — it halts the
+            // script on an empty answer). Optional '*' masks input (passwords);
+            // optional ="message" or =message sets the prompt. Used heavily in menus.
+            if (text[j] == '?' || (text[j] == '$' && j + 1 < n && text[j + 1] == '?')) {
+                const bool required = text[j] == '$';
+                std::size_t k = j + (required ? 2 : 1);  // move past "?"
+                bool masked = false;
+                if (k < n && text[k] == '*') {
+                    masked = true;
+                    ++k;
+                }
+                std::string prompt;
+                if (k < n && text[k] == '=') {
+                    ++k;
+                    if (k < n && text[k] == '"') {
+                        ++k;
+                        const std::size_t s = k;
+                        while (k < n && text[k] != '"') ++k;
+                        prompt = evaluate(text.substr(s, k - s), scope);
+                        if (k < n) ++k;  // past the closing quote
+                    } else {
+                        const std::size_t s = k;
+                        while (k < n && text[k] != ' ') ++k;
+                        prompt = evaluate(text.substr(s, k - s), scope);
+                    }
+                }
+                const std::string answer = m_host.inputDialog(prompt, masked);
+                if (required && answer.empty()) scope.halted = true;
+                out += answer;
+                i = k;
+                continue;
+            }
             // $(text,N): the evaluation operator. Evaluates the enclosed text N
             // times (like [ ] brackets, but with an explicit repeat count). N is
             // the final comma-separated argument when it is a non-negative

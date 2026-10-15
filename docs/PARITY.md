@@ -7,11 +7,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
 | Commands | 63 | 235 | 26.8% | 23 |
-| Identifiers | 109 | 406 | 26.8% | 15 |
+| Identifiers | 112 | 406 | 27.6% | 15 |
 | Events | 14 | 84 | 16.7% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 26 | 390 | 6.7% | 0 |
-| **Total** | **218** | **1129** | **19.3%** | |
+| **Total** | **221** | **1129** | **19.6%** | |
 
 ## Commands
 
@@ -290,7 +290,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (297)
+### planned (294)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -319,11 +319,9 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$cr` | 20 |  | other_identifiers.html |  |  |
 | `$knick` | 19 |  | on_kick.html |  |  |
 | `$query` | 19 |  | window_identifiers.html |  |  |
-| `$input` | 18 |  | other_identifiers.html |  |  |
 | `$level` | 16 |  | nick_address_identifiers.html |  |  |
 | `$lf` | 15 |  | other_identifiers.html |  |  |
 | `$disk` | 14 |  | file_directory_identifiers.html |  |  |
-| `$sdir` | 13 |  | file_directory_identifiers.html |  |  |
 | `$usermode` | 13 |  | other_identifiers.html |  |  |
 | `$getdot` | 12 |  | picture_windows.html |  |  |
 | `$notify` | 12 |  | nick_address_identifiers.html |  |  |
@@ -359,7 +357,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$awaytime` | 2 |  | other_identifiers.html |  |  |
 | `$logdir` | 2 |  | file_directory_identifiers.html |  |  |
 | `$menu` | 2 |  | popups.html |  |  |
-| `$sfile` | 2 |  | file_directory_identifiers.html |  |  |
 | `$url` | 2 |  | other_identifiers.html |  |  |
 | `$appstate` | 1 |  | window_identifiers.html |  |  |
 | `$bitoff` | 1 |  | text_number_identifiers.html |  |  |
@@ -592,7 +589,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (109)
+### done (112)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -636,6 +633,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$hget` | 51 |  | hash_tables.html | test_msl |  |
 | `$iif` | 719 |  | other_identifiers.html | test_msl |  |
 | `$ini` | 28 |  | file_directory_identifiers.html | test_msl |  |
+| `$input` | 18 |  | other_identifiers.html | test_msl |  |
 | `$instok` | 20 |  | token_identifiers.html | test_msl |  |
 | `$int` | 36 |  | text_number_identifiers.html | test_msl |  |
 | `$isalias` | 9 |  | other_identifiers.html | test_msl |  |
@@ -682,7 +680,9 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$round` | 200 |  | text_number_identifiers.html | test_msl |  |
 | `$script` | 45 |  | remote_identifiers.html | test_msl |  |
 | `$scriptdir` | 112 |  | remote_identifiers.html | test_msl |  |
+| `$sdir` | 13 |  | file_directory_identifiers.html | test_msl |  |
 | `$server` | 110 |  | other_identifiers.html | test_msl |  |
+| `$sfile` | 2 |  | file_directory_identifiers.html | test_msl |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html | test_msl | substitute: no 8.3 names on Linux; returns the long name |
 | `$signal` | 0 |  | signals.html | test_msl |  |
 | `$site` | 36 |  | remote_identifiers.html | test_msl |  |

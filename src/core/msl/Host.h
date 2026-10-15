@@ -100,6 +100,26 @@ public:
     // A line the engine wants surfaced to the user as an error (* /cmd: ...).
     virtual void scriptError(const std::string& text) = 0;
 
+    // Modal input prompt for $? / $$? / $input. Returns the entered text (empty
+    // if cancelled). `masked` hides the input (passwords). Default: empty.
+    virtual std::string inputDialog(const std::string& prompt, bool masked) {
+        (void)prompt;
+        (void)masked;
+        return {};
+    }
+    // Directory / file chooser dialogs for $sdir / $sfile. Default: empty.
+    virtual std::string chooseDir(const std::string& start, const std::string& title) {
+        (void)start;
+        (void)title;
+        return {};
+    }
+    virtual std::string chooseFile(const std::string& start, const std::string& title, const std::string& filter) {
+        (void)start;
+        (void)title;
+        (void)filter;
+        return {};
+    }
+
     // Dialogs (/dialog, /did, $did). Default no-ops so non-GUI hosts ignore them;
     // the GUI renders a real dialog from the table and reports control events.
     virtual void openDialog(const std::string& instance, const DialogTable& table, bool modal) {

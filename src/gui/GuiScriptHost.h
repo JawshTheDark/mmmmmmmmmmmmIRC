@@ -9,7 +9,11 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QObject>
 #include <QStandardPaths>
 #include <QString>
 #include <ctime>
@@ -137,6 +141,21 @@ public:
     }
     void scriptError(const std::string& text) override {
         if (errorFn) errorFn(QString::fromStdString(text));
+    }
+    std::string inputDialog(const std::string& prompt, bool masked) override {
+        bool ok = false;
+        const QString text = QInputDialog::getText(nullptr, QObject::tr("Input"), QString::fromStdString(prompt),
+                                                   masked ? QLineEdit::Password : QLineEdit::Normal, QString(), &ok);
+        return ok ? text.toStdString() : std::string();
+    }
+    std::string chooseDir(const std::string& start, const std::string& title) override {
+        return QFileDialog::getExistingDirectory(nullptr, QString::fromStdString(title), QString::fromStdString(start))
+            .toStdString();
+    }
+    std::string chooseFile(const std::string& start, const std::string& title, const std::string& filter) override {
+        return QFileDialog::getOpenFileName(nullptr, QString::fromStdString(title), QString::fromStdString(start),
+                                            QString::fromStdString(filter))
+            .toStdString();
     }
     void openDialog(const std::string& instance, const lurker::msl::DialogTable& table, bool modal) override {
         if (openDialogFn) openDialogFn(QString::fromStdString(instance), table, modal);

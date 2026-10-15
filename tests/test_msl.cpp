@@ -52,6 +52,12 @@ struct FakeHost : Host {
     }
     void stopTimer(const std::string&) override {}
     void scriptError(const std::string& t) override { errors.push_back(t); }
+    std::string lastPrompt;
+    std::string inputAnswer = "answer";  // what $?/$input returns
+    std::string inputDialog(const std::string& prompt, bool) override {
+        lastPrompt = prompt;
+        return inputAnswer;
+    }
 
     std::map<std::string, std::string> files;  // in-memory filesystem
     std::string fileRead(const std::string& p) const override {
@@ -557,6 +563,17 @@ int main() {
                 CHECK_EQ((*m)[3].children.size(), 2u);
             }
         }
+    }
+
+    // $? / $$? input prompts (used in menus like ChanServ Register).
+    {
+        host.inputAnswer = "#mychan";
+        CHECK_EQ(eval(in, "$?=\"Channel\""), std::string("#mychan"));
+        CHECK_EQ(host.lastPrompt, std::string("Channel"));
+        CHECK_EQ(eval(in, "register $$?=\"#Channel\" $$?=\"Password\""),
+                 std::string("register #mychan #mychan"));
+        CHECK_EQ(eval(in, "$input(Enter name,p)"), std::string("#mychan"));
+        host.inputAnswer = "answer";
     }
 
     // Colour/rgb/regsubex (from the corpus crawl gap analysis).
