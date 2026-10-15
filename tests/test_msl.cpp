@@ -43,6 +43,8 @@ struct FakeHost : Host {
     long long unixTime() const override { return now; }
     std::string appDir() const override { return "/app/"; }
     std::string scriptDir() const override { return "/scripts/"; }
+    std::string networkName(int) const override { return "TestNet"; }
+    std::string serverHost(int) const override { return "irc.test"; }
     std::vector<std::string> timers;  // "repeat\tinterval\tcommand"
     std::string startTimer(const std::string&, int repeat, double interval, const std::string& cmd) override {
         timers.push_back(std::to_string(repeat) + "\t" + std::to_string(interval) + "\t" + cmd);
@@ -549,6 +551,21 @@ int main() {
             CHECK_EQ((*m)[3].children.size(), 2u);
             CHECK_EQ((*m)[3].children[1].caption, std::string("Deop"));
         }
+    }
+
+    // Context/connection identifiers (from the corpus crawl gap analysis).
+    CHECK_EQ(eval(in, "$network"), std::string("TestNet"));
+    CHECK_EQ(eval(in, "$server"), std::string("irc.test"));
+    CHECK_EQ(eval(in, "$cid"), std::string("1"));
+    CHECK_EQ(eval(in, "$version"), std::string("7.85"));
+    CHECK_EQ(eval(in, "$bytes(1536)"), std::string("1.5 KB"));
+    CHECK_EQ(eval(in, "$bytes(1536).suf"), std::string("KB"));
+    CHECK(!eval(in, "$timestamp").empty());
+    {  // $eval(text,N): N-pass evaluation (named form of $())
+        Scope s;
+        s.locals["a"] = "%b";
+        s.locals["b"] = "deep";
+        CHECK_EQ(in.evaluate("$eval(%a,2)", s), std::string("deep"));
     }
 
     // Directory identifiers.

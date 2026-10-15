@@ -371,6 +371,59 @@ void registerBuiltins(Interpreter& in) {
         const int net = i.host().activeTarget().networkId;
         return i.host().isOn(net, a[0], a[1]) ? std::string("$true") : std::string("$false");
     });
+    // $network / $server: the active network's display name and server host.
+    in.registerIdent("network", [](Interpreter& i, S&, const A& a, const std::string&) {
+        const int net = a.empty() ? i.host().activeTarget().networkId : argInt(a, 0);
+        return i.host().networkName(net);
+    });
+    in.registerIdent("server", [](Interpreter& i, S&, const A&, const std::string&) {
+        return i.host().serverHost(i.host().activeTarget().networkId);
+    });
+    // $cid: connection id (we key it by network id).
+    in.registerIdent("cid", [](Interpreter& i, S&, const A&, const std::string&) {
+        const int net = i.host().activeTarget().networkId;
+        return net >= 0 ? std::to_string(net) : std::string();
+    });
+    // $version: report a modern mIRC version so scripts take their current paths.
+    in.registerIdent("version", [](Interpreter&, S&, const A&, const std::string&) { return std::string("7.85"); });
+    // $eval(text,N): evaluate text N times (args arrive evaluated once, so N-1 more).
+    in.registerIdent("eval", [](Interpreter& i, S& s, const A& a, const std::string&) {
+        std::string v = arg(a, 0);
+        int n = a.size() >= 2 ? argInt(a, 1, 1) : 1;
+        for (int k = 1; k < n; ++k) v = i.evaluate(v, s);
+        return v;
+    });
+    // $timestamp: current local time as hh:mm:ss.
+    in.registerIdent("timestamp", [](Interpreter& i, S&, const A&, const std::string&) {
+        std::time_t t = static_cast<std::time_t>(i.host().unixTime());
+        std::tm tmv{};
+#if defined(_WIN32)
+        localtime_s(&tmv, &t);
+#else
+        localtime_r(&t, &tmv);
+#endif
+        char buf[16];
+        std::strftime(buf, sizeof(buf), "%H:%M:%S", &tmv);
+        return std::string(buf);
+    });
+    // $bytes(N[,bkmgt...]).suf: human-readable byte count.
+    in.registerIdent("bytes", [](Interpreter&, S&, const A& a, const std::string& prop) {
+        double v = 0;
+        try {
+            v = std::stod(arg(a, 0));
+        } catch (...) {
+            return std::string();
+        }
+        static const char* units[] = {"bytes", "KB", "MB", "GB", "TB", "PB"};
+        int u = 0;
+        while (v >= 1024.0 && u < 5) {
+            v /= 1024.0;
+            ++u;
+        }
+        if (prop == "suf") return std::string(units[u]);
+        std::string num = fmtNum(u == 0 ? v : std::floor(v * 100 + 0.5) / 100);
+        return prop == "b" ? num : num + " " + units[u];
+    });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
         return s.target.empty() ? i.host().activeTarget().window : s.target;
     });

@@ -675,6 +675,10 @@ void MainWindow::setupScripting() {
             if (n.compare(nick, Qt::CaseInsensitive) == 0) return true;
         return false;
     };
+    m_scriptHost.networkNameFn = [this](int net) { return m_networkNames.value(net); };
+    m_scriptHost.serverHostFn = [this](int) {
+        return QSettings().value(QStringLiteral("connect/host")).toString();
+    };
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };

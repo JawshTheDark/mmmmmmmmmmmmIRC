@@ -46,6 +46,8 @@ public:
     std::function<QStringList(int, const QString&)> channelNicksFn;  // $nick(#,N)
     std::function<QStringList(int)> myChannelsFn;                    // $chan(N)
     std::function<bool(int, const QString&, const QString&)> isOnFn; // $comchan / $ison
+    std::function<QString(int)> networkNameFn;                       // $network
+    std::function<QString(int)> serverHostFn;                        // $server
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -78,6 +80,8 @@ public:
     bool isOn(int net, const std::string& chan, const std::string& nick) const override {
         return isOnFn ? isOnFn(net, QString::fromStdString(chan), QString::fromStdString(nick)) : false;
     }
+    std::string networkName(int net) const override { return networkNameFn ? networkNameFn(net).toStdString() : std::string(); }
+    std::string serverHost(int net) const override { return serverHostFn ? serverHostFn(net).toStdString() : std::string(); }
     long long unixTime() const override { return static_cast<long long>(::time(nullptr)); }
     std::string appDir() const override {
         const QString d = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);

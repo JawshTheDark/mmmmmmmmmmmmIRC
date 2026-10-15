@@ -60,6 +60,15 @@ public:
         (void)nick;
         return false;
     }
+    //   network display name ($network) and server host ($server) for a network
+    virtual std::string networkName(int networkId) const {
+        (void)networkId;
+        return {};
+    }
+    virtual std::string serverHost(int networkId) const {
+        (void)networkId;
+        return {};
+    }
 
     // Wall-clock, overridable in tests ($ctime, $time, timers).
     virtual long long unixTime() const = 0;
