@@ -107,9 +107,14 @@ struct Calc {
             skip();
             if (i < s.size() && (s[i] == '*' || s[i] == '/' || s[i] == '%')) {
                 char op = s[i++];
+                bool intDiv = false;
+                if (op == '/' && i < s.size() && s[i] == '/') {  // '//' = integer division
+                    ++i;
+                    intDiv = true;
+                }
                 double r = power();
                 if (op == '*') v *= r;
-                else if (op == '/') v = r != 0 ? v / r : 0;
+                else if (op == '/') v = r != 0 ? (intDiv ? std::floor(v / r) : v / r) : 0;
                 else v = r != 0 ? std::fmod(v, r) : 0;
             } else break;
         }
@@ -473,6 +478,17 @@ void registerBuiltins(Interpreter& in) {
         } catch (...) {
             return std::string();
         }
+        if (arg(a, 1) == "b" || arg(a, 1) == "B") {  // forced bytes: thousands-grouped (1,536)
+            long long n = static_cast<long long>(v);
+            const bool neg = n < 0;
+            const std::string d = std::to_string(neg ? -n : n);
+            std::string out;
+            for (std::size_t k = 0; k < d.size(); ++k) {
+                if (k && (d.size() - k) % 3 == 0) out.push_back(',');
+                out.push_back(d[k]);
+            }
+            return neg ? "-" + out : out;
+        }
         static const char* units[] = {"bytes", "KB", "MB", "GB", "TB", "PB"};
         int u = 0;
         while (v >= 1024.0 && u < 5) {
@@ -481,7 +497,7 @@ void registerBuiltins(Interpreter& in) {
         }
         if (prop == "suf") return std::string(units[u]);
         std::string num = fmtNum(u == 0 ? v : std::floor(v * 100 + 0.5) / 100);
-        return prop == "b" ? num : num + " " + units[u];
+        return num + " " + units[u];
     });
     // $rgb(r,g,b) -> packed int; $rgb(N) -> "r,g,b".
     in.registerIdent("rgb", [](Interpreter&, S&, const A& a, const std::string&) {

@@ -245,6 +245,8 @@ int main() {
         CHECK(in.evalCondition("abc isin xxabcxx", s));
         CHECK(in.evalCondition("he?lo iswm hello", s));
         CHECK(in.evalCondition("5 isnum", s));
+        CHECK(in.evalCondition("5 isnum 1-10", s));    // isnum N-M range (oracle-confirmed)
+        CHECK(!in.evalCondition("15 isnum 1-10", s));  // 15 is outside 1..10
         CHECK(!in.evalCondition("!(%a == 5)", s));
     }
 
@@ -340,6 +342,9 @@ int main() {
     CHECK_EQ(eval(in, "$ceil(3.2)"), std::string("4"));
     CHECK_EQ(eval(in, "$floor(3.8)"), std::string("3"));
     CHECK_EQ(eval(in, "$sqrt(144)"), std::string("12"));
+    CHECK_EQ(eval(in, "$calc(17 // 5)"), std::string("3"));    // // is floored integer division
+    CHECK_EQ(eval(in, "$calc(-17 // 5)"), std::string("-4"));  // ...which floors toward -inf
+    CHECK_EQ(eval(in, "$bytes(1536,b)"), std::string("1,536"));  // forced bytes, thousands-grouped
     CHECK_EQ(eval(in, "$base(255,10,16)"), std::string("FF"));  // mIRC emits uppercase hex
     CHECK_EQ(eval(in, "$base(ff,16,10)"), std::string("255"));
     CHECK_EQ(eval(in, "$duration(3661)"), std::string("1hr 1min 1sec"));

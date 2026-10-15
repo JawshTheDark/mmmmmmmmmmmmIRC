@@ -458,7 +458,15 @@ bool compare(const std::string& a, const std::string& op, const std::string& b) 
     if (op == "iswmcs") return matchWild(a, b);  // (cs variant; fold not applied — close enough for v1)
     if (op == "isnum") {
         double x;
-        return asNumber(a, x);
+        if (!asNumber(a, x)) return false;  // a must be a number
+        if (b.empty()) return true;         // bare "isnum"
+        // "N-M": a is a number within the inclusive range. The separating dash is
+        // the first one past a possible leading sign on N.
+        const std::size_t dash = b.find('-', 1);
+        double lo, hi;
+        if (dash != std::string::npos && asNumber(b.substr(0, dash), lo) && asNumber(b.substr(dash + 1), hi))
+            return x >= lo && x <= hi;
+        return true;
     }
     return false;
 }
@@ -530,8 +538,7 @@ bool Interpreter::evalCondition(std::string_view expr, Scope& scope) {
         b = evaluate(b, scope);
         scope.v1 = a;  // mIRC exposes the operands as $v1/$v2 after a comparison
         scope.v2 = b;
-        if (clean[1] == "isnum") return compare(a, "isnum", "");
-        return compare(a, clean[1], b);
+        return compare(a, clean[1], b);  // isnum gets its N-M range in b
     }
     // Unary word operators like "isnum".
     if (clean.size() == 2 && clean[1] == "isnum") return compare(evaluate(clean[0], scope), "isnum", "");
