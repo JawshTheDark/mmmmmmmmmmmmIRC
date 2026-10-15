@@ -41,6 +41,9 @@ public:
     void disconnectAll() override;
     bool supportsDccChat() const override { return true; }
     void startDccChat(int net, const QString& nick) override { m_client.startDccChat(net, nick); }
+    bool supportsPreviews() const override { return m_client.hasFeature(QStringLiteral("linkPreviews")); }
+    QString previewBase() const override { return m_client.restBase(); }
+    QString authToken() const override { return m_client.token(); }
 
 private:
     struct Member {

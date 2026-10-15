@@ -64,6 +64,7 @@ public:
     // Dev: inject a synthetic incoming message (renders + fires on TEXT).
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
     void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
+    void previewDemo();        // dev/screenshot: seed synthetic link/media previews
 
 private:
     struct Buffer {
@@ -155,6 +156,8 @@ private:
     QList<QAction*> m_scriptMenuBarActions;  // top-level menus added by `menu menubar`
     class QMenu* m_helpMenu = nullptr;       // script menus insert before this
     class Updater* m_updater = nullptr;      // in-app GitHub updater
+    class PreviewService* m_previews = nullptr;  // link/media previews via Lurker's proxy
+    void configurePreviews();                    // (re)point the preview service at the backend
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;

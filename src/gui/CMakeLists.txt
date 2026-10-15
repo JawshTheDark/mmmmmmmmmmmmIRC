@@ -9,6 +9,8 @@ qt_add_executable(lurker-desktop
     ChatView.h
     ChannelListWindow.cpp
     ChannelListWindow.h
+    PreviewService.cpp
+    PreviewService.h
     ConnectDialog.cpp
     ConnectDialog.h
     FormattedText.cpp

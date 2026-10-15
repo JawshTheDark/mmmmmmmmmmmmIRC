@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QLabel>
 #include <QLineEdit>
@@ -16,11 +17,15 @@
 #include <QSplitter>
 #include <QTextBlock>
 #include <QTextBrowser>
+#include <QTextCursor>
+#include <QTextDocument>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include "core/CommandParser.h"
 #include "core/Completion.h"
 #include "gui/FormattedText.h"
+#include "gui/PreviewService.h"
 
 namespace lurker::gui {
 
@@ -324,6 +329,7 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
         insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
     }
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+    requestPreviews(stripFormattingQt(utf8Text));
 }
 
 void ChatView::addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server) {
@@ -355,6 +361,7 @@ void ChatView::addNotice(const QString& timestamp, const QString& from, const QB
         insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
     }
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+    requestPreviews(stripFormattingQt(utf8Text));
 }
 
 void ChatView::addSystemLine(const QByteArray& utf8Text) {
@@ -398,6 +405,82 @@ void ChatView::setMembers(const QStringList& sigils, const QStringList& nicks) {
 }
 
 int ChatView::memberCount() const { return m_nicklist ? m_nicklist->count() : 0; }
+
+void ChatView::requestPreviews(const QString& plainText) {
+    if (!m_previews || !m_previews->enabled()) return;
+    static const QRegularExpression re(QStringLiteral(R"(https?://[^\s<>"')]+)"));
+    auto it = re.globalMatch(plainText);
+    int count = 0;
+    while (it.hasNext() && count < 4) {
+        QString url = it.next().captured(0);
+        while (!url.isEmpty() && QStringLiteral(".,;:!?]}'\"").contains(url.back())) url.chop(1);
+        if (url.isEmpty()) continue;
+        ++count;
+        // Capture a cursor at the end of the message so the preview lands under it
+        // even if it resolves after later lines arrive.
+        QTextCursor slot(m_messages->document());
+        slot.movePosition(QTextCursor::End);
+        m_previews->request(url, [this, slot](const PreviewDescriptor& d, const QImage& img) {
+            insertPreview(slot, d, img);
+        });
+    }
+}
+
+void ChatView::insertPreview(QTextCursor slot, const PreviewDescriptor& d, const QImage& img) {
+    if (!d.ok()) return;
+    auto* sb = m_messages->verticalScrollBar();
+    const bool atBottom = sb->value() >= sb->maximum() - 4;
+
+    const QPalette pal = m_messages->palette();
+    const QColor base = pal.color(QPalette::Base);
+    const bool dark = base.lightness() < 128;
+    const QString cardBg = (dark ? base.lighter(135) : base.darker(106)).name();
+    const QString border = pal.color(QPalette::Mid).name();
+    const QString link = pal.color(QPalette::Link).name();
+    const QString muted = pal.color(QPalette::Disabled, QPalette::Text).name();
+
+    // Register the fetched pixels as a document resource and build a sized <img>.
+    QString imgTag;
+    if (!img.isNull()) {
+        const QString resName = QStringLiteral("lurkerprev://%1").arg(qHash(d.imagePath()));
+        m_messages->document()->addResource(QTextDocument::ImageResource, QUrl(resName), img);
+        int w = img.width(), h = img.height();
+        const int maxW = 400;
+        if (w > maxW && w > 0) {
+            h = h * maxW / w;
+            w = maxW;
+        }
+        imgTag = QStringLiteral("<img src=\"%1\" width=\"%2\" height=\"%3\">").arg(resName).arg(w).arg(h);
+    }
+
+    const QString clickUrl = (d.kind == QLatin1String("video-embed") && !d.embedUrl.isEmpty()) ? d.embedUrl : d.url;
+    QString html;
+    if (d.kind == QLatin1String("image") && !imgTag.isEmpty()) {
+        // A direct image: show it inline, linking to the original.
+        html = QStringLiteral("<a href=\"%1\">%2</a>").arg(d.url.toHtmlEscaped(), imgTag);
+    } else {
+        // A card: title, description, site, then the thumbnail/poster. Media kinds
+        // (video/audio/embed) get a ▶ marker — clicking opens the source.
+        const bool playable = d.kind == QLatin1String("video") || d.kind == QLatin1String("audio") ||
+                              d.kind == QLatin1String("video-embed");
+        const QString title = (d.title.isEmpty() ? d.url : d.title).toHtmlEscaped();
+        QString body = QStringLiteral("<a href=\"%1\" style=\"color:%2;font-weight:bold;text-decoration:none;\">%3%4</a>")
+                           .arg(clickUrl.toHtmlEscaped(), link, playable ? QStringLiteral("&#9654; ") : QString(), title);
+        if (!d.description.isEmpty())
+            body += QStringLiteral("<br><span style=\"color:%1;\">%2</span>").arg(muted, d.description.toHtmlEscaped());
+        if (!d.siteName.isEmpty())
+            body += QStringLiteral("<br><span style=\"color:%1;font-size:small;\">%2</span>")
+                        .arg(muted, d.siteName.toHtmlEscaped());
+        if (!imgTag.isEmpty()) body += QStringLiteral("<br>%1").arg(imgTag);
+        html = QStringLiteral("<table width=\"420\" cellspacing=\"0\" cellpadding=\"6\" "
+                              "style=\"background-color:%1;border:1px solid %2;\"><tr><td>%3</td></tr></table>")
+                   .arg(cardBg, border, body);
+    }
+
+    slot.insertBlock();
+    slot.insertHtml(html);
+    if (atBottom) sb->setValue(sb->maximum());
+}
 
 void ChatView::focusInput() { m_input->setFocus(); }
 

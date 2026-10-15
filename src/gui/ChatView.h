@@ -12,13 +12,18 @@
 #include <functional>
 
 class QEvent;
+class QImage;
 class QLabel;
 class QLineEdit;
 class QListWidget;
 class QObject;
 class QTextBrowser;
+class QTextCursor;
 
 namespace lurker::gui {
+
+class PreviewService;
+struct PreviewDescriptor;
 
 class ChatView : public QWidget {
     Q_OBJECT
@@ -62,6 +67,10 @@ public:
     // Supplies nick candidates (no sigils) for tab-completion; set by the owner.
     void setNickProvider(std::function<QStringList()> provider) { m_nickProvider = std::move(provider); }
 
+    // Link/media previews: when set (and enabled), URLs in incoming messages get
+    // an inline image or card resolved through Lurker's previews proxy.
+    void setPreviewService(PreviewService* svc) { m_previews = svc; }
+
     // Lets the owner append script-defined (menu nicklist) items to the nicklist
     // right-click menu; called with the menu and the clicked nick.
     void setNickPopupProvider(std::function<void(class QMenu*, const QString&)> provider) {
@@ -87,6 +96,10 @@ private:
     void appendBlock();
     void recallHistory(int direction);  // -1 older, +1 newer
     void doTabCompletion();
+    // Find URLs in a just-rendered line and resolve previews for them, inserting
+    // the result just under the line (the `slot` cursor tracks that position).
+    void requestPreviews(const QString& plainText);
+    void insertPreview(QTextCursor slot, const PreviewDescriptor& d, const QImage& img);
 
     Kind m_kind;
     QString m_settingsScope;  // per-channel theme override prefix, empty = globals only
@@ -98,6 +111,7 @@ private:
     std::function<QStringList()> m_nickProvider;
     std::function<void(class QMenu*, const QString&)> m_nickPopupProvider;
     std::function<void(class QMenu*)> m_windowPopupProvider;
+    PreviewService* m_previews = nullptr;
 
     QStringList m_history;          // sent lines, oldest first
     int m_historyIndex = -1;       // -1 = not recalling; else index into m_history

@@ -51,6 +51,7 @@ void LurkerClient::fetchConfig(const QString& host, bool tls) {
         c.minProtocolVersion = o.value(QStringLiteral("minProtocolVersion")).toInt();
         c.features = o.value(QStringLiteral("features")).toObject();
         c.valid = !c.edition.isEmpty();
+        m_config = c;  // remember feature flags (e.g. linkPreviews) for callers
         emit configReceived(c);
     });
 }
@@ -59,6 +60,7 @@ void LurkerClient::connectToLurker(const LurkerConnectSettings& settings) {
     m_settings = settings;
     m_userClosed = false;
     m_reconnectDelay = 2;
+    fetchConfig(settings.host, settings.tls);  // populate feature flags (linkPreviews, …)
     if (m_settings.token.isEmpty()) mintTokenThenContinue();
     else fetchNetworksThenConnect();
 }

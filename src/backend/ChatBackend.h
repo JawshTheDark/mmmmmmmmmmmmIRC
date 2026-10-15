@@ -65,6 +65,12 @@ public:
         (void)nick;
     }
 
+    // Link/media previews through Lurker's previews proxy (default: unsupported).
+    // previewBase is the REST origin (https://host); authToken is the Bearer.
+    virtual bool supportsPreviews() const { return false; }
+    virtual QString previewBase() const { return {}; }
+    virtual QString authToken() const { return {}; }
+
 signals:
     void statusText(const QString& text);
     void networkUpdated(const lurker::backend::NetworkInfo& net);

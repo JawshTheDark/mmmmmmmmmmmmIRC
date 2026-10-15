@@ -7,6 +7,9 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QImage>
+#include <QLinearGradient>
+#include <QPainter>
 #include <QBrush>
 #include <QDateTime>
 #include <QCloseEvent>
@@ -50,6 +53,7 @@
 
 #include "core/CommandParser.h"
 #include "gui/ChannelListWindow.h"
+#include "gui/PreviewService.h"
 #include "gui/ConnectDialog.h"
 #include "gui/FormattedText.h"
 #include "gui/PictureWindow.h"
@@ -89,6 +93,8 @@ QString normTarget(const QString& t) {
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("Lurker Desktop"));
     resize(1180, 760);
+
+    m_previews = new PreviewService(this);  // created before any ChatView wants it
 
     m_mdi = new QMdiArea(this);
     setCentralWidget(m_mdi);
@@ -374,6 +380,7 @@ void MainWindow::showOptions(const QString& page) {
     if (!page.isEmpty()) dlg.selectPage(page);
     if (dlg.exec() == QDialog::Accepted) {
         refreshColorSettings();  // pick up Colors-page edits for new messages
+        configurePreviews();     // the inline-previews toggle may have changed
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();
@@ -1160,6 +1167,78 @@ void MainWindow::simulateMessage(int net, const QString& nick, const QString& ta
     onEvent(ev);
 }
 
+void MainWindow::previewDemo() {
+    // Seed synthetic descriptors + images so previews resolve from cache (no
+    // network), then inject messages that reference them. Dev/screenshot aid.
+    const int net = 1;
+    m_networkNames.insert(net, QStringLiteral("DemoNet"));
+    m_networkNicks.insert(net, QStringLiteral("jawsh"));
+    m_previews->configure(QStringLiteral("https://demo.invalid"), QStringLiteral("demo"), true);
+
+    auto make = [](int w, int h, QColor a, QColor b, const QString& label, QColor text) {
+        QImage im(w, h, QImage::Format_RGB32);
+        QPainter p(&im);
+        QLinearGradient g(0, 0, w, h);
+        g.setColorAt(0, a);
+        g.setColorAt(1, b);
+        p.fillRect(im.rect(), g);
+        p.setPen(text);
+        QFont f = p.font();
+        f.setPointSize(qMax(10, h / 8));
+        f.setBold(true);
+        p.setFont(f);
+        p.drawText(im.rect(), Qt::AlignCenter, label);
+        return im;
+    };
+
+    PreviewDescriptor img;
+    img.url = QStringLiteral("https://demo.invalid/sunset.jpg");
+    img.status = QStringLiteral("ok");
+    img.kind = QStringLiteral("image");
+    img.src = QStringLiteral("/media/img1");
+    m_previews->seedForTest(
+        img, make(640, 360, QColor(0xFF, 0x8C, 0x42), QColor(0x8E, 0x24, 0xAA), QStringLiteral("sunset.jpg"), Qt::white));
+
+    PreviewDescriptor page;
+    page.url = QStringLiteral("https://demo.invalid/release");
+    page.status = QStringLiteral("ok");
+    page.kind = QStringLiteral("page");
+    page.title = QStringLiteral("Release v0.1.11 · JawshTheDark/mmmmmmmmmmmmIRC");
+    page.description = QStringLiteral("mdx.dll ListView dialogs, hash load/save, dotted vars, live channel list.");
+    page.siteName = QStringLiteral("GitHub");
+    page.thumb = QStringLiteral("/media/og1");
+    m_previews->seedForTest(page, make(600, 300, QColor(0xF5, 0xF5, 0xF5), QColor(0xDA, 0xDA, 0xE0),
+                                       QStringLiteral("New Release v0.1.11"), QColor(0x22, 0x22, 0x22)));
+
+    PreviewDescriptor bare;
+    bare.url = QStringLiteral("https://demo.invalid/archive");
+    bare.status = QStringLiteral("ok");
+    bare.kind = QStringLiteral("page");
+    bare.title = QStringLiteral("IRC Script Archive");
+    bare.siteName = QStringLiteral("archive.irc.so");
+    m_previews->seedForTest(bare, QImage());
+
+    PreviewDescriptor vid;
+    vid.url = QStringLiteral("https://demo.invalid/clip");
+    vid.status = QStringLiteral("ok");
+    vid.kind = QStringLiteral("video");
+    vid.title = QStringLiteral("sample clip");
+    vid.siteName = QStringLiteral("demo.invalid");
+    vid.thumb = QStringLiteral("/poster/vid1");
+    m_previews->seedForTest(
+        vid, make(480, 270, QColor(0x20, 0x30, 0x50), QColor(0x10, 0x18, 0x28), QStringLiteral("video"), Qt::white));
+
+    simulateMessage(net, QStringLiteral("jawsh"), QStringLiteral("#previews"),
+                    QStringLiteral("shipped it https://demo.invalid/release"));
+    simulateMessage(net, QStringLiteral("slakker"), QStringLiteral("#previews"),
+                    QStringLiteral("the archive https://demo.invalid/archive"));
+    simulateMessage(net, QStringLiteral("jawsh"), QStringLiteral("#previews"),
+                    QStringLiteral("clip https://demo.invalid/clip"));
+    simulateMessage(net, QStringLiteral("slakker"), QStringLiteral("#previews"),
+                    QStringLiteral("nice shot https://demo.invalid/sunset.jpg"));
+    openConversation(net, QStringLiteral("#previews"));
+}
+
 void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
     if (!m_msl) return;
     QString name;
@@ -1228,6 +1307,7 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     b.display = display;
     b.key = key;
     b.view = new ChatView(kind);
+    b.view->setPreviewService(m_previews);  // inline link/media previews (Lurker proxy)
     if (kind == ChatView::Kind::Channel || kind == ChatView::Kind::Query)
         b.view->setSettingsScope(themeScope(net, display));
     // Script-defined window menu (menu channel / query / status) on right-click.
@@ -1354,8 +1434,19 @@ void MainWindow::useBackend(ChatBackend* backend) {
         m_disconnectAction->setEnabled(ready);
         if (m_tbDisconnect) m_tbDisconnect->setEnabled(ready);
         statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
+        configurePreviews();  // the feature flag + token are known once ready
     });
     connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
+    configurePreviews();
+}
+
+void MainWindow::configurePreviews() {
+    if (!m_previews) return;
+    const bool wanted = QSettings().value(QStringLiteral("display/inlinePreviews"), true).toBool();
+    if (m_backend && m_backend->supportsPreviews())
+        m_previews->configure(m_backend->previewBase(), m_backend->authToken(), wanted);
+    else
+        m_previews->setEnabled(false);
 }
 
 void MainWindow::closeBuffer(Buffer* buffer) {

@@ -56,6 +56,12 @@ public:
 
     qint64 resumeCursor() const { return m_cursor; }
 
+    // Connection facts for callers that need to reach the REST surface directly
+    // (e.g. the previews proxy): the origin, the Bearer, and advertised features.
+    QString restBase() const { return baseUrl(m_settings.host, m_settings.tls); }
+    QString token() const { return m_settings.token; }
+    bool hasFeature(const QString& name) const { return m_config.features.value(name).toBool(); }
+
     // Client -> server verbs (sent as JSON over the WS).
     void sendChat(int networkId, const QString& target, const QString& text, const QString& clientId = {});
     void requestHistoryLatest(int networkId, const QString& target, int limit = 50, const QString& token = {});
@@ -96,6 +102,7 @@ private:
     QNetworkAccessManager* m_net = nullptr;
     QWebSocket* m_ws = nullptr;
     LurkerConnectSettings m_settings;
+    LurkerConfig m_config;  // last /api/config result (feature flags)
     qint64 m_cursor = 0;      // highest persisted message id seen (resume cursor)
     bool m_firstFrame = true;
     quint64 m_clientIdSeq = 0;
