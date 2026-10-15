@@ -186,6 +186,14 @@ int main() {
         host.actions.clear();
         in.execute("me waves", s);
         CHECK_EQ(host.actions[0], std::string("#test\twaves"));
+
+        // A command line whose verb is a computed $identifier runs the result as a
+        // command (the menu `$iif(cond, cmd)` idiom), not sent to the server.
+        host.raws.clear();
+        host.echoed.clear();
+        in.execute("$iif(1 == 1,echo -a computed-cmd-ran)", s);
+        CHECK(!host.echoed.empty() && host.echoed.back() == std::string("computed-cmd-ran"));
+        CHECK(host.raws.empty());
     }
 
     // if / elseif / else.

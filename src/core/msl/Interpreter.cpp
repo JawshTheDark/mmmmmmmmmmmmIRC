@@ -818,7 +818,17 @@ void Interpreter::runCommandLine(std::string_view line, Scope& scope) {
         callAlias(name, params);
         return;
     }
-    // Unknown command: evaluate and hand the line to the host as a server command.
+    // A command line whose verb is an $identifier or %variable has a *computed*
+    // command: mIRC evaluates the line and executes the result. This is the
+    // common menu idiom `$iif(cond, somecommand ...)`, which must run somecommand,
+    // not go to the server. execute() is depth-guarded, and the `!=` check stops a
+    // line that evaluates to itself from looping.
+    if (!name.empty() && (name[0] == '$' || name[0] == '%' || name[0] == '[')) {
+        const std::string evaluated = trimmed(evaluate(s, scope));
+        if (!evaluated.empty() && evaluated != trimmed(s)) execute(evaluated, scope);
+        return;
+    }
+    // A genuinely unknown literal command goes to the server as-is, like mIRC.
     m_host.sendRaw(m_host.activeTarget().networkId, evaluate(s, scope));
 }
 
