@@ -69,7 +69,7 @@ int main() {
         registerSession(h);
         CHECK_EQ(h.sent[0], std::string("CAP LS 302"));
         CHECK_EQ(h.sent[1], std::string("NICK jawsh"));
-        CHECK_EQ(h.sent[2], std::string("USER jawsh 0 * :Lurker Desktop"));
+        CHECK_EQ(h.sent[2], std::string("USER jawsh 0 * :mmmmmmmmmmmmIRC"));
         CHECK(h.sentContains("CAP REQ :"));
         CHECK(h.sentContains("sasl"));
         CHECK(h.sentContains("AUTHENTICATE PLAIN"));
@@ -215,7 +215,7 @@ int main() {
         Harness h(config());
         registerSession(h);
         h.feed(":alice!a@h PRIVMSG jawsh :\x01VERSION\x01");
-        CHECK(h.sentContains("NOTICE alice :\x01VERSION Lurker Desktop\x01"));
+        CHECK(h.sentContains("NOTICE alice :\x01VERSION mmmmmmmmmmmmIRC\x01"));
         h.feed(":alice!a@h PRIVMSG jawsh :\x01PING 12345\x01");
         CHECK(h.sentContains("NOTICE alice :\x01PING 12345\x01"));
         const IrcEvent* req = h.last(IrcEventType::CtcpRequest);
