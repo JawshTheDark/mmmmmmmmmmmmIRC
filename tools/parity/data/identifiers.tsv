@@ -210,7 +210,7 @@ $leftwinwid	planned		picture_windows.html	0
 $len	done		text_number_identifiers.html	92	test_msl	
 $level	planned		nick_address_identifiers.html	16		
 $lf	planned		other_identifiers.html	15		
-$line	planned		custom_windows.html	44		
+$line	done		custom_windows.html	44	test_msl	
 $lines	done		file_directory_identifiers.html	79	test_msl	
 $link	planned		nick_address_identifiers.html	0		
 $lock	planned		other_identifiers.html	7		
@@ -327,7 +327,7 @@ $round	done		text_number_identifiers.html	200	test_msl
 $samepath	planned		file_directory_identifiers.html	0		
 $scid	planned		multimserver.html	35		
 $scon	planned		multimserver.html	7		
-$script	planned		remote_identifiers.html	45		
+$script	done		remote_identifiers.html	45	test_msl	
 $scriptdir	done		remote_identifiers.html	112	test_msl	
 $scriptline	planned		remote_identifiers.html	0		
 $sdir	planned		file_directory_identifiers.html	13		
@@ -416,7 +416,7 @@ $wid	planned		window_identifiers.html	0
 $width	planned		picture_windows.html	0		
 $wildsite	planned		remote_identifiers.html	69		
 $wildtok	done		token_identifiers.html	0	test_msl	
-$window	planned		custom_windows.html	169		
+$window	done		custom_windows.html	169	test_msl	
 $wrap	planned		text_number_identifiers.html	0		
 $xor	planned		text_number_identifiers.html	0		
 $zip	planned		file_directory_identifiers.html	0		

@@ -69,6 +69,20 @@ public:
         (void)networkId;
         return {};
     }
+    //   loaded script files ($script(N), $script(0)=count)
+    virtual std::vector<std::string> scriptFiles() const { return {}; }
+    //   open window names ($window(N), $window(0)=count, $window(name) exists)
+    virtual std::vector<std::string> windowNames() const { return {}; }
+    //   a window's line count and the text of its Nth line ($line)
+    virtual int windowLineCount(const std::string& window) const {
+        (void)window;
+        return 0;
+    }
+    virtual std::string windowLine(const std::string& window, int n) const {
+        (void)window;
+        (void)n;
+        return {};
+    }
 
     // Wall-clock, overridable in tests ($ctime, $time, timers).
     virtual long long unixTime() const = 0;

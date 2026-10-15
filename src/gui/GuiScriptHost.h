@@ -48,6 +48,10 @@ public:
     std::function<bool(int, const QString&, const QString&)> isOnFn; // $comchan / $ison
     std::function<QString(int)> networkNameFn;                       // $network
     std::function<QString(int)> serverHostFn;                        // $server
+    std::function<QStringList()> scriptFilesFn;                      // $script
+    std::function<QStringList()> windowNamesFn;                      // $window
+    std::function<int(const QString&)> windowLineCountFn;            // $line(win,0)
+    std::function<QString(const QString&, int)> windowLineFn;        // $line(win,N)
 
     void echo(const lurker::msl::ScriptTarget& where, const std::string& text) override {
         if (echoFn) echoFn(where, QString::fromStdString(text));
@@ -82,6 +86,24 @@ public:
     }
     std::string networkName(int net) const override { return networkNameFn ? networkNameFn(net).toStdString() : std::string(); }
     std::string serverHost(int net) const override { return serverHostFn ? serverHostFn(net).toStdString() : std::string(); }
+    std::vector<std::string> scriptFiles() const override {
+        std::vector<std::string> out;
+        if (scriptFilesFn)
+            for (const QString& s : scriptFilesFn()) out.push_back(s.toStdString());
+        return out;
+    }
+    std::vector<std::string> windowNames() const override {
+        std::vector<std::string> out;
+        if (windowNamesFn)
+            for (const QString& s : windowNamesFn()) out.push_back(s.toStdString());
+        return out;
+    }
+    int windowLineCount(const std::string& w) const override {
+        return windowLineCountFn ? windowLineCountFn(QString::fromStdString(w)) : 0;
+    }
+    std::string windowLine(const std::string& w, int n) const override {
+        return windowLineFn ? windowLineFn(QString::fromStdString(w), n).toStdString() : std::string();
+    }
     long long unixTime() const override { return static_cast<long long>(::time(nullptr)); }
     std::string appDir() const override {
         const QString d = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);

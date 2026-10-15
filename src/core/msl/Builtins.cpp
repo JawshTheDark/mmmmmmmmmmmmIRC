@@ -386,6 +386,46 @@ void registerBuiltins(Interpreter& in) {
     });
     // $version: report a modern mIRC version so scripts take their current paths.
     in.registerIdent("version", [](Interpreter&, S&, const A&, const std::string&) { return std::string("7.85"); });
+    // $script / $script(N) / $script(0): loaded script files (.fname = basename).
+    in.registerIdent("script", [](Interpreter& i, S&, const A& a, const std::string& prop) {
+        const auto files = i.host().scriptFiles();
+        std::string path;
+        if (a.empty() || a[0].empty())
+            path = files.empty() ? std::string() : files.front();
+        else {
+            const int n = argInt(a, 0);
+            if (n == 0) return std::to_string(files.size());
+            if (n >= 1 && n <= static_cast<int>(files.size())) path = files[n - 1];
+        }
+        if (prop == "fname" && !path.empty()) {
+            const std::size_t s = path.find_last_of("/\\");
+            return s == std::string::npos ? path : path.substr(s + 1);
+        }
+        return path;
+    });
+    // $window / $window(N) / $window(0)=count / $window(name)=name if it exists.
+    in.registerIdent("window", [](Interpreter& i, S&, const A& a, const std::string&) {
+        if (a.empty() || a[0].empty()) return i.host().activeTarget().window;
+        const auto wins = i.host().windowNames();
+        const std::string& spec = a[0];
+        const bool numeric = !spec.empty() && spec.find_first_not_of("-0123456789") == std::string::npos;
+        if (numeric) {
+            const int n = argInt(a, 0);
+            if (n == 0) return std::to_string(wins.size());
+            return (n >= 1 && n <= static_cast<int>(wins.size())) ? wins[n - 1] : std::string();
+        }
+        for (const auto& w : wins)
+            if (toLowerAscii(w) == toLowerAscii(spec)) return w;
+        return std::string();
+    });
+    // $line(window,N): the text of line N; $line(window,0) = line count.
+    in.registerIdent("line", [](Interpreter& i, S&, const A& a, const std::string&) {
+        if (a.size() < 2) return std::string();
+        const std::string win = arg(a, 0);
+        const int n = argInt(a, 1);
+        if (n == 0) return std::to_string(i.host().windowLineCount(win));
+        return i.host().windowLine(win, n);
+    });
     // $eval(text,N): evaluate text N times (args arrive evaluated once, so N-1 more).
     in.registerIdent("eval", [](Interpreter& i, S& s, const A& a, const std::string&) {
         std::string v = arg(a, 0);

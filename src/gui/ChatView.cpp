@@ -14,6 +14,7 @@
 #include <QListWidget>
 #include <QScrollBar>
 #include <QSplitter>
+#include <QTextBlock>
 #include <QTextBrowser>
 #include <QVBoxLayout>
 
@@ -75,6 +76,15 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
     m_messages->setFont(configuredChatFont());
     m_messages->document()->setMaximumBlockCount(
         QSettings().value(QStringLiteral("display/scrollback"), 5000).toInt());  // scrollback cap
+    // Right-click menu on the chat area: standard Copy/Select-All plus any
+    // script-defined `menu channel/query/status` items.
+    m_messages->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_messages, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        QMenu* menu = m_messages->createStandardContextMenu(m_messages->mapToGlobal(pos));
+        if (m_windowPopupProvider) m_windowPopupProvider(menu);
+        menu->exec(m_messages->mapToGlobal(pos));
+        menu->deleteLater();
+    });
 
     if (kind == Kind::Channel) {
         auto* split = new QSplitter(Qt::Horizontal, this);
@@ -360,6 +370,16 @@ void ChatView::addSystemLine(const QByteArray& utf8Text) {
 }
 
 void ChatView::clearMessages() { m_messages->clear(); }
+
+int ChatView::lineCount() const {
+    const QTextDocument* doc = m_messages->document();
+    return doc->isEmpty() ? 0 : doc->blockCount();
+}
+
+QString ChatView::lineAt(int oneBased) const {
+    const QTextBlock b = m_messages->document()->findBlockByNumber(oneBased - 1);
+    return b.isValid() ? b.text() : QString();
+}
 
 void ChatView::setTopic(const QByteArray& utf8Topic) {
     if (!m_topicBar) return;

@@ -719,6 +719,10 @@ void Interpreter::runCommandLine(std::string_view line, Scope& scope) {
     } else if (!s.empty() && s[0] == '/') {
         s = trimmed(s.substr(1));
     }
+    // mIRC's silent prefix: a leading '.' runs the command without its normal
+    // status output (e.g. .msg, .notice, .timer). We just strip it so the command
+    // resolves — our commands don't emit status chatter anyway.
+    while (!s.empty() && s[0] == '.') s = trimmed(s.substr(1));
     if (s.empty()) return;
 
     const std::string name = toLowerAscii(firstWord(s));
@@ -810,46 +814,76 @@ std::size_t Interpreter::eventHandlerCount() const {
 }
 
 namespace {
-// Parse the body of a `menu <type> { ... }` block into items. Lines are
-// `caption:command`, `caption { submenu }`, or `-` (separator). Captions and
-// commands are kept raw ($N is evaluated when the menu is shown).
+// mIRC menus nest by LEADING DOTS: a line's dot count is its depth, e.g.
+//   Anope              (depth 0, a submenu header — has children below it)
+//   .Register:command  (depth 1, under Anope)
+//   .ChanServ          (depth 1, a submenu)
+//   ..Op:command       (depth 2, under ChanServ)
+//   .-                 (a separator at depth 1)
+// Captions/commands are kept raw ($N is evaluated when the menu is shown).
+struct MenuLine {
+    int depth = 0;
+    std::string caption;
+    std::string command;
+    bool sep = false;
+};
+
+std::vector<MenuItem> buildMenu(const std::vector<MenuLine>& lines, std::size_t& pos, int depth) {
+    std::vector<MenuItem> out;
+    while (pos < lines.size()) {
+        const MenuLine& ln = lines[pos];
+        if (ln.depth < depth) break;  // belongs to a shallower level — return to caller
+        if (ln.depth > depth) {       // deeper than expected (jump): attach to the previous item
+            if (!out.empty()) {
+                std::vector<MenuItem> kids = buildMenu(lines, pos, ln.depth);
+                for (auto& k : kids) out.back().children.push_back(std::move(k));
+                continue;
+            }
+        }
+        MenuItem item;
+        item.caption = ln.caption;
+        item.command = ln.command;
+        item.separator = ln.sep;
+        ++pos;
+        if (pos < lines.size() && lines[pos].depth > depth) item.children = buildMenu(lines, pos, depth + 1);
+        out.push_back(std::move(item));
+    }
+    return out;
+}
+
 std::vector<MenuItem> parseMenuItems(std::string_view body) {
-    std::vector<MenuItem> items;
+    std::vector<MenuLine> lines;
     std::size_t i = 0;
     const std::size_t n = body.size();
     while (i < n) {
-        while (i < n && std::isspace(static_cast<unsigned char>(body[i]))) ++i;
-        if (i >= n) break;
-        if (body[i] == ';') {
-            while (i < n && body[i] != '\n') ++i;
-            continue;
-        }
-        const std::size_t start = i;
-        while (i < n && body[i] != '\n' && body[i] != '{' && body[i] != ':') ++i;
-        std::string caption = trimmed(std::string(body.substr(start, i - start)));
-        MenuItem item;
-        if (i < n && body[i] == '{') {
-            std::size_t pos = i;
-            const std::string inner = parseBrace(body, pos);
-            i = pos;
-            item.caption = caption;
-            item.children = parseMenuItems(inner);
-        } else if (i < n && body[i] == ':') {
-            ++i;
-            const std::size_t cstart = i;
-            while (i < n && body[i] != '\n') ++i;
-            item.caption = caption;
-            item.command = trimmed(std::string(body.substr(cstart, i - cstart)));
+        const std::size_t ls = i;
+        while (i < n && body[i] != '\n') ++i;
+        std::string s(body.substr(ls, i - ls));
+        if (i < n) ++i;
+        std::size_t a = 0;
+        while (a < s.size() && (s[a] == ' ' || s[a] == '\t')) ++a;  // strip leading whitespace (not dots)
+        s = s.substr(a);
+        while (!s.empty() && (s.back() == '\r' || s.back() == ' ' || s.back() == '\t')) s.pop_back();
+        if (s.empty() || s[0] == ';') continue;
+        MenuLine ml;
+        while (ml.depth < static_cast<int>(s.size()) && s[ml.depth] == '.') ++ml.depth;
+        const std::string rest = trimmed(s.substr(ml.depth));
+        if (rest.empty()) continue;
+        if (rest == "-") {
+            ml.sep = true;
         } else {
-            item.caption = caption;
+            const std::size_t c = rest.find(':');
+            if (c == std::string::npos) {
+                ml.caption = rest;
+            } else {
+                ml.caption = trimmed(rest.substr(0, c));
+                ml.command = trimmed(rest.substr(c + 1));
+            }
         }
-        if (item.caption == "-") {
-            item.separator = true;
-            item.caption.clear();
-        }
-        if (item.separator || !item.caption.empty()) items.push_back(std::move(item));
+        lines.push_back(std::move(ml));
     }
-    return items;
+    std::size_t pos = 0;
+    return buildMenu(lines, pos, 0);
 }
 }  // namespace
 

@@ -39,6 +39,8 @@ public:
     void addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server);
 
     void clearMessages();
+    int lineCount() const;          // $line(window,0)
+    QString lineAt(int oneBased) const;  // $line(window,N)
     void setTopic(const QByteArray& utf8Topic);
     // Members as display strings already sorted by rank then name; `sigils`
     // holds the leading prefix glyph ("@", "+", "") parallel to `nicks`.
@@ -65,6 +67,11 @@ public:
     void setNickPopupProvider(std::function<void(class QMenu*, const QString&)> provider) {
         m_nickPopupProvider = std::move(provider);
     }
+    // Appends script-defined (menu channel/query/status) items to the message
+    // area's right-click menu.
+    void setWindowPopupProvider(std::function<void(class QMenu*)> provider) {
+        m_windowPopupProvider = std::move(provider);
+    }
 
 signals:
     void lineEntered(const QString& text);
@@ -90,6 +97,7 @@ private:
 
     std::function<QStringList()> m_nickProvider;
     std::function<void(class QMenu*, const QString&)> m_nickPopupProvider;
+    std::function<void(class QMenu*)> m_windowPopupProvider;
 
     QStringList m_history;          // sent lines, oldest first
     int m_historyIndex = -1;       // -1 = not recalling; else index into m_history

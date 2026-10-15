@@ -679,6 +679,22 @@ void MainWindow::setupScripting() {
     m_scriptHost.serverHostFn = [this](int) {
         return QSettings().value(QStringLiteral("connect/host")).toString();
     };
+    m_scriptHost.scriptFilesFn = [this] { return m_scriptFiles; };
+    m_scriptHost.windowNamesFn = [this] {
+        QStringList w;
+        for (auto& b : m_buffers) w << b.display;
+        return w;
+    };
+    m_scriptHost.windowLineCountFn = [this](const QString& name) -> int {
+        for (auto& b : m_buffers)
+            if (b.display.compare(name, Qt::CaseInsensitive) == 0) return b.view->lineCount();
+        return 0;
+    };
+    m_scriptHost.windowLineFn = [this](const QString& name, int n) -> QString {
+        for (auto& b : m_buffers)
+            if (b.display.compare(name, Qt::CaseInsensitive) == 0) return b.view->lineAt(n);
+        return QString();
+    };
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };
@@ -1098,6 +1114,17 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     b.view = new ChatView(kind);
     if (kind == ChatView::Kind::Channel || kind == ChatView::Kind::Query)
         b.view->setSettingsScope(themeScope(net, display));
+    // Script-defined window menu (menu channel / query / status) on right-click.
+    const QString menuType = kind == ChatView::Kind::Channel  ? QStringLiteral("channel")
+                             : kind == ChatView::Kind::Query   ? QStringLiteral("query")
+                                                               : QStringLiteral("status");
+    b.view->setWindowPopupProvider([this, menuType](QMenu* menu) {
+        if (!m_msl) return;
+        const auto* items = m_msl->popupMenu(menuType.toStdString());
+        if (!items || items->empty()) return;
+        menu->addSeparator();
+        populateScriptMenu(menu, *items, QString());
+    });
 
     b.sub = m_mdi->addSubWindow(b.view);
     b.sub->setWindowTitle(display);
@@ -1567,7 +1594,11 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
         return;
     }
     if (text.startsWith(QLatin1Char('/')) && !text.startsWith(QStringLiteral("//")) && m_msl) {
-        const QString word = text.mid(1).section(QLatin1Char(' '), 0, 0).toLower();
+        QString word = text.mid(1).section(QLatin1Char(' '), 0, 0).toLower();
+        // A leading '.' is mIRC's silent prefix (/.msg); strip it for lookup and
+        // always route dotted commands to the MSL engine (which handles the dot).
+        const bool dotted = word.startsWith(QLatin1Char('.'));
+        while (word.startsWith(QLatin1Char('.'))) word = word.mid(1);
         // User aliases always win. For built-in commands, let the integrated IRC
         // command parser keep the ones it handles best (buffer-aware /join, /msg,
         // /query, …) and route everything else the MSL engine knows to MSL — so
@@ -1587,7 +1618,7 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
             QStringLiteral("nick"),    QStringLiteral("version"), QStringLiteral("time"),
             QStringLiteral("exit"),    QStringLiteral("help")};
         if (m_msl->hasAlias(word.toStdString()) ||
-            (m_msl->hasCommand(word.toStdString()) && !keepParser.contains(word))) {
+            (m_msl->hasCommand(word.toStdString()) && (dotted || !keepParser.contains(word)))) {
             runScript(text.mid(1));
             return;
         }

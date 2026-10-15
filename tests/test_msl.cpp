@@ -530,26 +530,32 @@ int main() {
 
     // Scriptable popup menus: `menu nicklist { ... }` parses into items/submenus.
     {
+        // mIRC menus nest by leading dots, not braces.
         in.loadScript(
             "menu nicklist {\n"
             "  Whois:whois $1\n"
             "  -\n"
             "  Kick:kick $chan $1\n"
-            "  Ops {\n"
-            "    Op:mode $chan +o $1\n"
-            "    Deop:mode $chan -o $1\n"
-            "  }\n"
+            "  Ops\n"
+            "  .Op:mode $chan +o $1\n"
+            "  .Deop:mode $chan -o $1\n"
+            "  ..Force Deop:mode $chan -o $1\n"
             "}\n");
         const auto* m = in.popupMenu("nicklist");
         CHECK(m != nullptr);
         if (m) {
-            CHECK_EQ(m->size(), 4u);
+            CHECK_EQ(m->size(), 4u);  // Whois, separator, Kick, Ops
             CHECK_EQ((*m)[0].caption, std::string("Whois"));
             CHECK_EQ((*m)[0].command, std::string("whois $1"));
             CHECK((*m)[1].separator);
             CHECK_EQ((*m)[3].caption, std::string("Ops"));
-            CHECK_EQ((*m)[3].children.size(), 2u);
-            CHECK_EQ((*m)[3].children[1].caption, std::string("Deop"));
+            if ((*m)[3].children.size() == 2u) {
+                CHECK_EQ((*m)[3].children[1].caption, std::string("Deop"));
+                // third dot level nests under Deop
+                CHECK_EQ((*m)[3].children[1].children.size(), 1u);
+            } else {
+                CHECK_EQ((*m)[3].children.size(), 2u);
+            }
         }
     }
 

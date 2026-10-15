@@ -7,11 +7,11 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | Category | Done | Counted | Parity | not-possible |
 |---|---:|---:|---:|---:|
 | Commands | 63 | 235 | 26.8% | 23 |
-| Identifiers | 106 | 406 | 26.1% | 15 |
+| Identifiers | 109 | 406 | 26.8% | 15 |
 | Events | 14 | 84 | 16.7% | 2 |
 | Language syntax | 6 | 14 | 42.9% | 0 |
 | Features, options and UI | 26 | 390 | 6.7% | 0 |
-| **Total** | **215** | **1129** | **19.0%** | |
+| **Total** | **218** | **1129** | **19.3%** | |
 
 ## Commands
 
@@ -290,11 +290,10 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 
 ## Identifiers
 
-### planned (300)
+### planned (297)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
-| `$window` | 169 |  | custom_windows.html |  |  |
 | `$chat` | 121 |  | window_identifiers.html |  |  |
 | `$mouse` | 80 |  | picture_windows.html |  |  |
 | `$opnick` | 78 |  | on_opodeop.html |  |  |
@@ -306,8 +305,6 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$isid` | 51 |  | other_identifiers.html |  |  |
 | `$send` | 51 |  | window_identifiers.html |  |  |
 | `$ifmatch` | 45 |  | other_identifiers.html |  |  |
-| `$script` | 45 |  | remote_identifiers.html |  |  |
-| `$line` | 44 |  | custom_windows.html |  |  |
 | `$newnick` | 41 |  | on_nick.html |  |  |
 | `$banmask` | 40 |  | on_banounban.html |  |  |
 | `$hnick` | 40 |  | on_opodeop.html |  |  |
@@ -595,7 +592,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$xor` | 0 |  | text_number_identifiers.html |  |  |
 | `$zip` | 0 |  | file_directory_identifiers.html |  |  |
 
-### done (106)
+### done (109)
 
 | Item | Uses in corpus | Since | Help page | Test | Notes |
 |---|---:|---|---|---|---|
@@ -647,6 +644,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$istok` | 103 |  | token_identifiers.html | test_msl |  |
 | `$left` | 1099 |  | text_number_identifiers.html | test_msl |  |
 | `$len` | 92 |  | text_number_identifiers.html | test_msl |  |
+| `$line` | 44 |  | custom_windows.html | test_msl |  |
 | `$lines` | 79 |  | file_directory_identifiers.html | test_msl |  |
 | `$longfn` | 4 |  | file_directory_identifiers.html | test_msl | substitute: returns the path unchanged |
 | `$longip` | 0 |  | text_number_identifiers.html | test_msl |  |
@@ -682,6 +680,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$rgb` | 58 |  | picture_windows.html | test_msl |  |
 | `$right` | 406 |  | text_number_identifiers.html | test_msl |  |
 | `$round` | 200 |  | text_number_identifiers.html | test_msl |  |
+| `$script` | 45 |  | remote_identifiers.html | test_msl |  |
 | `$scriptdir` | 112 |  | remote_identifiers.html | test_msl |  |
 | `$server` | 110 |  | other_identifiers.html | test_msl |  |
 | `$shortfn` | 66 |  | file_directory_identifiers.html | test_msl | substitute: no 8.3 names on Linux; returns the long name |
@@ -705,6 +704,7 @@ Statuses: `planned` (not started), `partial`, `done`, `substitute` (works, Linux
 | `$v2` | 0 |  | if_then_else.html | test_msl |  |
 | `$version` | 128 |  | other_identifiers.html | test_msl |  |
 | `$wildtok` | 0 |  | token_identifiers.html | test_msl |  |
+| `$window` | 169 |  | custom_windows.html | test_msl |  |
 
 ### not-possible (15)
 
