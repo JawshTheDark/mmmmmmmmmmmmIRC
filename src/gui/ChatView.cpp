@@ -124,6 +124,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
             };
             act(&menu, tr("Query"), QStringLiteral("query"));
             act(&menu, tr("Whois"), QStringLiteral("whois"));
+            act(&menu, tr("Send file…"), QStringLiteral("sendfile"));
             act(&menu, tr("Slap"), QStringLiteral("slap"));
             menu.addSeparator();
             QMenu* control = menu.addMenu(tr("Control"));
@@ -483,5 +484,11 @@ void ChatView::insertPreview(QTextCursor slot, const PreviewDescriptor& d, const
 }
 
 void ChatView::focusInput() { m_input->setFocus(); }
+
+void ChatView::setInputText(const QString& text) {
+    m_input->setText(text);
+    m_input->setFocus();
+    m_input->end(false);
+}
 
 }  // namespace lurker::gui

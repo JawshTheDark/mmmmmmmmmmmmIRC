@@ -51,6 +51,10 @@ public:
     void cancelDcc(int id) override { m_client.dccCancel(id); }
     void deleteDccFile(int id) override { m_client.deleteDccFile(id); }
     void saveDccFile(int id, const QString& path) override { m_client.saveDccFile(id, path); }
+    bool supportsFileSend() const override { return true; }
+    void sendFile(int net, const QString& target, const QString& localPath) override {
+        m_client.sendFile(net, target, localPath);
+    }
 
 private:
     struct Member {

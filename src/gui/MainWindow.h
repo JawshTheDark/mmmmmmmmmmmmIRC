@@ -47,6 +47,7 @@ public:
     void showAddressBook();       // favourite channels (add / remove / join)
     void showDccInfo();           // DCC status (transfers proxied through Lurker)
     void startDccChat();          // offer a DCC chat (proxied through Lurker)
+    void sendFileTo(int net, const QString& target);  // upload a file via Lurker and share the link
     void openLogsFolder();        // reveal the logging folder
     void showAbout();             // About box
     void promptLoadScript();      // file picker → loadScriptFile

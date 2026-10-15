@@ -111,6 +111,15 @@ public:
         (void)path;
     }
 
+    // Outgoing file send: upload a local file through Lurker (the bouncer's file
+    // host) and share the resulting URL with `target`. Default: unsupported.
+    virtual bool supportsFileSend() const { return false; }
+    virtual void sendFile(int net, const QString& target, const QString& localPath) {
+        (void)net;
+        (void)target;
+        (void)localPath;
+    }
+
 signals:
     void statusText(const QString& text);
     void networkUpdated(const lurker::backend::NetworkInfo& net);
@@ -125,6 +134,10 @@ signals:
     void dccTransferList(const QList<lurker::backend::DccTransfer>& transfers);
     void dccTransferUpdated(const lurker::backend::DccTransfer& transfer);
     void dccFileSaved(int id, const QString& path);
+    // Outgoing file upload (send): progress, completion (with the shared URL), error.
+    void fileUploadProgress(const QString& name, int percent);
+    void fileUploaded(int net, const QString& target, const QString& name, const QString& url);
+    void fileUploadError(const QString& name, const QString& error);
 };
 
 }  // namespace lurker::backend

@@ -83,6 +83,11 @@ public:
     // write them to `path`; emits dccFileSaved or restError.
     void saveDccFile(int id, const QString& path);
 
+    // Upload a local file through the bouncer's file host (POST /api/filehost,
+    // soju.im/FILEHOST) and, on success, hand back the hosted URL to share with
+    // `target`. Emits fileUploadProgress / fileUploaded / fileUploadError.
+    void sendFile(int net, const QString& target, const QString& localPath);
+
 signals:
     void configReceived(const lurker::backend::LurkerConfig& config);
     void networksReceived(const QJsonArray& networks);
@@ -101,6 +106,9 @@ signals:
     void dccTransfersList(const QJsonArray& transfers);          // GET /api/dcc result
     void dccTransfer(const QJsonObject& transfer);               // one live `dcc-transfer` row
     void dccFileSaved(int id, const QString& path);              // a received file written locally
+    void fileUploadProgress(const QString& name, int percent);
+    void fileUploaded(int networkId, const QString& target, const QString& name, const QString& url);
+    void fileUploadError(const QString& name, const QString& error);
     void closed();
 
 private:

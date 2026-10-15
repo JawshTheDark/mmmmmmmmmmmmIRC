@@ -6,7 +6,9 @@
 
 #include <QCryptographicHash>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
+#include <QMimeDatabase>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -189,6 +191,48 @@ void LurkerClient::saveDccFile(int id, const QString& path) {
         f.write(reply->readAll());
         f.close();
         emit dccFileSaved(id, path);
+    });
+}
+
+void LurkerClient::sendFile(int net, const QString& target, const QString& localPath) {
+    const QString name = QFileInfo(localPath).fileName();
+    auto* file = new QFile(localPath);
+    if (!file->open(QIODevice::ReadOnly)) {
+        emit fileUploadError(name, tr("cannot read %1").arg(localPath));
+        delete file;
+        return;
+    }
+    const QString mime = QMimeDatabase().mimeTypeForFile(localPath).name();
+    QNetworkRequest req{QUrl(baseUrl(m_settings.host, m_settings.tls) + QStringLiteral("/api/filehost"))};
+    req.setRawHeader("Authorization", "Bearer " + m_settings.token.toUtf8());
+    req.setHeader(QNetworkRequest::ContentTypeHeader,
+                  mime.isEmpty() ? QStringLiteral("application/octet-stream") : mime);
+    req.setRawHeader("Content-Disposition",
+                     ("attachment; filename=\"" + name + "\"").toUtf8());  // names the stored file
+    QNetworkReply* reply = m_net->post(req, file);
+    file->setParent(reply);  // keep the handle alive for the upload; freed with the reply
+    connect(reply, &QNetworkReply::uploadProgress, this, [this, name](qint64 sent, qint64 total) {
+        if (total > 0) emit fileUploadProgress(name, static_cast<int>(sent * 100 / total));
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, net, target, name] {
+        reply->deleteLater();
+        const int http = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError && http != 201) {
+            QString msg = reply->errorString();
+            const QByteArray body = reply->readAll();  // filehost errors are text/plain
+            if (!body.isEmpty()) msg = QString::fromUtf8(body).trimmed();
+            emit fileUploadError(name, msg);
+            return;
+        }
+        // Success is 201 with a Location (soju.im/FILEHOST); the body echoes it too.
+        QString url = QString::fromUtf8(reply->rawHeader("Location"));
+        if (url.isEmpty()) url = QString::fromUtf8(reply->readAll()).trimmed();
+        if (url.isEmpty()) {
+            emit fileUploadError(name, tr("upload returned no URL"));
+            return;
+        }
+        if (url.startsWith(QLatin1Char('/'))) url = baseUrl(m_settings.host, m_settings.tls) + url;
+        emit fileUploaded(net, target, name, url);
     });
 }
 

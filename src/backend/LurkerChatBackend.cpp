@@ -59,6 +59,9 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
             [this](const QJsonObject& row) { emit dccTransferUpdated(parseDccTransfer(row)); });
     connect(&m_client, &LurkerClient::dccFileSaved, this,
             [this](int id, const QString& path) { emit dccFileSaved(id, path); });
+    connect(&m_client, &LurkerClient::fileUploadProgress, this, &ChatBackend::fileUploadProgress);
+    connect(&m_client, &LurkerClient::fileUploaded, this, &ChatBackend::fileUploaded);
+    connect(&m_client, &LurkerClient::fileUploadError, this, &ChatBackend::fileUploadError);
     connect(&m_client, &LurkerClient::networksReceived, this, [this](const QJsonArray& nets) {
         for (const QJsonValue& v : nets) {
             const QJsonObject o = v.toObject();

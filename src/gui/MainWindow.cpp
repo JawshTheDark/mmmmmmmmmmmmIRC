@@ -189,6 +189,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     m_disconnectAction->setEnabled(false);
     file->addSeparator();
+    file->addAction(tr("&Send File..."), this, [this] {
+        Buffer* b = activeBuffer();
+        if (b && (b->kind == ChatView::Kind::Channel || b->kind == ChatView::Kind::Query))
+            sendFileTo(b->networkId, b->display);
+        else
+            showDccInfo();  // no conversation focused — show the DCC manager instead
+    });
     file->addAction(tr("&Load Script..."), this, &MainWindow::promptLoadScript);
     file->addAction(tr("&Scripts Editor..."), QKeySequence(QStringLiteral("Alt+R")), this,
                     &MainWindow::openScriptEditor);
@@ -573,6 +580,19 @@ void MainWindow::showDccInfo() {
     if (m_backend) m_backend->requestDccTransfers();   // refresh the list
 }
 
+void MainWindow::sendFileTo(int net, const QString& target) {
+    if (!m_backend || !m_backend->supportsFileSend()) {
+        QMessageBox::information(this, tr("Send File"),
+                                tr("Connect via the Lurker backend to send files (uploaded through "
+                                   "Lurker's file host, then shared as a link)."));
+        return;
+    }
+    const QString path = QFileDialog::getOpenFileName(this, tr("Send file to %1").arg(target));
+    if (path.isEmpty()) return;
+    statusBar()->showMessage(tr("Uploading %1…").arg(QFileInfo(path).fileName()));
+    m_backend->sendFile(net, target, path);
+}
+
 DccTransfersWindow* MainWindow::ensureDccWindow(bool raise) {
     if (!m_dccWindow) {
         m_dccWindow = new DccTransfersWindow;
@@ -645,6 +665,10 @@ void MainWindow::handleNickAction(int net, const QString& key, const QString& ni
     // Query doesn't need an active connection — just open the window.
     if (action == QLatin1String("query")) {
         activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick)));
+        return;
+    }
+    if (action == QLatin1String("sendfile")) {
+        sendFileTo(net, nick);
         return;
     }
     if (!m_backend || !m_backend->isReady()) {
@@ -1531,6 +1555,20 @@ void MainWindow::useBackend(ChatBackend* backend) {
     });
     connect(backend, &ChatBackend::dccFileSaved, this, [this](int, const QString& path) {
         statusBar()->showMessage(tr("Saved %1").arg(path), 8000);
+    });
+    connect(backend, &ChatBackend::fileUploadProgress, this, [this](const QString& name, int pct) {
+        statusBar()->showMessage(tr("Uploading %1… %2%").arg(name).arg(pct));
+    });
+    connect(backend, &ChatBackend::fileUploaded, this, [this](int net, const QString& target, const QString& name,
+                                                              const QString& url) {
+        // Drop the shared link into the target's composer so the user confirms the
+        // send (and can add a caption) rather than it going out silently.
+        openConversation(net, target);
+        if (Buffer* b = findBuffer(keyFor(net, target))) b->view->setInputText(url);
+        statusBar()->showMessage(tr("Uploaded %1 — press Enter to send the link").arg(name), 8000);
+    });
+    connect(backend, &ChatBackend::fileUploadError, this, [this](const QString& name, const QString& err) {
+        statusBar()->showMessage(tr("Upload of %1 failed: %2").arg(name, err), 10000);
     });
     configurePreviews();
 }
