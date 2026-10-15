@@ -33,6 +33,8 @@ public:
 
 private:
     void loadDevProfile();
+    void loadSettings();  // restore the last-used connection from QSettings
+    void saveSettings();  // persist the connection (secrets only if "remember")
 
     QComboBox* m_mode = nullptr;  // 0 = Lurker (WS), 1 = Bouncer (raw IRC)
     QLineEdit* m_host = nullptr;
@@ -44,6 +46,7 @@ private:
     QComboBox* m_network = nullptr;   // bouncer: user/network binding
     QLineEdit* m_password = nullptr;  // secret (bouncer) or password-to-mint (Lurker)
     QLineEdit* m_token = nullptr;     // Lurker: a minted/OAuth token (optional)
+    QCheckBox* m_remember = nullptr;  // persist the password/token too
 };
 
 }  // namespace lurker::gui

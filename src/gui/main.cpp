@@ -118,6 +118,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(600, &window, [&window] { window.openScriptEditor(); });
         } else if (arg == QStringLiteral("--listdemo")) {
             QTimer::singleShot(500, &window, [&window] { window.simulateListReply(); });
+        } else if (arg == QStringLiteral("--connect")) {
+            QTimer::singleShot(500, &window, [&window] { window.showConnectDialog(); });
         } else if (arg.startsWith(QStringLiteral("--simulate="))) {
             const QStringList f = arg.section(QLatin1Char('='), 1).split(QLatin1Char('|'));
             if (f.size() >= 4) {

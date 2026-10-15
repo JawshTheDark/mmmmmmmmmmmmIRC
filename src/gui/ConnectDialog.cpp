@@ -63,6 +63,7 @@ ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
     m_token = new QLineEdit(this);
     m_token->setEchoMode(QLineEdit::Password);
     m_token->setPlaceholderText(tr("Lurker: existing minted/OAuth token (optional)"));
+    m_remember = new QCheckBox(tr("Remember password / token on this computer"), this);
 
     form->addRow(tr("Connect via"), m_mode);
     form->addRow(tr("Host"), m_host);
@@ -74,11 +75,15 @@ ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
     form->addRow(tr("Network"), m_network);
     form->addRow(tr("Password"), m_password);
     form->addRow(tr("Token"), m_token);
+    form->addRow(QString(), m_remember);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->button(QDialogButtonBox::Ok)->setText(tr("Connect"));
     form->addRow(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::accepted, this, [this] {
+        saveSettings();  // persist what was entered before we connect
+        accept();
+    });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     auto updateRows = [this] {
@@ -88,12 +93,60 @@ ConnectDialog::ConnectDialog(QWidget* parent) : QDialog(parent) {
     };
     connect(m_mode, &QComboBox::currentIndexChanged, this, [updateRows](int) { updateRows(); });
 
-    loadDevProfile();
-    // Saved identity (Options) fills anything the dev profile didn't.
+    loadDevProfile();   // dev convenience (.secrets/dev-profile.json), if present
+    loadSettings();     // the user's last-used connection takes precedence
+    // Saved identity (Options) fills anything still empty.
     QSettings id;
     if (m_nick->text().isEmpty()) m_nick->setText(id.value(QStringLiteral("id/nick")).toString());
     if (m_username->text().isEmpty()) m_username->setText(id.value(QStringLiteral("id/user")).toString());
     updateRows();
+}
+
+void ConnectDialog::loadSettings() {
+    QSettings s;
+    s.beginGroup(QStringLiteral("connect"));
+    if (!s.contains(QStringLiteral("host"))) {  // nothing saved yet
+        s.endGroup();
+        return;
+    }
+    m_mode->setCurrentIndex(s.value(QStringLiteral("mode"), 0).toInt());
+    m_host->setText(s.value(QStringLiteral("host")).toString());
+    if (s.contains(QStringLiteral("port"))) m_port->setText(s.value(QStringLiteral("port")).toString());
+    m_tls->setChecked(s.value(QStringLiteral("tls"), true).toBool());
+    m_pin->setText(s.value(QStringLiteral("pin")).toString());
+    if (!s.value(QStringLiteral("nick")).toString().isEmpty()) m_nick->setText(s.value(QStringLiteral("nick")).toString());
+    if (!s.value(QStringLiteral("username")).toString().isEmpty())
+        m_username->setText(s.value(QStringLiteral("username")).toString());
+    const QString net = s.value(QStringLiteral("network")).toString();
+    if (!net.isEmpty()) m_network->setCurrentText(net);
+    const bool remember = s.value(QStringLiteral("remember"), false).toBool();
+    m_remember->setChecked(remember);
+    if (remember) {
+        if (!s.value(QStringLiteral("password")).toString().isEmpty())
+            m_password->setText(s.value(QStringLiteral("password")).toString());
+        if (!s.value(QStringLiteral("token")).toString().isEmpty())
+            m_token->setText(s.value(QStringLiteral("token")).toString());
+    }
+    s.endGroup();
+}
+
+void ConnectDialog::saveSettings() {
+    QSettings s;
+    s.beginGroup(QStringLiteral("connect"));
+    s.setValue(QStringLiteral("mode"), m_mode->currentIndex());
+    s.setValue(QStringLiteral("host"), m_host->text().trimmed());
+    s.setValue(QStringLiteral("port"), m_port->text().trimmed());
+    s.setValue(QStringLiteral("tls"), m_tls->isChecked());
+    s.setValue(QStringLiteral("pin"), m_pin->text().trimmed());
+    s.setValue(QStringLiteral("nick"), m_nick->text().trimmed());
+    s.setValue(QStringLiteral("username"), m_username->text().trimmed());
+    s.setValue(QStringLiteral("network"), m_network->currentText().trimmed());
+    const bool remember = m_remember->isChecked();
+    s.setValue(QStringLiteral("remember"), remember);
+    // Only keep secrets when asked; otherwise clear any previously-stored ones.
+    s.setValue(QStringLiteral("password"), remember ? m_password->text() : QString());
+    s.setValue(QStringLiteral("token"), remember ? m_token->text() : QString());
+    s.endGroup();
 }
 
 void ConnectDialog::loadDevProfile() {
