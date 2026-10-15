@@ -36,6 +36,7 @@ public:
     ~MainWindow() override;
 
     void showConnectDialog();
+    void showServerList();  // the saved-server manager (incl. imported servers)
     void showOptions(const QString& page = QString());  // open Options, optionally at a page
 
 protected:

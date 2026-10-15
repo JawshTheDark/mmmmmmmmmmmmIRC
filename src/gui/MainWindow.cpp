@@ -57,6 +57,7 @@
 #include "gui/ChannelCentralDialog.h"
 #include "gui/ChannelListWindow.h"
 #include "gui/DccTransfersWindow.h"
+#include "gui/ServerListDialog.h"
 #include "gui/PreviewService.h"
 #include "gui/ConnectDialog.h"
 #include "gui/FormattedText.h"
@@ -196,6 +197,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* file = menuBar()->addMenu(tr("&File"));
     m_connectAction = file->addAction(tr("&Connect..."), QKeySequence(QStringLiteral("Ctrl+N")), this,
                                       &MainWindow::showConnectDialog);
+    file->addAction(tr("Server &List..."), this, &MainWindow::showServerList);
     m_disconnectAction = file->addAction(tr("&Disconnect"), this, [this] {
         if (m_backend) m_backend->disconnectAll();
     });
@@ -2382,6 +2384,19 @@ void MainWindow::onInput(Buffer* buffer, const QString& text) {
             default: break;  // local actions handled above
         }
     }
+}
+
+void MainWindow::showServerList() {
+    auto* d = new ServerListDialog(this);
+    d->setAttribute(Qt::WA_DeleteOnClose);
+    connect(d, &ServerListDialog::connectRequested, this, [this](const QString& host, int port, bool tls) {
+        QSettings s;  // prefill the connection, then open Connect for credentials
+        s.setValue(QStringLiteral("connect/host"), host);
+        s.setValue(QStringLiteral("connect/port"), port);
+        s.setValue(QStringLiteral("connect/ssl"), tls);
+        showConnectDialog();
+    });
+    d->show();
 }
 
 void MainWindow::showConnectDialog() {

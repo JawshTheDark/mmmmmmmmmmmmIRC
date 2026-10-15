@@ -137,6 +137,8 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.channelCentralDemo(); });
         } else if (arg == QStringLiteral("--addressbook")) {
             QTimer::singleShot(500, &window, [&window] { window.showAddressBook(); });
+        } else if (arg == QStringLiteral("--serverlist")) {
+            QTimer::singleShot(500, &window, [&window] { window.showServerList(); });
         } else if (arg.startsWith(QStringLiteral("--importmirc="))) {
             const QString dir = arg.section(QLatin1Char('='), 1);
             QTimer::singleShot(400, &window, [&window, dir] { window.importMircFolder(dir); });

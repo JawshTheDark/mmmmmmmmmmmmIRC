@@ -35,6 +35,8 @@ qt_add_executable(lurker-desktop
     PictureWindow.h
     ScriptSockets.cpp
     ScriptSockets.h
+    ServerListDialog.cpp
+    ServerListDialog.h
     ScriptEditor.cpp
     ScriptEditor.h
     OptionsDialog.cpp
