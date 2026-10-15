@@ -1125,6 +1125,56 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("sqrt", [](Interpreter&, S&, const A& a, const std::string&) {
         try { return fmtNum(std::sqrt(std::stod(arg(a, 0)))); } catch (...) { return std::string(); }
     });
+    // Trigonometry/exponentials (radians), and $pi — pure numeric, like $sqrt.
+    auto math1 = [](double (*fn)(double)) {
+        return [fn](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+            try { return fmtNum(fn(std::stod(arg(a, 0)))); } catch (...) { return std::string(); }
+        };
+    };
+    in.registerIdent("sin", math1(std::sin));
+    in.registerIdent("cos", math1(std::cos));
+    in.registerIdent("tan", math1(std::tan));
+    in.registerIdent("asin", math1(std::asin));
+    in.registerIdent("acos", math1(std::acos));
+    in.registerIdent("atan", math1(std::atan));
+    in.registerIdent("exp", math1(std::exp));
+    in.registerIdent("log", math1(std::log));  // natural logarithm (mIRC $log)
+    in.registerIdent("pi", [](Interpreter&, S&, const A&, const std::string&) {
+        return std::string("3.141592653589793");
+    });
+    // Bitwise ops on integers; $isbit/$biton/$bitoff use a 1-based bit index (bit 1 = LSB).
+    auto bit2 = [](char op) {
+        return [op](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+            try {
+                long long x = std::stoll(arg(a, 0)), y = std::stoll(arg(a, 1));
+                return std::to_string(op == '&' ? (x & y) : op == '|' ? (x | y) : (x ^ y));
+            } catch (...) { return std::string(); }
+        };
+    };
+    in.registerIdent("and", bit2('&'));
+    in.registerIdent("or", bit2('|'));
+    in.registerIdent("xor", bit2('^'));
+    in.registerIdent("isbit", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {
+            long long v = std::stoll(arg(a, 0));
+            int n = argInt(a, 1);
+            return (n >= 1 && ((v >> (n - 1)) & 1)) ? std::string("$true") : std::string("$false");
+        } catch (...) { return std::string("$false"); }
+    });
+    in.registerIdent("biton", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {
+            long long v = std::stoll(arg(a, 0));
+            int n = argInt(a, 1);
+            return n >= 1 ? std::to_string(v | (1LL << (n - 1))) : std::to_string(v);
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("bitoff", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {
+            long long v = std::stoll(arg(a, 0));
+            int n = argInt(a, 1);
+            return n >= 1 ? std::to_string(v & ~(1LL << (n - 1))) : std::to_string(v);
+        } catch (...) { return std::string(); }
+    });
     in.registerIdent("base", [](Interpreter&, S&, const A& a, const std::string&) {
         // $base(value, fromBase, toBase, [zeropad])
         try {
@@ -1365,6 +1415,51 @@ void registerBuiltins(Interpreter& in) {
         if (args.empty()) args = i.host().activeTarget().window;  // /part with no arg parts here
         i.host().sendRaw(i.host().activeTarget().networkId, "PART " + args);
     });
+    // /hop [#chan] [msg] — part and rejoin (mIRC also cycles /cycle the same way).
+    auto hopCmd = [](Interpreter& i, S& sc, const std::string& a) {
+        std::string args = i.evaluate(a, sc);
+        std::string chan = args.empty() ? std::string() : splitTokens(args, ' ')[0];
+        std::string msg;
+        if (!chan.empty() && chan[0] == '#') {
+            const std::size_t sp = args.find(' ');
+            msg = sp == std::string::npos ? std::string() : args.substr(sp + 1);
+        } else {
+            msg = args;  // no channel given → the whole arg is the part message
+            chan = i.host().activeTarget().window;
+        }
+        if (chan.empty()) return;
+        const int net = i.host().activeTarget().networkId;
+        i.host().sendRaw(net, msg.empty() ? "PART " + chan : "PART " + chan + " :" + msg);
+        i.host().sendRaw(net, "JOIN " + chan);
+    };
+    in.registerCommand("hop", hopCmd);
+    in.registerCommand("cycle", hopCmd);
+    // /ban [#chan] <nick|mask> and /unban [#chan] <nick|mask> — a nick becomes nick!*@*.
+    auto banCmd = [](bool add) {
+        return [add](Interpreter& i, S& sc, const std::string& a) {
+            std::string args = i.evaluate(a, sc);
+            if (!args.empty() && args[0] == '-') {  // skip mIRC switches (-k etc.)
+                const std::size_t sp = args.find(' ');
+                args = sp == std::string::npos ? std::string() : args.substr(sp + 1);
+            }
+            auto toks = splitTokens(args, ' ');
+            if (toks.empty() || toks[0].empty()) return;
+            std::string chan, who;
+            if (toks[0][0] == '#') {
+                chan = toks[0];
+                who = toks.size() > 1 ? toks[1] : std::string();
+            } else {
+                chan = i.host().activeTarget().window;
+                who = toks[0];
+            }
+            if (chan.empty() || who.empty()) return;
+            const std::string mask = who.find_first_of("!@*") == std::string::npos ? who + "!*@*" : who;
+            i.host().sendRaw(i.host().activeTarget().networkId,
+                             "MODE " + chan + (add ? " +b " : " -b ") + mask);
+        };
+    };
+    in.registerCommand("ban", banCmd(true));
+    in.registerCommand("unban", banCmd(false));
     in.registerCommand("quit", [](Interpreter& i, S& sc, const std::string& a) {
         const std::string msg = i.evaluate(a, sc);
         i.host().sendRaw(i.host().activeTarget().networkId, msg.empty() ? "QUIT" : "QUIT :" + msg);

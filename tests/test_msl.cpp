@@ -601,6 +601,32 @@ int main() {
         CHECK_EQ(in.evaluate("$eval(%a,2)", s), std::string("deep"));
     }
 
+    // Math + bitwise identifiers.
+    CHECK_EQ(eval(in, "$sin(0)"), std::string("0"));
+    CHECK_EQ(eval(in, "$cos(0)"), std::string("1"));
+    CHECK_EQ(eval(in, "$exp(0)"), std::string("1"));
+    CHECK(eval(in, "$pi").rfind("3.14159", 0) == 0);
+    CHECK_EQ(eval(in, "$and(12,10)"), std::string("8"));
+    CHECK_EQ(eval(in, "$or(12,10)"), std::string("14"));
+    CHECK_EQ(eval(in, "$xor(12,10)"), std::string("6"));
+    CHECK_EQ(eval(in, "$isbit(5,1)"), std::string("$true"));   // bit 1 (LSB) of 0b101
+    CHECK_EQ(eval(in, "$isbit(5,2)"), std::string("$false"));  // bit 2 clear
+    CHECK_EQ(eval(in, "$biton(0,3)"), std::string("4"));       // set bit 3 → 0b100
+    CHECK_EQ(eval(in, "$bitoff(7,1)"), std::string("6"));      // clear bit 1 of 0b111
+
+    // /hop and /ban translate to the right raw IRC.
+    {
+        host.raws.clear();
+        Scope s;
+        s.target = "#chan";  // not used; active target drives it
+        in.execute("ban baduser", s);  // active target is #test (host.active)
+        CHECK_EQ(host.raws.back(), std::string("MODE #test +b baduser!*@*"));
+        in.execute("unban baduser!*@*", s);
+        CHECK_EQ(host.raws.back(), std::string("MODE #test -b baduser!*@*"));
+        in.execute("hop", s);
+        CHECK_EQ(host.raws.back(), std::string("JOIN #test"));
+    }
+
     // Directory identifiers.
     CHECK_EQ(eval(in, "$mircdir"), std::string("/app/"));
     CHECK_EQ(eval(in, "$mircdir(logs/x.txt)"), std::string("/app/logs/x.txt"));
