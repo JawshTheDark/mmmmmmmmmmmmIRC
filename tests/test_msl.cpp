@@ -247,6 +247,10 @@ int main() {
         CHECK(in.evalCondition("5 isnum", s));
         CHECK(in.evalCondition("5 isnum 1-10", s));    // isnum N-M range (oracle-confirmed)
         CHECK(!in.evalCondition("15 isnum 1-10", s));  // 15 is outside 1..10
+        CHECK(in.evalCondition("abc isalpha", s));
+        CHECK(!in.evalCondition("abc1 isalpha", s));   // a digit breaks isalpha
+        CHECK(in.evalCondition("abc123 isalnum", s));
+        CHECK(!in.evalCondition("ab-c isalnum", s));   // a dash breaks isalnum
         CHECK(!in.evalCondition("!(%a == 5)", s));
     }
 
@@ -342,6 +346,8 @@ int main() {
     CHECK_EQ(eval(in, "$ceil(3.2)"), std::string("4"));
     CHECK_EQ(eval(in, "$floor(3.8)"), std::string("3"));
     CHECK_EQ(eval(in, "$sqrt(144)"), std::string("12"));
+    CHECK_EQ(eval(in, "$gettok(a b c,0,32)"), std::string("3"));  // N=0 => token count
+    CHECK_EQ(eval(in, "$calc(2 ^ 3 ^ 2)"), std::string("64"));    // ^ is left-associative
     CHECK_EQ(eval(in, "$calc(17 // 5)"), std::string("3"));    // // is floored integer division
     CHECK_EQ(eval(in, "$calc(-17 // 5)"), std::string("-4"));  // ...which floors toward -inf
     CHECK_EQ(eval(in, "$bytes(1536,b)"), std::string("1,536"));  // forced bytes, thousands-grouped

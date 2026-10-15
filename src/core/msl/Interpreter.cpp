@@ -456,6 +456,19 @@ bool compare(const std::string& a, const std::string& op, const std::string& b) 
     if (op == "isincs") return b.find(a) != std::string::npos;
     if (op == "iswm") return matchWild(a, b);
     if (op == "iswmcs") return matchWild(a, b);  // (cs variant; fold not applied — close enough for v1)
+    if (op == "isalpha" || op == "isalnum" || op == "isletter") {
+        if (a.empty()) return false;  // mIRC: empty is not alpha/alnum/letter
+        auto isAlpha = [](unsigned char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
+        auto isDigit = [](unsigned char c) { return c >= '0' && c <= '9'; };
+        for (unsigned char c : a) {
+            const bool ok = (op == "isalnum") ? (isAlpha(c) || isDigit(c)) : isAlpha(c);
+            if (!ok) return false;
+        }
+        if (op == "isletter" && !b.empty())  // "C isletter <set>": also require membership
+            for (char c : a)
+                if (b.find(c) == std::string::npos) return false;
+        return true;
+    }
     if (op == "isnum") {
         double x;
         if (!asNumber(a, x)) return false;  // a must be a number
@@ -472,8 +485,9 @@ bool compare(const std::string& a, const std::string& op, const std::string& b) 
 }
 
 bool isOperator(const std::string& t) {
-    static const char* ops[] = {"==", "===", "!=", "<",    ">",      "<=",    ">=",
-                                "//", "isin", "isincs", "iswm", "iswmcs", "isnum"};
+    static const char* ops[] = {"==",     "===",    "!=",       "<",       ">",      "<=",      ">=",
+                                "//",     "isin",   "isincs",   "iswm",    "iswmcs", "isnum",   "isalpha",
+                                "isalnum", "isletter"};
     for (const char* o : ops) {
         if (t == o) return true;
     }
@@ -540,8 +554,10 @@ bool Interpreter::evalCondition(std::string_view expr, Scope& scope) {
         scope.v2 = b;
         return compare(a, clean[1], b);  // isnum gets its N-M range in b
     }
-    // Unary word operators like "isnum".
-    if (clean.size() == 2 && clean[1] == "isnum") return compare(evaluate(clean[0], scope), "isnum", "");
+    // Unary word operators (no right operand): isnum / isalpha / isalnum / isletter.
+    if (clean.size() == 2 && (clean[1] == "isnum" || clean[1] == "isalpha" || clean[1] == "isalnum" ||
+                              clean[1] == "isletter"))
+        return compare(evaluate(clean[0], scope), clean[1], "");
     return isTrueValue(evaluate(e, scope));
 }
 

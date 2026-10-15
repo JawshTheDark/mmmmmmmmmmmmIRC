@@ -122,10 +122,14 @@ struct Calc {
     }
     double power() {
         double v = factor();
-        skip();
-        if (i < s.size() && s[i] == '^') {
-            ++i;
-            v = std::pow(v, power());
+        for (;;) {  // mIRC's ^ is left-associative: 2^3^2 = (2^3)^2 = 64
+            skip();
+            if (i < s.size() && s[i] == '^') {
+                ++i;
+                v = std::pow(v, factor());
+            } else {
+                break;
+            }
         }
         return v;
     }
@@ -710,6 +714,7 @@ void registerBuiltins(Interpreter& in) {
         // A negative index counts from the end; mIRC also accepts a range N-M
         // (or N- for "to the end"), returning those tokens joined by the sep.
         auto resolve = [&](int v) { return v < 0 ? total + v + 1 : v; };
+        if (spec == "0") return std::to_string(total);  // mIRC: $gettok(text,0,sep) = token count
         const std::size_t dash = spec.find('-', spec.rfind('-', 0) == 0 ? 1 : 0);
         if (dash == std::string::npos) {
             int n = resolve(argInt(a, 1));
