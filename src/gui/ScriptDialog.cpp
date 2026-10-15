@@ -129,10 +129,10 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             cbx->setEditable(c.hasStyle("edit"));
             w = cbx;
         } else if (c.type == "box") {
-            // Render as a plain frame with the title breaking its top-left line
-            // (mIRC style), rather than a QGroupBox whose platform title margin
-            // overlaps the controls positioned inside it. Mouse-transparent so
-            // clicks reach the framed controls.
+            // A box is an unbroken rectangle; its caption sits INSIDE it, just
+            // below the top border at the top-left (mIRC style). The script
+            // leaves room for it — the first framed control starts a few dbu
+            // lower. Mouse-transparent so clicks reach the controls inside.
             auto* frame = new QFrame(this);
             frame->setFrameShape(QFrame::Box);
             frame->setFrameShadow(QFrame::Plain);
@@ -141,20 +141,10 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
             if (!cap.isEmpty()) {
                 auto* title = new QLabel(cap, this);
                 title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-                // Paint an opaque background matching the dialog so the title
-                // *breaks* the frame's top line instead of being struck through
-                // by it. setAutoFillBackground() alone is ignored once a style
-                // sheet is active on the dialog (for indicator sizing), so set
-                // the colour explicitly from the palette — works on any theme.
-                const QColor bg = palette().color(QPalette::Window);
-                const QColor fg = palette().color(QPalette::WindowText);
-                title->setStyleSheet(
-                    QStringLiteral("background-color:%1; color:%2;").arg(bg.name(), fg.name()));
                 const QSize ts = title->sizeHint();
-                // Sit the caption above the top edge (line near its baseline), so
-                // the box frames its contents rather than cutting across them.
-                title->setGeometry(px(c.x, sx) + px(5, sx), px(c.y, sy) - (ts.height() * 2 / 3),
-                                   ts.width() + px(3, sx), ts.height());
+                // Inside the frame, below the top line, top-left.
+                title->setGeometry(px(c.x, sx) + px(4, sx), px(c.y, sy) + px(1, sy), ts.width(),
+                                   ts.height());
                 title->raise();
             }
         } else if (c.type == "icon" || c.type == "image") {
