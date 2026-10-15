@@ -97,6 +97,7 @@ private:
     bool bufferIsActive(const Buffer& buffer) const;
     void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
     void setupScripting();
+    void ensureSectionScripts(); // create+load the Aliases/Popups/Remotes/Users files
     void setupToolbar();         // the top mIRC-style icon toolbar
     void updateMdiBackground();  // tint the MDI workspace to the active theme
     Buffer* activeBuffer();

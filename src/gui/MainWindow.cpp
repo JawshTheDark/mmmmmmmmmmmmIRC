@@ -213,6 +213,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     ensureBuffer(-1, ChatView::Kind::Status, tr("Status"), statusKey());
     setupScripting();
+    ensureSectionScripts();  // load the mIRC-style section files so user aliases persist
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
 }
 
@@ -870,11 +871,36 @@ void MainWindow::reloadScripts() {
 }
 
 void MainWindow::openScriptEditor() {
+    ensureSectionScripts();
     auto* ed = new ScriptEditor(
         this, [this] { return m_scriptFiles; }, [this] { reloadScripts(); }, [this] { return scriptSummary(); },
-        [this](const QString& path) { loadScriptFile(path); });
+        [this](const QString& path) { loadScriptFile(path); },
+        [this]() -> QString {
+            if (!m_msl) return QString();
+            QString out;
+            for (const auto& [name, value] : m_msl->globals())
+                out += QStringLiteral("%%1 %2\n").arg(QString::fromStdString(name), QString::fromStdString(value));
+            return out;
+        });
     ed->setAttribute(Qt::WA_DeleteOnClose);
     ed->show();
+}
+
+void MainWindow::ensureSectionScripts() {
+    // mIRC-style section files (Aliases/Popups/Remotes/Users) live under the app
+    // data dir; create them if missing and make sure they're loaded + tracked so
+    // what the user types in those editor tabs works and persists across runs.
+    QDir().mkpath(ScriptEditor::sectionDir());
+    static const char* headers[] = {"; Aliases\n", "; Popups\n", "; Remote scripts (on events, aliases, dialogs)\n",
+                                    "; Users\n"};
+    const QStringList files = ScriptEditor::sectionFiles();
+    for (int i = 0; i < files.size(); ++i) {
+        if (!QFile::exists(files[i])) {
+            QFile f(files[i]);
+            if (f.open(QIODevice::WriteOnly)) f.write(headers[i]);
+        }
+        if (!m_scriptFiles.contains(files[i])) loadScriptFile(files[i]);
+    }
 }
 
 void MainWindow::simulateListReply() {

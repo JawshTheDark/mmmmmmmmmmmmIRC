@@ -4,8 +4,8 @@
 
 #include "gui/ScriptEditor.h"
 
-#include <QAction>
 #include <QApplication>
+#include <QDir>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -19,6 +19,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QSyntaxHighlighter>
 #include <QTabWidget>
 #include <QTextCharFormat>
@@ -28,14 +29,12 @@ namespace lurker::gui {
 
 namespace {
 
-// Lightweight MSL syntax highlighter: comments, section/control keywords at the
-// start of a line, $identifiers and %variables. No Q_OBJECT needed (it only
-// overrides highlightBlock), so it compiles without moc.
+// Lightweight MSL syntax highlighter: comments, section/control keywords,
+// $identifiers and %variables. No Q_OBJECT needed (only highlightBlock).
 class MslHighlighter : public QSyntaxHighlighter {
 public:
     explicit MslHighlighter(QTextDocument* doc) : QSyntaxHighlighter(doc) {
-        const bool dark = doc && doc->defaultFont().pointSize() >= 0 &&
-                          QApplication::palette().color(QPalette::Base).lightness() < 128;
+        const bool dark = QApplication::palette().color(QPalette::Base).lightness() < 128;
         kw.setForeground(dark ? QColor(0x6C, 0xB6, 0xFF) : QColor(0x00, 0x55, 0xAA));
         kw.setFontWeight(QFont::Bold);
         ident.setForeground(dark ? QColor(0x5A, 0xD6, 0xC0) : QColor(0x00, 0x80, 0x80));
@@ -63,7 +62,7 @@ protected:
         apply(reIdent, ident);
         apply(reVar, var);
         const int semi = text.indexOf(QLatin1Char(';'));
-        if (semi >= 0) setFormat(semi, text.length() - semi, comment);  // ; to end of line
+        if (semi >= 0) setFormat(semi, text.length() - semi, comment);
     }
 
 private:
@@ -71,29 +70,29 @@ private:
     QRegularExpression reKw, reIdent, reVar;
 };
 
-QPlainTextEdit* makeEditor(const QString& path) {
-    auto* ed = new QPlainTextEdit;
-    ed->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    ed->setLineWrapMode(QPlainTextEdit::NoWrap);
-    ed->setTabStopDistance(ed->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 2);
-    ed->setProperty("path", path);
-    QFile f(path);
-    ed->setPlainText(f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()) : QString());
-    new MslHighlighter(ed->document());
-    return ed;
-}
-
 }  // namespace
 
+QString ScriptEditor::sectionDir() {
+    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/scripts");
+}
+
+QStringList ScriptEditor::sectionFiles() {
+    const QString d = sectionDir();
+    return {d + QStringLiteral("/aliases.mrc"), d + QStringLiteral("/popups.mrc"),
+            d + QStringLiteral("/remote.mrc"), d + QStringLiteral("/users.mrc")};
+}
+
 ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, std::function<void()> reload,
-                           std::function<QString()> summary, std::function<void(const QString&)> loadFile)
+                           std::function<QString()> summary, std::function<void(const QString&)> loadFile,
+                           std::function<QString()> variables)
     : QDialog(parent),
       m_files(std::move(files)),
       m_reload(std::move(reload)),
       m_summary(std::move(summary)),
-      m_loadFile(std::move(loadFile)) {
+      m_loadFile(std::move(loadFile)),
+      m_variables(std::move(variables)) {
     setWindowTitle(tr("Scripts Editor"));
-    resize(900, 600);
+    resize(920, 620);
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -101,14 +100,13 @@ ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, 
     auto* menubar = new QMenuBar(this);
     outer->setMenuBar(menubar);
     auto* fileMenu = menubar->addMenu(tr("&File"));
-    fileMenu->addAction(tr("&New..."), QKeySequence::New, this, &ScriptEditor::newFile);
-    fileMenu->addAction(tr("&Open..."), QKeySequence::Open, this, &ScriptEditor::openFile);
-    fileMenu->addSeparator();
+    fileMenu->addAction(tr("&Open Script..."), QKeySequence::Open, this, &ScriptEditor::openFile);
     fileMenu->addAction(tr("&Save"), QKeySequence::Save, this, &ScriptEditor::saveCurrent);
     fileMenu->addAction(tr("Save &All"), QKeySequence(QStringLiteral("Ctrl+Shift+S")), this, &ScriptEditor::saveAll);
     fileMenu->addSeparator();
     fileMenu->addAction(tr("&Reload All"), QKeySequence(QStringLiteral("F5")), this, [this] {
         if (m_reload) m_reload();
+        refreshVariables();
         refreshStatus(tr("Reloaded"));
     });
     fileMenu->addAction(tr("&Close"), QKeySequence(QStringLiteral("Ctrl+W")), this, &QDialog::close);
@@ -130,10 +128,9 @@ ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, 
 
     m_tabs = new QTabWidget(this);
     m_tabs->setDocumentMode(true);
-    m_tabs->setTabsClosable(false);
     outer->addWidget(m_tabs, 1);
 
-    // Find / replace bar (hidden until invoked).
+    // Find / replace bar.
     m_findBar = new QWidget(this);
     auto* fb = new QHBoxLayout(m_findBar);
     fb->setContentsMargins(6, 2, 6, 2);
@@ -170,35 +167,57 @@ ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, 
     rebuildTabs();
 }
 
+QPlainTextEdit* ScriptEditor::addEditorTab(const QString& label, const QString& path) {
+    auto* ed = new QPlainTextEdit;
+    ed->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    ed->setLineWrapMode(QPlainTextEdit::NoWrap);
+    ed->setTabStopDistance(ed->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 2);
+    ed->setProperty("path", path);
+    QFile f(path);
+    ed->setPlainText(f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()) : QString());
+    new MslHighlighter(ed->document());
+    const int idx = m_tabs->addTab(ed, label);
+    m_tabs->setTabToolTip(idx, path);
+    return ed;
+}
+
 void ScriptEditor::rebuildTabs() {
     const QString keep = currentPath();
     m_tabs->clear();
+
+    // mIRC's section tabs, each backed by a dedicated file.
+    const QStringList sections = sectionFiles();
+    const QStringList labels = {tr("Aliases"), tr("Popups"), tr("Remotes"), tr("Users")};
+    for (int i = 0; i < sections.size(); ++i) addEditorTab(labels[i], sections[i]);
+
+    // Variables: a live, read-only view of the engine's %globals.
+    m_varsView = new QPlainTextEdit;
+    m_varsView->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_varsView->setReadOnly(true);
+    m_tabs->addTab(m_varsView, tr("Variables"));
+    refreshVariables();
+
+    // Any other loaded scripts (e.g. imported .mrc) as extra tabs.
     for (const QString& f : m_files()) {
-        auto* ed = makeEditor(f);
-        const int idx = m_tabs->addTab(ed, QFileInfo(f).fileName());
-        m_tabs->setTabToolTip(idx, f);
-        if (f == keep) m_tabs->setCurrentIndex(idx);
+        if (sections.contains(f)) continue;
+        addEditorTab(QFileInfo(f).fileName(), f);
     }
-    if (m_tabs->count() == 0) {
-        auto* ph = new QPlainTextEdit;
-        ph->setReadOnly(true);
-        ph->setPlainText(tr("No scripts loaded.\n\nFile ▸ New or File ▸ Open to add a .mrc script."));
-        m_tabs->addTab(ph, tr("(none)"));
+
+    // Restore the previously-focused document if it still exists.
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (m_tabs->tabToolTip(i) == keep) {
+            m_tabs->setCurrentIndex(i);
+            break;
+        }
     }
     refreshStatus();
 }
 
-void ScriptEditor::openTab(const QString& path) {
-    for (int i = 0; i < m_tabs->count(); ++i) {
-        if (m_tabs->tabToolTip(i) == path) {
-            m_tabs->setCurrentIndex(i);
-            return;
-        }
-    }
-    auto* ed = makeEditor(path);
-    const int idx = m_tabs->addTab(ed, QFileInfo(path).fileName());
-    m_tabs->setTabToolTip(idx, path);
-    m_tabs->setCurrentIndex(idx);
+void ScriptEditor::refreshVariables() {
+    if (!m_varsView) return;
+    const QString v = m_variables ? m_variables() : QString();
+    m_varsView->setPlainText(v.isEmpty() ? tr("; No %variables set.\n; Use /set %%name value or a script to define them.")
+                                         : v);
 }
 
 QPlainTextEdit* ScriptEditor::currentEditor() const { return qobject_cast<QPlainTextEdit*>(m_tabs->currentWidget()); }
@@ -211,7 +230,10 @@ QString ScriptEditor::currentPath() const {
 void ScriptEditor::saveCurrent() {
     auto* e = currentEditor();
     const QString path = currentPath();
-    if (!e || path.isEmpty()) return;
+    if (!e || path.isEmpty()) {
+        refreshStatus(tr("Nothing to save (the Variables tab is read-only)"));
+        return;
+    }
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         QMessageBox::warning(this, tr("Save failed"), tr("Could not write %1").arg(path));
@@ -220,6 +242,7 @@ void ScriptEditor::saveCurrent() {
     f.write(e->toPlainText().toUtf8());
     f.close();
     if (m_reload) m_reload();
+    refreshVariables();
     refreshStatus(tr("Saved %1").arg(QFileInfo(path).fileName()));
 }
 
@@ -227,30 +250,13 @@ void ScriptEditor::saveAll() {
     for (int i = 0; i < m_tabs->count(); ++i) {
         auto* e = qobject_cast<QPlainTextEdit*>(m_tabs->widget(i));
         const QString path = e ? e->property("path").toString() : QString();
-        if (!e || path.isEmpty()) continue;
+        if (!e || e->isReadOnly() || path.isEmpty()) continue;
         QFile f(path);
-        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            f.write(e->toPlainText().toUtf8());
-        }
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(e->toPlainText().toUtf8());
     }
     if (m_reload) m_reload();
+    refreshVariables();
     refreshStatus(tr("Saved all"));
-}
-
-void ScriptEditor::newFile() {
-    QString path = QFileDialog::getSaveFileName(this, tr("New Script"), QString(),
-                                                tr("mIRC scripts (*.mrc);;All files (*)"));
-    if (path.isEmpty()) return;
-    if (!path.endsWith(QStringLiteral(".mrc"), Qt::CaseInsensitive) && !path.contains(QLatin1Char('.')))
-        path += QStringLiteral(".mrc");
-    QFile f(path);
-    if (f.open(QIODevice::WriteOnly)) {
-        f.write("; New script\n");
-        f.close();
-    }
-    if (m_loadFile) m_loadFile(path);  // adds to the tracked set + reloads
-    rebuildTabs();
-    openTab(path);
 }
 
 void ScriptEditor::openFile() {
@@ -259,12 +265,15 @@ void ScriptEditor::openFile() {
     if (path.isEmpty()) return;
     if (m_loadFile) m_loadFile(path);
     rebuildTabs();
-    openTab(path);
+    for (int i = 0; i < m_tabs->count(); ++i)
+        if (m_tabs->tabToolTip(i) == path) {
+            m_tabs->setCurrentIndex(i);
+            break;
+        }
 }
 
 void ScriptEditor::toggleFind(bool withReplace) {
     m_replaceEdit->setVisible(withReplace);
-    m_findBar->setVisible(m_findBar->isHidden() || withReplace ? true : !m_findBar->isVisible());
     m_findBar->show();
     if (auto* e = currentEditor()) {
         const QString sel = e->textCursor().selectedText();
@@ -280,7 +289,6 @@ void ScriptEditor::findNext(bool backward) {
     QTextDocument::FindFlags flags;
     if (backward) flags |= QTextDocument::FindBackward;
     if (!e->find(m_findEdit->text(), flags)) {
-        // wrap around
         QTextCursor c = e->textCursor();
         c.movePosition(backward ? QTextCursor::End : QTextCursor::Start);
         e->setTextCursor(c);
@@ -290,17 +298,15 @@ void ScriptEditor::findNext(bool backward) {
 
 void ScriptEditor::replaceOne() {
     auto* e = currentEditor();
-    if (!e) return;
+    if (!e || e->isReadOnly()) return;
     QTextCursor c = e->textCursor();
-    if (c.hasSelection() && c.selectedText() == m_findEdit->text()) {
-        c.insertText(m_replaceEdit->text());
-    }
+    if (c.hasSelection() && c.selectedText() == m_findEdit->text()) c.insertText(m_replaceEdit->text());
     findNext(false);
 }
 
 void ScriptEditor::replaceAll() {
     auto* e = currentEditor();
-    if (!e || m_findEdit->text().isEmpty()) return;
+    if (!e || e->isReadOnly() || m_findEdit->text().isEmpty()) return;
     const QString doc = e->toPlainText();
     QString out = doc;
     out.replace(m_findEdit->text(), m_replaceEdit->text());
