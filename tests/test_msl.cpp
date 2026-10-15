@@ -553,6 +553,15 @@ int main() {
         }
     }
 
+    // Colour/rgb/regsubex (from the corpus crawl gap analysis).
+    CHECK_EQ(eval(in, "$rgb(255,128,0)"), std::string("16744448"));
+    CHECK_EQ(eval(in, "$rgb(16744448)"), std::string("255,128,0"));
+    CHECK_EQ(eval(in, "$color(red)"), std::string("4"));
+    CHECK_EQ(eval(in, "$colour(blue)"), std::string("2"));
+    CHECK_EQ(eval(in, "$color(7)"), std::string("7"));
+    CHECK_EQ(eval(in, "$regsubex(a1b2,/(\\d)/g,<\\1>)"), std::string("a<1>b<2>"));
+    CHECK_EQ(eval(in, "$regsubex(abc,/b/,X)"), std::string("aXc"));
+
     // Context/connection identifiers (from the corpus crawl gap analysis).
     CHECK_EQ(eval(in, "$network"), std::string("TestNet"));
     CHECK_EQ(eval(in, "$server"), std::string("irc.test"));

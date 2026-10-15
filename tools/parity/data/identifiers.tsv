@@ -36,7 +36,7 @@ $bitoff	planned		text_number_identifiers.html	1
 $biton	planned		text_number_identifiers.html	3		
 $bnick	planned		on_banounban.html	1		
 $bvar	done		binary_files.html	0	test_msl	
-$bytes	planned		text_number_identifiers.html	2		
+$bytes	done		text_number_identifiers.html	2	test_msl	
 $calc	done		text_number_identifiers.html	1709	test_msl	
 $caller	planned		other_identifiers.html	0		
 $cb	planned		other_identifiers.html	0		
@@ -48,14 +48,14 @@ $chanmodes	planned		other_identifiers.html	0
 $chantypes	planned		other_identifiers.html	0		
 $chat	planned		window_identifiers.html	121		
 $chr	done		text_number_identifiers.html	804	test_msl	
-$cid	planned		multimserver.html	14		
+$cid	done		multimserver.html	14	test_msl	
 $clevel	planned		remote_identifiers.html	0		
 $click	planned		picture_windows.html	0		
 $cmdbox	planned		other_identifiers.html	0		
 $cmdline	planned		other_identifiers.html	0		
 $cnick	planned		nick_colors.html	0		
 $codepage	planned		other_identifiers.html	0		
-$color	planned		other_identifiers.html	903		
+$color	done		other_identifiers.html	903	test_msl	
 $com	not-possible		com_objects.html	0		COM/ActiveX
 $comcall	not-possible		com_objects.html	0		COM/ActiveX
 $comchan	done		nick_address_identifiers.html	50	test_msl	
@@ -110,7 +110,7 @@ $emailaddr	planned		other_identifiers.html	0
 $encode	done		text_number_identifiers.html	0	test_msl	
 $envvar	planned		other_identifiers.html	0		
 $error	planned		aliases.html	7		
-$eval	planned		other_identifiers.html	34		
+$eval	done		other_identifiers.html	34	test_msl	
 $event	done		remote_identifiers.html	0	test_msl	
 $eventid	planned		remote_identifiers.html	0		
 $eventparms	planned		other_identifiers.html	0		
@@ -259,7 +259,7 @@ $mouse	planned		picture_windows.html	80
 $msfile	planned		file_directory_identifiers.html	0		
 $msgstamp	planned		other_identifiers.html	0		
 $msgtags	planned		other_identifiers.html	0		
-$network	planned		other_identifiers.html	40		
+$network	done		other_identifiers.html	40	test_msl	
 $newnick	planned		on_nick.html	41		
 $nick	done		remote_identifiers.html	2968	test_msl	
 $nickmode	planned		nick_address_identifiers.html	0		
@@ -313,7 +313,7 @@ $regex	done		regular_expressions.html	1	test_msl
 $regml	done		regular_expressions.html	0	test_msl	
 $regmlex	planned		regular_expressions.html	0		
 $regsub	done		regular_expressions.html	0	test_msl	
-$regsubex	planned		regular_expressions.html	0		
+$regsubex	done		regular_expressions.html	0	test_msl	
 $remote	planned		remote_identifiers.html	0		
 $remove	done		text_number_identifiers.html	83	test_msl	
 $remtok	done		token_identifiers.html	49	test_msl	
@@ -321,7 +321,7 @@ $replace	done		text_number_identifiers.html	321	test_msl
 $replacex	planned		text_number_identifiers.html	0		
 $reptok	done		token_identifiers.html	3	test_msl	
 $result	planned		other_identifiers.html	3		
-$rgb	planned		picture_windows.html	58		
+$rgb	done		picture_windows.html	58	test_msl	
 $right	done		text_number_identifiers.html	406	test_msl	
 $round	done		text_number_identifiers.html	200	test_msl	
 $samepath	planned		file_directory_identifiers.html	0		
@@ -332,7 +332,7 @@ $scriptdir	done		remote_identifiers.html	112	test_msl
 $scriptline	planned		remote_identifiers.html	0		
 $sdir	planned		file_directory_identifiers.html	13		
 $send	planned		window_identifiers.html	51		
-$server	planned		other_identifiers.html	110		
+$server	done		other_identifiers.html	110	test_msl	
 $serverip	planned		other_identifiers.html	0		
 $servertarget	planned		other_identifiers.html	0		
 $sfile	planned		file_directory_identifiers.html	2		
@@ -383,7 +383,7 @@ $ticks	done		time_date_identifiers.html	17	test_msl
 $ticksqpc	planned		time_date_identifiers.html	0		
 $time	done		time_date_identifiers.html	72	test_msl	
 $timer	done		time_date_identifiers.html	32	test_msl	
-$timestamp	planned		time_date_identifiers.html	11		
+$timestamp	done		time_date_identifiers.html	11	test_msl	
 $timestampfmt	planned		time_date_identifiers.html	0		
 $timezone	planned		time_date_identifiers.html	0		
 $tip	planned		tips.html	0		
@@ -409,7 +409,7 @@ $var	planned		variables.html	0
 $vcmd	not-possible		voice_commands.html	0		Windows speech recognition
 $vcmdstat	not-possible		voice_commands.html	0		Windows speech recognition
 $vcmdver	not-possible		voice_commands.html	0		Windows speech recognition
-$version	planned		other_identifiers.html	128		
+$version	done		other_identifiers.html	128	test_msl	
 $vnick	planned		on_opodeop.html	64		
 $vol	planned		playing_sounds.html	6		
 $wid	planned		window_identifiers.html	0		

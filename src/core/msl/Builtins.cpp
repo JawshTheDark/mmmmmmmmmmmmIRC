@@ -424,6 +424,84 @@ void registerBuiltins(Interpreter& in) {
         std::string num = fmtNum(u == 0 ? v : std::floor(v * 100 + 0.5) / 100);
         return prop == "b" ? num : num + " " + units[u];
     });
+    // $rgb(r,g,b) -> packed int; $rgb(N) -> "r,g,b".
+    in.registerIdent("rgb", [](Interpreter&, S&, const A& a, const std::string&) {
+        if (a.size() >= 3) {
+            long r = argInt(a, 0), g = argInt(a, 1), b = argInt(a, 2);
+            return std::to_string(((r & 255) << 16) | ((g & 255) << 8) | (b & 255));
+        }
+        if (a.size() == 1) {
+            try {
+                long v = std::stol(a[0]);
+                return std::to_string((v >> 16) & 255) + "," + std::to_string((v >> 8) & 255) + "," +
+                       std::to_string(v & 255);
+            } catch (...) {
+            }
+        }
+        return std::string();
+    });
+    // $color(name)/$colour(name): the mIRC palette index for a colour name
+    // (numeric arg passes through). Covers the 16 base names + common synonyms.
+    auto colorFn = [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        const std::string n = toLowerAscii(arg(a, 0));
+        if (!n.empty() && n.find_first_not_of("0123456789") == std::string::npos) return n;  // already an index
+        static const std::map<std::string, int> names = {
+            {"white", 0},      {"black", 1},       {"blue", 2},       {"navy", 2},       {"green", 3},
+            {"red", 4},        {"brown", 5},       {"maroon", 5},     {"purple", 6},     {"orange", 7},
+            {"olive", 7},      {"yellow", 8},      {"light green", 9},{"lightgreen", 9}, {"lime", 9},
+            {"cyan", 10},      {"teal", 10},       {"light cyan", 11},{"lightcyan", 11}, {"aqua", 11},
+            {"light blue", 12},{"lightblue", 12},  {"royal", 12},     {"pink", 13},      {"magenta", 13},
+            {"fuchsia", 13},   {"grey", 14},       {"gray", 14},      {"light grey", 15},{"lightgrey", 15},
+            {"silver", 15}};
+        const auto it = names.find(n);
+        return it == names.end() ? std::string() : std::to_string(it->second);
+    };
+    in.registerIdent("color", colorFn);
+    in.registerIdent("colour", colorFn);
+    // $regsubex([name,]text,/re/,subtext): regex replace; subtext \t/\0 = whole
+    // match, \1-\9 = capture groups. (Per-match MSL evaluation is not supported.)
+    in.registerIdent("regsubex", [](Interpreter&, S&, const A& a, const std::string&) {
+        std::string text, pat, sub;
+        if (a.size() >= 4) {
+            text = a[1];
+            pat = a[2];
+            sub = a[3];
+        } else if (a.size() == 3) {
+            text = a[0];
+            pat = a[1];
+            sub = a[2];
+        } else {
+            return arg(a, 0);
+        }
+        try {
+            bool global = false;
+            std::regex re = compileRegex(pat, global);
+            std::string out;
+            std::size_t last = 0;
+            for (auto it = std::sregex_iterator(text.begin(), text.end(), re); it != std::sregex_iterator(); ++it) {
+                const std::smatch& m = *it;
+                out.append(text, last, static_cast<std::size_t>(m.position()) - last);
+                for (std::size_t i = 0; i < sub.size(); ++i) {
+                    if (sub[i] == '\\' && i + 1 < sub.size()) {
+                        const char c = sub[++i];
+                        if (c == 't' || c == '0') out += m[0].str();
+                        else if (c >= '1' && c <= '9') {
+                            const std::size_t g = static_cast<std::size_t>(c - '0');
+                            if (g < m.size()) out += m[g].str();
+                        } else out += c;
+                    } else {
+                        out += sub[i];
+                    }
+                }
+                last = static_cast<std::size_t>(m.position() + m.length());
+                if (!global) break;
+            }
+            out.append(text, last, std::string::npos);
+            return out;
+        } catch (...) {
+            return text;
+        }
+    });
     in.registerIdent("target", [](Interpreter& i, S& s, const A&, const std::string&) {
         return s.target.empty() ? i.host().activeTarget().window : s.target;
     });
