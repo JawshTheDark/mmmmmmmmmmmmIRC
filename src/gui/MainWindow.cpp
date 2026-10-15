@@ -573,7 +573,7 @@ void MainWindow::showDccInfo() {
     if (m_backend) m_backend->requestDccTransfers();   // refresh the list
 }
 
-DccTransfersWindow* MainWindow::ensureDccWindow() {
+DccTransfersWindow* MainWindow::ensureDccWindow(bool raise) {
     if (!m_dccWindow) {
         m_dccWindow = new DccTransfersWindow;
         auto* sub = m_mdi->addSubWindow(m_dccWindow);
@@ -606,10 +606,14 @@ DccTransfersWindow* MainWindow::ensureDccWindow() {
         });
         m_dccItem = new QTreeWidgetItem(m_treebar, {tr("DCC Transfers")});
     }
-    if (auto* sub = qobject_cast<QMdiSubWindow*>(m_dccWindow->parentWidget())) {
-        if (sub->isMinimized()) sub->showNormal();
-        sub->show();
-        m_mdi->setActiveSubWindow(sub);
+    // Only steal focus when asked (explicit open, or a new incoming offer) — not
+    // on every live progress update.
+    if (raise) {
+        if (auto* sub = qobject_cast<QMdiSubWindow*>(m_dccWindow->parentWidget())) {
+            if (sub->isMinimized()) sub->showNormal();
+            sub->show();
+            m_mdi->setActiveSubWindow(sub);
+        }
     }
     return m_dccWindow;
 }
@@ -1519,10 +1523,11 @@ void MainWindow::useBackend(ChatBackend* backend) {
     });
     connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
     connect(backend, &ChatBackend::dccTransferList, this, [this](const QList<lurker::backend::DccTransfer>& list) {
-        if (!list.isEmpty()) ensureDccWindow()->setTransfers(list);  // only pop the window when there's something
+        if (!list.isEmpty()) ensureDccWindow(false)->setTransfers(list);  // seed quietly on connect
     });
     connect(backend, &ChatBackend::dccTransferUpdated, this, [this](const lurker::backend::DccTransfer& t) {
-        ensureDccWindow()->upsert(t);  // a live offer/progress update surfaces the window
+        // Raise the window for a fresh incoming offer; stay quiet for progress ticks.
+        ensureDccWindow(t.awaitingApproval() && t.direction != QLatin1String("outgoing"))->upsert(t);
     });
     connect(backend, &ChatBackend::dccFileSaved, this, [this](int, const QString& path) {
         statusBar()->showMessage(tr("Saved %1").arg(path), 8000);

@@ -175,7 +175,7 @@ private:
     class ChannelListWindow* ensureChannelList(int net);
     class DccTransfersWindow* m_dccWindow = nullptr;   // DCC Transfers window
     QTreeWidgetItem* m_dccItem = nullptr;              // its treebar entry
-    class DccTransfersWindow* ensureDccWindow();
+    class DccTransfersWindow* ensureDccWindow(bool raise = true);
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;
 };
