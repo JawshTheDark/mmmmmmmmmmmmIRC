@@ -37,3 +37,7 @@ target_link_libraries(lurker-desktop PRIVATE
 )
 target_compile_definitions(lurker-desktop PRIVATE LURKER_DESKTOP_VERSION="${PROJECT_VERSION}")
 target_compile_options(lurker-desktop PRIVATE ${LURKER_WARNINGS})
+
+# Windows: build as a GUI app so launching the .exe doesn't pop a console window.
+# (macOS bundle too, for completeness.)
+set_target_properties(lurker-desktop PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE OFF)

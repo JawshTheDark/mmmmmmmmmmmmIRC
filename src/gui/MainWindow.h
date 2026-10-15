@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QHash>
+#include <QList>
 #include <QMainWindow>
 #include <memory>
 
@@ -112,6 +113,8 @@ private:
     // with $1 = the clicked nick and the channel as context.
     QString evalScriptText(const QString& text, const QString& nick, int net, const QString& chan);
     void runPopupCommand(const QString& command, const QString& nick, int net, const QString& chan);
+    void rebuildScriptMenus();  // render `menu menubar` script items into the menu bar
+    void populateScriptMenu(class QMenu* menu, const std::vector<lurker::msl::MenuItem>& items, const QString& nick);
     bool highlightMatch(int net, const QString& plainText) const;  // Options ▸ Highlight word/nick match
     void closeBuffer(Buffer* buffer);
     void activateBuffer(Buffer* buffer);  // restore, focus, and hydrate on first view
@@ -120,6 +123,9 @@ private:
     void hydrateBuffer(Buffer* buffer);   // fetch backlog once
 
     Buffer* routeTarget(int net, const QString& target, ChatView::Kind fallback);
+    // mIRC-style message routing: where a category (notice/whois/ctcp) lands,
+    // per Options (Active window / Status / query). `def` is the fallback setting.
+    Buffer* routeFor(const QString& category, const QString& def, int net);
     QString timestampFor(const std::string& isoTime) const;
 
     QMdiArea* m_mdi = nullptr;
@@ -139,6 +145,8 @@ private:
     QHash<int, QString> m_networkNicks;            // networkId -> our nick (for $me)
     bool m_closing = false;
     bool m_windowsMaximized = true;  // MDI mode: active window fills the workspace (mIRC default)
+    QList<QAction*> m_scriptMenuBarActions;  // top-level menus added by `menu menubar`
+    class QMenu* m_helpMenu = nullptr;       // script menus insert before this
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;

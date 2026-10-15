@@ -316,6 +316,37 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
+void ChatView::addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server) {
+    const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
+    appendBlock();
+    QTextCursor cursor(m_messages->document());
+    cursor.movePosition(QTextCursor::End);
+    const QPalette pal = m_messages->palette();
+
+    QTextCharFormat meta;
+    meta.setForeground(pal.color(QPalette::Disabled, QPalette::Text));
+    if (!timestamp.isEmpty()) cursor.insertText(QStringLiteral("%1 ").arg(timestamp), meta);
+
+    // Server notices get a distinct colour and an "snotice" tag so they don't
+    // read as a message from a user; user/service notices use the link colour.
+    const bool dark = pal.color(QPalette::Base).lightness() < 128;
+    QTextCharFormat fromFmt;
+    fromFmt.setFontWeight(QFont::Bold);
+    fromFmt.setForeground(server ? (dark ? QColor(0x7F, 0xC9, 0xC9) : QColor(0x1F, 0x7A, 0x7A))
+                                 : pal.color(QPalette::Link));
+    const QString label = server ? QStringLiteral("-%1- (snotice) ").arg(from) : QStringLiteral("-%1- ").arg(from);
+    cursor.insertText(label, fromFmt);
+
+    if (QSettings().value(QStringLiteral("display/stripColors"), false).toBool()) {
+        QTextCharFormat plain;
+        plain.setForeground(pal.color(QPalette::Text));
+        cursor.insertText(stripFormattingQt(utf8Text), plain);
+    } else {
+        insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
+    }
+    if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+}
+
 void ChatView::addSystemLine(const QByteArray& utf8Text) {
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();

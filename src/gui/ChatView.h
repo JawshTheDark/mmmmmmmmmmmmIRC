@@ -34,6 +34,9 @@ public:
     void addMessage(const QString& timestamp, const QString& nick, const QByteArray& utf8Text,
                     bool action = false, bool selfEcho = false, bool highlight = false);
     void addSystemLine(const QByteArray& utf8Text);
+    // A notice rendered mIRC-style as "-from- text". `server` marks a server
+    // notice (SNOTICE) so it's coloured distinctly from a user/service notice.
+    void addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server);
 
     void clearMessages();
     void setTopic(const QByteArray& utf8Topic);

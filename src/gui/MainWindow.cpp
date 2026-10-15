@@ -98,14 +98,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_treebar->setHeaderHidden(true);
     treeDock->setWidget(m_treebar);
     addDockWidget(Qt::LeftDockWidgetArea, treeDock);
-    connect(m_treebar, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem* item, int) {
+    // Single click switches to a window (mIRC behaviour); itemActivated also
+    // covers keyboard (Enter) and double-click.
+    auto treeOpen = [this](QTreeWidgetItem* item, int) {
         for (auto& b : m_buffers) {
             if (b.treeItem == item) {
                 activateBuffer(&b);
                 break;
             }
         }
-    });
+    };
+    connect(m_treebar, &QTreeWidget::itemClicked, this, treeOpen);
+    connect(m_treebar, &QTreeWidget::itemActivated, this, treeOpen);
     m_treebar->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_treebar, &QTreeWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
         QTreeWidgetItem* item = m_treebar->itemAt(pos);
@@ -204,6 +208,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         });
     }
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
+    m_helpMenu = helpMenu;
     helpMenu->addAction(tr("&About Lurker Desktop..."), this, &MainWindow::showAbout);
 
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
@@ -352,7 +357,7 @@ void MainWindow::requestChannelList() {
         statusBar()->showMessage(tr("Connect to a server to list channels"), 6000);
         return;
     }
-    ensureChannelList(net);
+    ensureChannelList(net)->listBegin();  // show "loading..." right away
     m_backend->sendRaw(net, QStringLiteral("LIST"));
     statusBar()->showMessage(tr("Requested channel list..."), 6000);
 }
@@ -826,6 +831,75 @@ QString MainWindow::evalScriptText(const QString& text, const QString& nick, int
     return out;
 }
 
+void MainWindow::populateScriptMenu(QMenu* menu, const std::vector<lurker::msl::MenuItem>& items, const QString& nick) {
+    int net = -1;
+    QString chan;
+    if (Buffer* b = activeBuffer()) {
+        net = b->networkId;
+        chan = b->display;
+    }
+    for (const auto& it : items) {
+        if (it.separator) {
+            menu->addSeparator();
+            continue;
+        }
+        const QString caption = evalScriptText(QString::fromStdString(it.caption), nick, net, chan);
+        if (!it.children.empty()) {
+            populateScriptMenu(menu->addMenu(caption), it.children, nick);
+        } else {
+            const QString cmd = QString::fromStdString(it.command);
+            menu->addAction(caption, this, [this, cmd, nick] {
+                int n = -1;
+                QString c;
+                if (Buffer* b = activeBuffer()) {
+                    n = b->networkId;
+                    c = b->display;
+                }
+                runPopupCommand(cmd, nick, n, c);
+            });
+        }
+    }
+}
+
+void MainWindow::rebuildScriptMenus() {
+    // Clear any previously-added script menus, then render `menu menubar` items.
+    for (QAction* a : m_scriptMenuBarActions) {
+        menuBar()->removeAction(a);
+        a->deleteLater();
+    }
+    m_scriptMenuBarActions.clear();
+    if (!m_msl) return;
+    const auto* items = m_msl->popupMenu("menubar");
+    if (!items || items->empty()) return;
+    QAction* before = m_helpMenu ? m_helpMenu->menuAction() : nullptr;
+    for (const auto& top : *items) {
+        if (top.separator) continue;
+        const QString caption = evalScriptText(QString::fromStdString(top.caption), QString(), -1, QString());
+        QAction* act = nullptr;
+        if (!top.children.empty()) {
+            auto* m = new QMenu(caption, this);
+            populateScriptMenu(m, top.children, QString());
+            act = before ? menuBar()->insertMenu(before, m) : menuBar()->addMenu(m);
+        } else {
+            const QString cmd = QString::fromStdString(top.command);
+            auto* a = new QAction(caption, this);
+            connect(a, &QAction::triggered, this, [this, cmd] {
+                int n = -1;
+                QString c;
+                if (Buffer* b = activeBuffer()) {
+                    n = b->networkId;
+                    c = b->display;
+                }
+                runPopupCommand(cmd, QString(), n, c);
+            });
+            if (before) menuBar()->insertAction(before, a);
+            else menuBar()->addAction(a);
+            act = a;
+        }
+        if (act) m_scriptMenuBarActions.append(act);
+    }
+}
+
 void MainWindow::runPopupCommand(const QString& command, const QString& nick, int net, const QString& chan) {
     if (!m_msl || command.isEmpty()) return;
     lurker::msl::Scope scope;
@@ -857,6 +931,7 @@ void MainWindow::loadScriptFile(const QString& path) {
         m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
         if (!m_scriptFiles.contains(file)) m_scriptFiles << file;
     }
+    rebuildScriptMenus();  // pick up any `menu menubar` definitions
     onStatusText(tr("Loaded %1 file(s) — %2").arg(toLoad.size()).arg(scriptSummary()));
 }
 
@@ -873,6 +948,7 @@ void MainWindow::reloadScripts() {
         QFile f(file);
         if (f.open(QIODevice::ReadOnly)) m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
     }
+    rebuildScriptMenus();
     onStatusText(tr("Reloaded scripts — %1").arg(scriptSummary()));
 }
 
@@ -900,13 +976,22 @@ void MainWindow::ensureSectionScripts() {
     static const char* headers[] = {"; Aliases\n", "; Popups\n", "; Remote scripts (on events, aliases, dialogs)\n",
                                     "; Users\n"};
     const QStringList files = ScriptEditor::sectionFiles();
+    bool loadedAny = false;
     for (int i = 0; i < files.size(); ++i) {
         if (!QFile::exists(files[i])) {
             QFile f(files[i]);
             if (f.open(QIODevice::WriteOnly)) f.write(headers[i]);
         }
-        if (!m_scriptFiles.contains(files[i])) loadScriptFile(files[i]);
+        if (!m_scriptFiles.contains(files[i])) {  // load quietly (no per-file status spam)
+            QFile f(files[i]);
+            if (f.open(QIODevice::ReadOnly) && m_msl) {
+                m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+                m_scriptFiles << files[i];
+                loadedAny = true;
+            }
+        }
     }
+    if (loadedAny) rebuildScriptMenus();
 }
 
 void MainWindow::simulateListReply() {
@@ -1251,6 +1336,16 @@ void MainWindow::onBufferOpened(int net, const QString& rawTarget, int kind) {
     ensureBuffer(net, kindFromInt(kind), target, keyFor(net, target));
 }
 
+MainWindow::Buffer* MainWindow::routeFor(const QString& category, const QString& def, int net) {
+    const QString where = QSettings().value(QStringLiteral("route/") + category, def).toString();
+    Buffer* status = findBuffer(serverKeyFor(net));
+    if (!status) status = findBuffer(statusKey());
+    if (where.contains(QStringLiteral("Status"), Qt::CaseInsensitive)) return status;
+    // "Active window": the focused buffer, falling back to status.
+    if (Buffer* a = activeBuffer()) return a;
+    return status;
+}
+
 MainWindow::Buffer* MainWindow::routeTarget(int net, const QString& rawTarget, ChatView::Kind fallback) {
     const QString target = normTarget(rawTarget);
     if (target.isEmpty() || target == QStringLiteral(":server:")) {
@@ -1316,9 +1411,25 @@ void MainWindow::onEvent(const IrcEvent& event) {
             break;
         }
         case IrcEventType::Notice: {
-            Buffer* buf = routeTarget(net, target, ChatView::Kind::Query);
+            // A notice from a source with no user@host is a *server* notice
+            // (SNOTICE) — route it to the status/server window and mark it so,
+            // rather than rendering it like a user's notice.
+            const bool serverNotice = event.user.empty() && event.host.empty() && !nick.isEmpty();
+            Buffer* buf = nullptr;
+            if (serverNotice) {
+                buf = findBuffer(serverKeyFor(net));
+            } else {
+                const QString where = QSettings().value(QStringLiteral("route/notice"),
+                                                        QStringLiteral("Active window")).toString();
+                if (where.contains(QStringLiteral("query"), Qt::CaseInsensitive) ||
+                    where.contains(QStringLiteral("Separate"), Qt::CaseInsensitive))
+                    buf = routeTarget(net, target, ChatView::Kind::Query);
+                else
+                    buf = routeFor(QStringLiteral("notice"), QStringLiteral("Active window"), net);
+            }
+            if (!buf) buf = findBuffer(statusKey());
             if (buf) {
-                buf->view->addMessage(ts, nick + QStringLiteral(" (notice)"), text, false, event.self);
+                buf->view->addNotice(ts, nick.isEmpty() ? tr("server") : nick, text, serverNotice);
                 noteMessage(buf, event.id);
                 logLine(buf, QStringLiteral("-%1- %2").arg(nick, stripFormattingQt(text)));
             }
@@ -1366,11 +1477,28 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (Buffer* s = findBuffer(serverKeyFor(net)))
                 s->view->addSystemLine(tr("%1 invites you to %2").arg(nick, QString::fromStdString(event.arg)).toUtf8());
             break;
+        case IrcEventType::ServerText: {
+            // Whois/who/info replies can follow the "whois" routing setting
+            // (Active window or Status); other server text stays in status.
+            static const QSet<int> whoisNums = {311, 312, 313, 317, 318, 319, 301, 330, 338,
+                                                378, 379, 671, 276, 307, 310, 320, 314, 369};
+            Buffer* buf = whoisNums.contains(event.numeric) ? routeFor(QStringLiteral("whois"),
+                                                                       QStringLiteral("Active window"), net)
+                                                            : findBuffer(serverKeyFor(net));
+            if (buf) buf->view->addMessage(ts, QString(), text);
+            else onStatusText(QString::fromUtf8(text));
+            break;
+        }
         case IrcEventType::MotdLine:
-        case IrcEventType::ServerText:
         case IrcEventType::AwaySelf:
             if (Buffer* s = findBuffer(serverKeyFor(net))) s->view->addMessage(ts, QString(), text);
             else onStatusText(QString::fromUtf8(text));
+            break;
+        case IrcEventType::CtcpReply:
+            if (Buffer* b = routeFor(QStringLiteral("ctcp"), QStringLiteral("Active window"), net))
+                b->view->addSystemLine(tr("[%1 %2 reply] %3")
+                                           .arg(nick, QString::fromStdString(event.arg), QString::fromUtf8(text))
+                                           .toUtf8());
             break;
         case IrcEventType::ErrorText:
             if (Buffer* s = findBuffer(serverKeyFor(net))) s->view->addSystemLine(QByteArray("⚠ ") + text);

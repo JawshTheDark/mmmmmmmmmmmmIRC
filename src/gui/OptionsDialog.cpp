@@ -122,6 +122,17 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
                     f->addRow(boundCheck(tr("Show own messages in query"), QStringLiteral("msg/echoSelf"), true));
                     f->addRow(boundCheck(tr("Beep on private message"), QStringLiteral("msg/beep"), false));
                     f->addRow(boundCheck(tr("Whois on query open"), QStringLiteral("msg/whoisOnQuery"), false));
+                    // mIRC-style message routing: where each category is shown.
+                    f->addRow(tr("User notices"),
+                              boundCombo(QStringLiteral("route/notice"),
+                                         {tr("Active window"), tr("Status window"), tr("Separate query")},
+                                         tr("Active window")));
+                    f->addRow(tr("Whois / server replies"),
+                              boundCombo(QStringLiteral("route/whois"),
+                                         {tr("Active window"), tr("Status window")}, tr("Active window")));
+                    f->addRow(tr("CTCP replies"),
+                              boundCombo(QStringLiteral("route/ctcp"),
+                                         {tr("Active window"), tr("Status window")}, tr("Active window")));
                 }));
     addCategory(ircNode, tr("Highlight"),
                 buildPage(tr("Highlight"), tr("Words that flag a line and notify you."), [&](QFormLayout* f) {
