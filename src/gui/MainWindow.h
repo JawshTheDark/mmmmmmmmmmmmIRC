@@ -38,6 +38,8 @@ public:
 
 protected:
     void changeEvent(QEvent* event) override;  // re-tint the MDI on theme/palette change
+    void closeEvent(QCloseEvent* event) override;  // persist scripts + variables on exit
+    void resizeEvent(QResizeEvent* event) override;  // re-tile windows when tiled
 
 public:
     void showJoinDialog();        // prompt for a channel and JOIN it
@@ -54,7 +56,7 @@ public:
     void openConversation(int net, const QString& target);
     // Run an MSL line in the active (or status) window — used by // input and --msl.
     void runScript(const QString& line);
-    void loadScriptFile(const QString& path);
+    void loadScriptFile(const QString& path, bool fireLoad = false);  // fireLoad: run `on LOAD` (interactive only)
     void reloadScripts();        // clear + reload all tracked script files
     void openScriptEditor();     // Scripts Editor window
     QStringList scriptFiles() const { return m_scriptFiles; }
@@ -99,6 +101,10 @@ private:
     void noteMessage(Buffer* buffer, long long id);  // track newest id + mark-read if active
     void setupScripting();
     void ensureSectionScripts(); // create+load the Aliases/Popups/Remotes/Users files
+    void saveScriptList();       // persist the loaded-scripts list to config
+    void loadPersistedScripts(); // reload the scripts that were loaded last session
+    void saveVariables();        // persist %globals to config
+    void loadVariables();        // restore %globals from config
     void setupToolbar();         // the top mIRC-style icon toolbar
     void updateMdiBackground();  // tint the MDI workspace to the active theme
     Buffer* activeBuffer();
@@ -145,6 +151,7 @@ private:
     QHash<int, QString> m_networkNicks;            // networkId -> our nick (for $me)
     bool m_closing = false;
     bool m_windowsMaximized = true;  // MDI mode: active window fills the workspace (mIRC default)
+    bool m_tiled = false;            // windows are tiled → re-tile when the main window resizes
     QList<QAction*> m_scriptMenuBarActions;  // top-level menus added by `menu menubar`
     class QMenu* m_helpMenu = nullptr;       // script menus insert before this
     class Updater* m_updater = nullptr;      // in-app GitHub updater
@@ -160,6 +167,7 @@ private:
     class PictureWindow* ensurePictureWindow(const QString& name);
     class ChannelListWindow* m_channelList = nullptr;  // /list results window
     int m_channelListNet = -1;                         // network the current list is for
+    QTreeWidgetItem* m_channelListItem = nullptr;      // its treebar entry
     class ChannelListWindow* ensureChannelList(int net);
     lurker::msl::ScriptTarget m_eventContext;  // active target while an on-event runs
     bool m_inEvent = false;

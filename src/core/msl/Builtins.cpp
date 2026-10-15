@@ -330,14 +330,33 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("dname", [](Interpreter&, S& s, const A&, const std::string&) {
         return s.params.empty() ? s.target : s.params[0];
     });
+    // $isid: $true when the current alias was called as an identifier $name(...).
+    in.registerIdent("isid", [](Interpreter&, S& s, const A&, const std::string&) {
+        return s.isIdentCall ? std::string("$true") : std::string("$false");
+    });
+    // $lock(command): whether a command is locked out. We lock nothing → $false.
+    in.registerIdent("lock", [](Interpreter&, S&, const A&, const std::string&) { return std::string("$false"); });
+    // $shortfn(path): DOS 8.3 short path on Windows; elsewhere the path is returned as-is.
+    in.registerIdent("shortfn", [](Interpreter&, S&, const A& a, const std::string&) { return arg(a, 0); });
     in.registerIdent("devent", [](Interpreter&, S& s, const A&, const std::string&) {
         return s.params.size() >= 2 ? s.params[1] : std::string();
     });
     in.registerIdent("did", [](Interpreter& in2, S& s, const A& a, const std::string& prop) {
         if (a.empty()) return s.params.size() >= 3 ? s.params[2] : std::string();  // triggering id
-        const std::string name = a[0];
-        const int id = a.size() >= 2 ? argInt(a, 1) : 0;
-        return in2.host().didQuery(name, id, prop);
+        std::string name;
+        int id = 0, line = 0;
+        if (a.size() == 1) {  // $did(id) inside a dialog event → the dialog is implicit ($dname)
+            name = s.params.empty() ? s.target : s.params[0];
+            id = argInt(a, 0);
+        } else {  // $did(name,id[,line])
+            name = a[0];
+            id = argInt(a, 1);
+            if (a.size() >= 3) line = argInt(a, 2);
+        }
+        // A line argument (for list/listview controls) is passed through as "prop:line".
+        std::string p = prop;
+        if (line > 0) p = (prop.empty() ? std::string("text") : prop) + ":" + std::to_string(line);
+        return in2.host().didQuery(name, id, p);
     });
     in.registerIdent("dialog", [](Interpreter& in2, S&, const A& a, const std::string& prop) {
         if (a.empty()) return std::string();
@@ -1182,14 +1201,63 @@ void registerBuiltins(Interpreter& in) {
         if (c.empty()) return std::string("0");
         return std::to_string(static_cast<long long>(std::count(c.begin(), c.end(), '\n')) + (c.back() == '\n' ? 0 : 1));
     });
-    in.registerIdent("read", [](Interpreter& i, S&, const A& a, const std::string&) {
-        const auto lines = splitTokens(i.host().fileRead(arg(a, 0)), '\n');
-        if (lines.empty()) return std::string();
-        int n = a.size() >= 2 ? argInt(a, 1) : 1;
+    in.registerIdent("ifmatch", [](Interpreter& i, S&, const A&, const std::string&) { return i.ifMatch; });
+    in.registerIdent("readn", [](Interpreter& i, S&, const A&, const std::string&) { return std::to_string(i.readN); });
+    // $read(file) random line; $read(file,N) line N; $read(file,s|w|r,match[,N]) scan.
+    // Sets $ifmatch (the matched/read line) and $readn (its line number).
+    in.registerIdent("read", [](Interpreter& i, S&, const A& a, const std::string&) -> std::string {
+        auto lines = splitTokens(i.host().fileRead(arg(a, 0)), '\n');
+        for (auto& l : lines)
+            if (!l.empty() && l.back() == '\r') l.pop_back();
+        // Drop a leading numeric "line count" header (mIRC .ini-less files may have one).
+        if (lines.empty()) {
+            i.ifMatch.clear();
+            i.readN = 0;
+            return std::string();
+        }
+        i.ifMatch.clear();
+        i.readN = 0;
+        const std::string sw = a.size() >= 2 ? toLowerAscii(arg(a, 1)) : std::string();
+        const bool scan = sw.find('s') != std::string::npos || sw.find('w') != std::string::npos ||
+                          sw.find('r') != std::string::npos;
+        if (scan) {
+            const std::string match = arg(a, 2);
+            const int startN = a.size() >= 4 ? argInt(a, 3) : 1;
+            const bool wild = sw.find('w') != std::string::npos;
+            const bool regex = sw.find('r') != std::string::npos;
+            for (int n = startN; n <= static_cast<int>(lines.size()); ++n) {
+                const std::string& line = lines[n - 1];
+                bool hit = false;
+                if (wild) {
+                    hit = matchWild(match, line);
+                } else if (regex) {
+                    try {
+                        hit = std::regex_search(line, std::regex(match, std::regex::icase));
+                    } catch (...) {
+                        hit = false;
+                    }
+                } else {  // 's': line begins with matchtext (case-insensitive), token-aware
+                    hit = toLowerAscii(line).rfind(toLowerAscii(match), 0) == 0;
+                }
+                if (hit) {
+                    i.ifMatch = line;
+                    i.readN = n;
+                    return line;
+                }
+            }
+            return std::string();  // no match
+        }
+        // Plain line read (or random when no index given).
+        int n = 1;
+        if (a.size() >= 2 && !arg(a, 1).empty()) {
+            n = argInt(a, 1);
+        } else {
+            n = 1 + (lines.size() > 1 ? static_cast<int>(i.host().unixTime() % lines.size()) : 0);
+        }
         if (n < 1 || n > static_cast<int>(lines.size())) return std::string();
-        std::string line = lines[n - 1];
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        return line;
+        i.ifMatch = lines[n - 1];
+        i.readN = n;
+        return lines[n - 1];
     });
     in.registerIdent("readini", [](Interpreter& i, S&, const A& a, const std::string&) {
         return readIniValue(i.host().fileRead(arg(a, 0)), arg(a, 1), arg(a, 2));
@@ -1500,6 +1568,37 @@ void registerBuiltins(Interpreter& in) {
     };
     in.registerCommand("hinc", hincdec(true));
     in.registerCommand("hdec", hincdec(false));
+    // /hsave [-switches] <table> <file> and /hload [-switches] <table> <file>.
+    // Default mIRC format: item and data on alternating lines. <file> may be quoted.
+    auto hashFileArgs = [](std::string args, std::string& table, std::string& file) {
+        while (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        std::size_t sp = args.find(' ');
+        if (sp == std::string::npos) return false;
+        table = args.substr(0, sp);
+        file = args.substr(sp + 1);
+        while (!file.empty() && file.front() == ' ') file.erase(file.begin());
+        while (!file.empty() && file.back() == ' ') file.pop_back();
+        if (file.size() >= 2 && file.front() == '"' && file.back() == '"') file = file.substr(1, file.size() - 2);
+        return !table.empty() && !file.empty();
+    };
+    in.registerCommand("hsave", [hashFileArgs](Interpreter& i, S& s, const std::string& a) {
+        std::string table, file;
+        if (!hashFileArgs(i.evaluate(a, s), table, file) || !i.hashExists(table)) return;
+        std::string out;
+        const int n = i.hashCount(table);
+        for (int k = 1; k <= n; ++k) out += i.hashItemByIndex(table, k) + "\n" + i.hashDataByIndex(table, k) + "\n";
+        i.host().fileWrite(file, out);
+    });
+    in.registerCommand("hload", [hashFileArgs](Interpreter& i, S& s, const std::string& a) {
+        std::string table, file;
+        if (!hashFileArgs(i.evaluate(a, s), table, file)) return;
+        if (!i.hashExists(table)) i.hashMake(table);
+        auto lines = splitTokens(i.host().fileRead(file), '\n');
+        for (auto& l : lines)
+            if (!l.empty() && l.back() == '\r') l.pop_back();
+        for (std::size_t k = 0; k + 1 < lines.size(); k += 2)
+            if (!lines[k].empty()) i.hashSet(table, lines[k], lines[k + 1]);
+    });
 
     // Files and INI.
     in.registerCommand("write", [](Interpreter& i, S& s, const std::string& a) {
@@ -1654,6 +1753,43 @@ void registerBuiltins(Interpreter& in) {
         std::string text;
         for (std::size_t k = idx; k < toks.size(); ++k) text += (k > idx ? " " : "") + toks[k];
         i.host().didCommand(name, id, sw, text);
+    });
+
+    // /dll [-u...] <file> <proc> [data] — call a DLL export. We never load native
+    // DLLs; instead the host emulates the well-known ones (notably mdx.dll, used by
+    // countless addons to build ListView/TreeView dialog controls). <file> may be
+    // "quoted" (addons build it as "$+(",$scriptdirmdx.dll,")").
+    in.registerCommand("dll", [](Interpreter& i, S& s, const std::string& a) {
+        const std::string args = i.evaluate(a, s);
+        std::size_t p = 0;
+        auto skipws = [&] { while (p < args.size() && args[p] == ' ') ++p; };
+        skipws();
+        if (p < args.size() && args[p] == '-') {  // skip -u / -k / -n# switches
+            while (p < args.size() && args[p] != ' ') ++p;
+            skipws();
+        }
+        std::string file;
+        if (p < args.size() && args[p] == '"') {  // quoted path
+            const std::size_t q = args.find('"', p + 1);
+            file = args.substr(p + 1, (q == std::string::npos ? args.size() : q) - (p + 1));
+            p = (q == std::string::npos ? args.size() : q + 1);
+        } else {
+            const std::size_t q = args.find(' ', p);
+            file = args.substr(p, (q == std::string::npos ? args.size() : q) - p);
+            p = (q == std::string::npos ? args.size() : q);
+        }
+        skipws();
+        const std::size_t q = args.find(' ', p);
+        const std::string proc = args.substr(p, (q == std::string::npos ? args.size() : q) - p);
+        const std::string data = (q == std::string::npos) ? std::string() : args.substr(q + 1);
+        i.host().dllCall(file, proc, data);
+    });
+    // $dll(file,proc,data) — same, returning the call's result.
+    in.registerIdent("dll", [](Interpreter& i, S&, const A& a, const std::string&) {
+        if (a.size() < 2) return std::string();
+        std::string data;
+        for (std::size_t k = 2; k < a.size(); ++k) data += (k > 2 ? " " : "") + a[k];
+        return i.host().dllCall(a[0], a[1], data);
     });
 
     // Sockets.

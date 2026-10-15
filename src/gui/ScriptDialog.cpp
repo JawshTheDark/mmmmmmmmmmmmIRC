@@ -8,12 +8,14 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QGroupBox>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QTreeWidget>
 
 namespace lurker::gui {
 
@@ -23,6 +25,19 @@ namespace {
 constexpr double kSx = 1.55;
 constexpr double kSy = 1.65;
 int px(int unit, double scale) { return static_cast<int>(unit * scale + 0.5); }
+
+bool isNumericTok(const QString& s) {
+    bool ok = false;
+    s.toInt(&ok);
+    return ok && !s.isEmpty();
+}
+// mdx/ListView columns are tab-delimited ($chr(9)); split and trim each column.
+QStringList splitTabs(const QString& s) {
+    QStringList out;
+    const QStringList parts = s.split(QLatin1Char('\t'));
+    for (const QString& p : parts) out << p.trimmed();
+    return out;
+}
 }  // namespace
 
 ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instance,
@@ -100,11 +115,76 @@ ScriptDialog::ScriptDialog(const lurker::msl::DialogTable& table, QString instan
     }
 }
 
+void ScriptDialog::applyMdxControl(int id, const QString& type, const QStringList& styles) {
+    QWidget* old = m_byId.value(id);
+    if (!old) return;
+    const QString t = type.toLower();
+    // ListView → a multi-column report table (mIRC addons use this for grids).
+    if (t == QLatin1String("listview") || t == QLatin1String("report")) {
+        if (qobject_cast<QTreeWidget*>(old)) return;  // already promoted
+        const QRect geo = old->geometry();
+        auto* tree = new QTreeWidget(this);
+        tree->setGeometry(geo);
+        tree->setRootIsDecorated(false);
+        tree->setUniformRowHeights(true);
+        tree->setSelectionMode(QAbstractItemView::SingleSelection);
+        tree->setSelectionBehavior(QAbstractItemView::SelectRows);
+        tree->setAllColumnsShowFocus(true);
+        tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        tree->header()->setStretchLastSection(true);
+        tree->setSortingEnabled(!styles.contains(QStringLiteral("nosortheader"), Qt::CaseInsensitive));
+        if (styles.contains(QStringLiteral("grid"), Qt::CaseInsensitive))
+            tree->setStyleSheet(QStringLiteral("QTreeView{gridline-color:palette(mid);}"
+                                               "QTreeView::item{border-right:1px solid palette(mid);}"));
+        tree->setColumnCount(1);
+        const int cid = id;
+        connect(tree, &QTreeWidget::itemSelectionChanged, this,
+                [this, cid] { if (m_sink) m_sink(QStringLiteral("sclick"), cid); });
+        connect(tree, &QTreeWidget::itemDoubleClicked, this,
+                [this, cid](QTreeWidgetItem*, int) { if (m_sink) m_sink(QStringLiteral("dclick"), cid); });
+        tree->show();
+        old->deleteLater();
+        m_byId.insert(id, tree);
+    }
+}
+
 void ScriptDialog::applyDid(int id, const QString& sw, const QString& text) {
     QWidget* w = m_byId.value(id);
     if (!w) return;
     const bool reset = sw.contains('r');
     const bool add = sw.contains('a');
+
+    // ListView table (mdx-promoted control): header ops (-i) and tab-delimited rows.
+    if (auto* tree = qobject_cast<QTreeWidget*>(w)) {
+        if (sw.contains('i')) {
+            // did -i <id> <line> <subcmd> <args>  (mdx: headertext / headerdims)
+            const QStringList t = text.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            int k = 0;
+            while (k < t.size() && isNumericTok(t[k])) ++k;  // skip the mdx line index
+            const QString sub = k < t.size() ? t[k].toLower() : QString();
+            const QStringList rest = t.mid(k + 1);
+            if (sub == QLatin1String("headertext")) {
+                const QStringList cols = splitTabs(rest.join(QLatin1Char(' ')));
+                tree->setColumnCount(qMax(1, cols.size()));
+                tree->setHeaderLabels(cols);
+            } else if (sub == QLatin1String("headerdims")) {
+                for (int c = 0; c < rest.size(); ++c) tree->setColumnWidth(c, rest[c].toInt());
+            }
+            return;
+        }
+        if (reset) tree->clear();
+        if (sw.contains('d')) {  // did -d <id> <N>
+            const int row = text.trimmed().toInt();
+            if (row >= 1 && row <= tree->topLevelItemCount()) delete tree->takeTopLevelItem(row - 1);
+            return;
+        }
+        if (add && !text.isEmpty()) {
+            const QStringList cols = splitTabs(text);
+            if (tree->columnCount() < cols.size()) tree->setColumnCount(cols.size());
+            new QTreeWidgetItem(tree, cols);
+        }
+        return;
+    }
 
     if (auto* e = qobject_cast<QLineEdit*>(w)) {
         if (reset) e->clear();
@@ -136,6 +216,24 @@ void ScriptDialog::applyDid(int id, const QString& sw, const QString& text) {
 QString ScriptDialog::query(int id, const QString& prop) const {
     QWidget* w = m_byId.value(id);
     if (!w) return {};
+    if (auto* tree = qobject_cast<QTreeWidget*>(w)) {
+        if (prop == QLatin1String("lines")) return QString::number(tree->topLevelItemCount());
+        if (prop == QLatin1String("sel")) {
+            QTreeWidgetItem* cur = tree->currentItem();
+            const int row = cur ? tree->indexOfTopLevelItem(cur) : -1;
+            return row >= 0 ? QString::number(row + 1) : QString();
+        }
+        // .text / .seltext / .text:N → column 0 of the selected (or Nth) row.
+        int row = -1;
+        const int colon = prop.indexOf(QLatin1Char(':'));
+        if (colon >= 0) {
+            row = prop.mid(colon + 1).toInt() - 1;
+        } else if (tree->currentItem()) {
+            row = tree->indexOfTopLevelItem(tree->currentItem());
+        }
+        if (row >= 0 && row < tree->topLevelItemCount()) return tree->topLevelItem(row)->text(0);
+        return {};
+    }
     if (auto* e = qobject_cast<QLineEdit*>(w)) return e->text();
     if (auto* e = qobject_cast<QPlainTextEdit*>(w)) {
         if (prop == QLatin1String("lines")) return QString::number(e->document()->blockCount());

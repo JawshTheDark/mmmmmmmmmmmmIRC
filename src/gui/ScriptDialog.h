@@ -11,6 +11,7 @@
 #include <QDialog>
 #include <QHash>
 #include <QString>
+#include <QStringList>
 #include <functional>
 
 #include "core/msl/Dialog.h"
@@ -33,6 +34,9 @@ public:
     void applyDid(int id, const QString& switches, const QString& text);
     // $did(name,id).prop
     QString query(int id, const QString& prop) const;
+    // mdx.dll SetControlMDX: promote a control to a richer widget (ListView →
+    // a multi-column table). `styles` are the mdx style words (report grid ...).
+    void applyMdxControl(int id, const QString& type, const QStringList& styles);
 
 protected:
     void closeEvent(QCloseEvent* event) override;

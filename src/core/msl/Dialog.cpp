@@ -98,15 +98,22 @@ DialogTable parseDialogTable(const std::string& name, const std::string& body) {
         } else if (kw == "option") {
             // option dbu/pixels/... — noted, we render in dialog units by default
         } else if (std::find(kTypes.begin(), kTypes.end(), kw) != kTypes.end()) {
-            // <type> "caption", id, x y w h, styles...
+            // Two mIRC control grammars:
+            //   captioned:    <type> "caption", id, x y w h, styles...   (text/edit/button/check/radio/box/link)
+            //   caption-less: <type> id, x y w h, styles...              (list/combo/icon/scroll — id comes first)
+            // Distinguish by the first field: a bare integer means caption-less.
             DialogControl c;
             c.type = kw;
             const std::string rest = trim(t.substr(kw.size()));
             const auto fields = splitCommas(rest);
-            if (!fields.empty()) c.caption = unquote(fields[0]);
-            if (fields.size() >= 2) c.id = toInt(fields[1]);
-            if (fields.size() >= 3) {
-                const auto g = words(fields[2]);
+            const std::string f0 = fields.empty() ? std::string() : trim(fields[0]);
+            const bool idFirst = !f0.empty() && f0.front() != '"' &&
+                                 std::all_of(f0.begin(), f0.end(), [](unsigned char ch) { return std::isdigit(ch); });
+            std::size_t idF = idFirst ? 0 : 1, geomF = idFirst ? 1 : 2, styleF = idFirst ? 2 : 3;
+            if (!idFirst && !fields.empty()) c.caption = unquote(fields[0]);
+            if (fields.size() > idF) c.id = toInt(fields[idF]);
+            if (fields.size() > geomF) {
+                const auto g = words(fields[geomF]);
                 if (g.size() >= 4) {
                     c.x = toInt(g[0]);
                     c.y = toInt(g[1]);
@@ -114,7 +121,7 @@ DialogTable parseDialogTable(const std::string& name, const std::string& body) {
                     c.h = toInt(g[3]);
                 }
             }
-            for (std::size_t i = 3; i < fields.size(); ++i) {
+            for (std::size_t i = styleF; i < fields.size(); ++i) {
                 for (const auto& w : words(lower(fields[i]))) c.styles.push_back(w);
             }
             table.controls.push_back(std::move(c));

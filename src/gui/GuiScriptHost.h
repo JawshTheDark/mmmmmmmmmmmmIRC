@@ -36,6 +36,7 @@ public:
     std::function<void(const QString&)> closeDialogFn;
     std::function<void(const QString&, int, const QString&, const QString&)> didCommandFn;
     std::function<QString(const QString&, int, const QString&)> didQueryFn;
+    std::function<QString(const QString&, const QString&, const QString&)> dllCallFn;  // /dll + $dll
     std::function<QString(const QString&, int, double, const QString&)> startTimerFn;
     std::function<void(const QString&)> stopTimerFn;
     std::function<void(const QString&, const QString&)> openWindowFn;
@@ -170,6 +171,12 @@ public:
     std::string didQuery(const std::string& instance, int id, const std::string& prop) const override {
         return didQueryFn ? didQueryFn(QString::fromStdString(instance), id, QString::fromStdString(prop)).toStdString()
                           : std::string();
+    }
+    std::string dllCall(const std::string& file, const std::string& proc, const std::string& data) override {
+        return dllCallFn ? dllCallFn(QString::fromStdString(file), QString::fromStdString(proc),
+                                     QString::fromStdString(data))
+                               .toStdString()
+                         : std::string();
     }
 
     // Filesystem: relative paths resolve against baseDir (the script/config dir).

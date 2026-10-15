@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QBrush>
 #include <QDateTime>
+#include <QCloseEvent>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QSpinBox>
@@ -34,6 +35,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QResizeEvent>
 #include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
@@ -102,6 +104,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     // Single click switches to a window (mIRC behaviour); itemActivated also
     // covers keyboard (Enter) and double-click.
     auto treeOpen = [this](QTreeWidgetItem* item, int) {
+        if (item && item == m_channelListItem && m_channelList) {
+            if (auto* sub = qobject_cast<QMdiSubWindow*>(m_channelList->parentWidget())) {
+                if (sub->isMinimized()) sub->showNormal();
+                sub->show();
+                m_mdi->setActiveSubWindow(sub);
+            }
+            return;
+        }
         for (auto& b : m_buffers) {
             if (b.treeItem == item) {
                 activateBuffer(&b);
@@ -230,6 +240,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     ensureBuffer(-1, ChatView::Kind::Status, tr("Status"), statusKey());
     setupScripting();
     ensureSectionScripts();  // load the mIRC-style section files so user aliases persist
+    loadPersistedScripts();  // reload the scripts loaded last session
+    loadVariables();         // restore saved %globals
+    // mIRC fires `on START` once the client is up and all scripts are loaded.
+    {
+        lurker::msl::Scope sc;
+        m_msl->raiseEvent("start", std::string(), sc);
+    }
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
 
     // Quiet check for a newer release a few seconds after startup (opt-out).
@@ -298,6 +315,60 @@ void MainWindow::changeEvent(QEvent* event) {
     }
 }
 
+void MainWindow::closeEvent(QCloseEvent* event) {
+    saveVariables();   // persist %globals so they survive a restart/update
+    saveScriptList();  // remember which scripts were loaded
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::saveScriptList() {
+    // Persist user-loaded scripts (the auto-created section files reload on their
+    // own, so we don't need to store them).
+    QStringList user;
+    const QStringList sections = ScriptEditor::sectionFiles();
+    for (const QString& f : m_scriptFiles)
+        if (!sections.contains(f)) user << f;
+    QSettings().setValue(QStringLiteral("scripts/files"), user);
+}
+
+void MainWindow::loadPersistedScripts() {
+    const QStringList files = QSettings().value(QStringLiteral("scripts/files")).toStringList();
+    for (const QString& f : files)
+        if (!m_scriptFiles.contains(f) && QFile::exists(f)) loadScriptFile(f);
+}
+
+void MainWindow::saveVariables() {
+    if (!m_msl) return;
+    QSettings s;
+    s.beginGroup(QStringLiteral("vars"));
+    s.remove(QString());  // clear previous
+    s.beginWriteArray(QStringLiteral("v"));
+    int i = 0;
+    for (const auto& [name, value] : m_msl->globals()) {
+        s.setArrayIndex(i++);
+        s.setValue(QStringLiteral("n"), QString::fromStdString(name));
+        s.setValue(QStringLiteral("d"), QString::fromStdString(value));
+    }
+    s.endArray();
+    s.endGroup();
+}
+
+void MainWindow::loadVariables() {
+    if (!m_msl) return;
+    QSettings s;
+    s.beginGroup(QStringLiteral("vars"));
+    const int count = s.beginReadArray(QStringLiteral("v"));
+    lurker::msl::Scope scope;
+    for (int i = 0; i < count; ++i) {
+        s.setArrayIndex(i);
+        const QString n = s.value(QStringLiteral("n")).toString();
+        if (n.isEmpty()) continue;
+        m_msl->setVariable(n.toStdString(), s.value(QStringLiteral("d")).toString().toStdString(), false, scope);
+    }
+    s.endArray();
+    s.endGroup();
+}
+
 void MainWindow::showOptions(const QString& page) {
     OptionsDialog dlg(this);
     if (!page.isEmpty()) dlg.selectPage(page);
@@ -313,7 +384,7 @@ void MainWindow::showOptions(const QString& page) {
 void MainWindow::promptLoadScript() {
     const QString path = QFileDialog::getOpenFileName(this, tr("Load MSL script"), m_scriptHost.baseDir,
                                                       tr("mIRC scripts (*.mrc);;All files (*)"));
-    if (!path.isEmpty()) loadScriptFile(path);
+    if (!path.isEmpty()) loadScriptFile(path, /*fireLoad=*/true);
 }
 
 void MainWindow::showJoinDialog() {
@@ -351,8 +422,13 @@ lurker::gui::ChannelListWindow* MainWindow::ensureChannelList(int net) {
             }
         });
         connect(m_channelList, &QObject::destroyed, this, [this](QObject*) {
-            if (!m_closing) m_channelList = nullptr;
+            if (m_closing) return;
+            m_channelList = nullptr;
+            delete m_channelListItem;  // drop its treebar entry
+            m_channelListItem = nullptr;
         });
+        // Give it its own top-level entry on the treebar (single-click to raise).
+        m_channelListItem = new QTreeWidgetItem(m_treebar, {tr("Channels List")});
     }
     if (auto* sub = qobject_cast<QMdiSubWindow*>(m_channelList->parentWidget())) {
         if (sub->isMinimized()) sub->showNormal();
@@ -741,6 +817,26 @@ void MainWindow::setupScripting() {
         if (prop == QLatin1String("isopen")) return QStringLiteral("1");
         return dlg->query(id, prop);
     };
+    // /dll + $dll: we never load native DLLs. Emulate mdx.dll — the ubiquitous
+    // addon that builds ListView/TreeView dialog controls — so its scripts run.
+    m_scriptHost.dllCallFn = [this](const QString& file, const QString& proc, const QString& data) -> QString {
+        const QString dll = QFileInfo(file).fileName().toLower();
+        if (dll != QLatin1String("mdx.dll") && dll != QLatin1String("mdx")) return QString();
+        const QString p = proc.toLower();
+        if (p == QLatin1String("setcontrolmdx")) {
+            // data: <dialog> <id> <controltype> <styles...> [> viewfile]
+            QString d = data;
+            const int gt = d.indexOf(QLatin1Char('>'));
+            if (gt >= 0) d = d.left(gt);  // drop the "> [ views.mdx ]" icon-view redirect
+            const QStringList t = d.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            if (t.size() >= 3) {
+                if (ScriptDialog* dlg = m_dialogs.value(t[0])) dlg->applyMdxControl(t[1].toInt(), t[2], t.mid(3));
+            }
+        }
+        // Other procs (SetMircVersion, MarkDialog, SetFont, SetDialog, SetIcon, …)
+        // are cosmetic for us and accepted as no-ops so the script proceeds.
+        return QString();
+    };
     m_scriptHost.startTimerFn = [this](const QString& name, int repeat, double interval, const QString& cmd) -> QString {
         QString id = name.isEmpty() ? QStringLiteral("_t%1").arg(++m_timerSeq) : name;
         if (QTimer* old = m_scriptTimers.take(id)) old->deleteLater();
@@ -946,7 +1042,7 @@ void MainWindow::runPopupCommand(const QString& command, const QString& nick, in
     m_inEvent = false;
 }
 
-void MainWindow::loadScriptFile(const QString& path) {
+void MainWindow::loadScriptFile(const QString& path, bool fireLoad) {
     if (!m_msl) return;
     QFileInfo info(path);
     // A script's own folder becomes the base for its relative file paths (mIRC $mircdir).
@@ -965,6 +1061,13 @@ void MainWindow::loadScriptFile(const QString& path) {
         if (!m_scriptFiles.contains(file)) m_scriptFiles << file;
     }
     rebuildScriptMenus();  // pick up any `menu menubar` definitions
+    saveScriptList();      // remember it across restarts
+    // `on LOAD` fires only on an interactive load (never on a restart reload), so
+    // one-time setup in it doesn't reset the user's config each launch.
+    if (fireLoad) {
+        lurker::msl::Scope sc;
+        m_msl->raiseEvent("load", std::string(), sc);
+    }
     onStatusText(tr("Loaded %1 file(s) — %2").arg(toLoad.size()).arg(scriptSummary()));
 }
 
@@ -989,7 +1092,7 @@ void MainWindow::openScriptEditor() {
     ensureSectionScripts();
     auto* ed = new ScriptEditor(
         this, [this] { return m_scriptFiles; }, [this] { reloadScripts(); }, [this] { return scriptSummary(); },
-        [this](const QString& path) { loadScriptFile(path); },
+        [this](const QString& path) { loadScriptFile(path, /*fireLoad=*/true); },
         [this]() -> QString {
             if (!m_msl) return QString();
             QString out;
@@ -1294,20 +1397,52 @@ void MainWindow::noteMessage(Buffer* buffer, long long id) {
 }
 
 void MainWindow::arrangeWindows(bool tile) {
-    // Tile/Cascade only arrange visible, non-minimized subwindows — so first show
-    // every buffer and restore it to normal, then let QMdiArea lay them out.
+    // Tile/Cascade only the windows the user has actually opened (visible ones) —
+    // never force-show all of the (possibly dozens of) channel buffers — and lay
+    // them out uniformly ourselves so every window is the same size.
     m_windowsMaximized = false;
-    for (auto& b : m_buffers) {
-        if (!b.sub) continue;
-        if (!b.sub->isVisible()) b.sub->show();
-        if (b.sub->isMinimized() || b.sub->isMaximized()) b.sub->showNormal();
+    m_tiled = tile;
+    QList<QMdiSubWindow*> subs;
+    for (QMdiSubWindow* s : m_mdi->subWindowList()) {
+        if (!s->isVisible()) continue;
+        if (s->isMinimized() || s->isMaximized()) s->showNormal();
+        subs << s;
     }
-    if (tile) m_mdi->tileSubWindows();
-    else m_mdi->cascadeSubWindows();
+    if (subs.isEmpty()) return;
+    const QSize area = m_mdi->viewport()->size();
+
+    if (tile) {
+        const int n = subs.size();
+        int cols = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(n))));
+        int rows = (n + cols - 1) / cols;
+        const int w = area.width() / cols;
+        const int h = area.height() / rows;
+        for (int i = 0; i < n; ++i) {
+            const int r = i / cols, c = i % cols;
+            subs[i]->setGeometry(c * w, r * h, w, h);
+        }
+    } else {
+        // Uniform cascade: same size, offset diagonally, wrapping at the edge.
+        const QSize win(qMax(380, area.width() * 3 / 5), qMax(260, area.height() * 3 / 5));
+        const int step = 26;
+        int x = 0, y = 0;
+        for (QMdiSubWindow* s : subs) {
+            s->resize(win);
+            s->move(x, y);
+            x += step;
+            y += step;
+            if (x + win.width() > area.width() || y + win.height() > area.height()) {
+                x = 0;
+                y = 0;
+            }
+        }
+        subs.last()->raise();
+    }
 }
 
 void MainWindow::maximizeWindows() {
     m_windowsMaximized = true;
+    m_tiled = false;
     if (QMdiSubWindow* active = m_mdi->activeSubWindow()) {
         active->showMaximized();
     } else if (!m_buffers.isEmpty()) {
@@ -1317,6 +1452,13 @@ void MainWindow::maximizeWindows() {
                 break;
             }
     }
+}
+
+void MainWindow::resizeEvent(QResizeEvent* event) {
+    QMainWindow::resizeEvent(event);
+    // Re-tile so the grid tracks the window size (maximized windows refit on their
+    // own; cascaded/free ones keep their positions, like mIRC).
+    if (m_tiled && !m_closing) arrangeWindows(true);
 }
 
 void MainWindow::activateBuffer(Buffer* buffer) {

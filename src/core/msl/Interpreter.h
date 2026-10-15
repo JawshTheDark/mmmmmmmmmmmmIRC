@@ -33,6 +33,7 @@ struct Scope {
     std::map<std::string, std::string, CiLess> locals;
     std::string event;                            // $event (the active on-event name)
     std::string prop;                             // $prop when an alias is called as an identifier
+    bool isIdentCall = false;                      // $isid: alias invoked as $name(...) vs a command
     // Event context ($nick, $chan, ... during an on-event).
     std::string nick;
     std::string newnick;  // $newnick during on NICK
@@ -140,6 +141,8 @@ public:
     int regmlCount(const std::string& name) const;
 
     int lastSockBytes = 0;  // $sockbr: bytes from the most recent /sockread
+    std::string ifMatch;    // $ifmatch: last matched/read text ($read, if-wildcard)
+    int readN = 0;          // $readn: line number from the most recent $read match
 
     std::string getVariable(const std::string& name, const Scope& scope) const;
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);

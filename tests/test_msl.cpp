@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "check.h"
+#include "core/msl/Dialog.h"
 #include "core/msl/Interpreter.h"
 
 using namespace lurker::msl;
@@ -624,6 +625,90 @@ int main() {
         Scope s;
         in.execute("recx", s);
         CHECK(!host.errors.empty());
+    }
+
+    // Dialog table parsing: caption-less controls (list/combo) put the id first,
+    // captioned controls (button/edit) put a "caption" first. (Regression: a
+    // `list 1, x y w h` was mis-parsed as id=x with no geometry.)
+    {
+        const std::string body =
+            "  title \"T\"\n"
+            "  size -1 -1 125 152\n"
+            "  list 1, 4 8 116 36, size\n"
+            "  button \"Add\", 3, 5 44 19 10\n"
+            "  edit \"\", 8, 4 66 115 10, autohs\n"
+            "  combo 10, 2 2 50 80, drop\n";
+        DialogTable t = parseDialogTable("blist", body);
+        const DialogControl* list = t.findId(1);
+        CHECK(list != nullptr);
+        CHECK_EQ(list->type, std::string("list"));
+        CHECK_EQ(list->x, 4);
+        CHECK_EQ(list->w, 116);
+        CHECK_EQ(list->h, 36);
+        const DialogControl* btn = t.findId(3);
+        CHECK(btn != nullptr);
+        CHECK_EQ(btn->caption, std::string("Add"));
+        CHECK_EQ(btn->x, 5);
+        const DialogControl* edit = t.findId(8);
+        CHECK(edit != nullptr);
+        CHECK_EQ(edit->caption, std::string(""));
+        const DialogControl* combo = t.findId(10);
+        CHECK(combo != nullptr);
+        CHECK_EQ(combo->w, 50);
+    }
+
+    // $read line access + $ifmatch, and the s/w scan switches.
+    {
+        host.files["/scripts/bl.txt"] = "spambot99 Flooding\ntroll!*@*.x Harass\nbaduser Ads\n";
+        Scope s;
+        CHECK_EQ(in.evaluate("$read(/scripts/bl.txt,2)", s), std::string("troll!*@*.x Harass"));
+        CHECK_EQ(in.evaluate("$ifmatch", s), std::string("troll!*@*.x Harass"));
+        CHECK_EQ(in.evaluate("$readn", s), std::string("2"));
+        // s: line beginning with the match text.
+        CHECK_EQ(in.evaluate("$read(/scripts/bl.txt,s,baduser)", s), std::string("baduser Ads"));
+        CHECK_EQ(in.evaluate("$gettok($ifmatch,1,32)", s), std::string("baduser"));
+        // no match → empty.
+        CHECK_EQ(in.evaluate("$read(/scripts/bl.txt,s,nobody)", s), std::string(""));
+    }
+
+    // Dotted variable names (%blist.msg is one variable, not %blist + ".msg").
+    {
+        Scope s;
+        in.execute("set %blist.msg Hello there", s);
+        CHECK_EQ(in.evaluate("%blist.msg", s), std::string("Hello there"));
+        CHECK_EQ(in.evaluate("value is %blist.msg.", s), std::string("value is Hello there."));  // trailing dot kept as text
+    }
+
+    // $scriptdir<path> / $mircdir<path> shorthand (the trailing .ext is folded back).
+    CHECK_EQ(eval(in, "$scriptdirmdx.dll"), std::string("/scripts/mdx.dll"));
+    CHECK_EQ(eval(in, "$scriptdirviews.mdx"), std::string("/scripts/views.mdx"));
+    CHECK_EQ(eval(in, "$mircdirlogs.txt"), std::string("/app/logs.txt"));
+
+    // Hash tables: /hadd then /hsave and /hload round-trips through the (fake) FS.
+    {
+        Scope s;
+        in.execute("hmake bl 10", s);
+        in.execute("hadd bl punish kb", s);
+        in.execute("hadd bl temptime 360", s);
+        in.execute("hsave -o bl /scripts/bl.hsh", s);
+        in.execute("hfree bl", s);
+        CHECK_EQ(in.evaluate("$hget(bl,punish)", s), std::string(""));  // freed
+        in.execute("hload bl /scripts/bl.hsh", s);
+        CHECK_EQ(in.evaluate("$hget(bl,punish)", s), std::string("kb"));
+        CHECK_EQ(in.evaluate("$hget(bl,temptime)", s), std::string("360"));
+    }
+
+    // $shortfn passes the path through; $lock is $false; $isid distinguishes
+    // $alias(...) from a command call.
+    CHECK_EQ(eval(in, "$shortfn(/a/b/c.dll)"), std::string("/a/b/c.dll"));
+    CHECK_EQ(eval(in, "$lock(dll)"), std::string("$false"));
+    {
+        host.echoed.clear();
+        in.defineAlias("amid", "if ($isid) return ID | echo CMD");
+        Scope s;
+        CHECK_EQ(in.evaluate("$amid", s), std::string("ID"));
+        in.execute("amid", s);
+        CHECK_EQ(host.echoed.back(), std::string("CMD"));
     }
 
     return check::summary();

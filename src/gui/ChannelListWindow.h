@@ -2,16 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// The Channels List window (/list): a sortable table of channel / users / topic
-// filled from RPL_LIST (322) replies, with a filter box. Double-click (or the
-// Join button) joins a channel. mIRC shows /list here, not in the status window.
+// The Channels List window (/list): a sortable Channel / Users / Topic table
+// filled live from RPL_LIST (322) replies, with a filter box. It uses a
+// model/view with a sort-filter proxy so rows appear and re-sort as they stream
+// in (fast for thousands of channels). Double-click / Join joins a channel.
 #pragma once
 
 #include <QWidget>
 
 class QLabel;
 class QLineEdit;
-class QTableWidget;
+class QTableView;
+class QStandardItemModel;
+class QSortFilterProxyModel;
 
 namespace lurker::gui {
 
@@ -20,20 +23,22 @@ class ChannelListWindow : public QWidget {
 public:
     explicit ChannelListWindow(QWidget* parent = nullptr);
 
-    void listBegin();                                                   // 321: clear + mark loading
-    void listAdd(const QString& channel, int users, const QString& topic);  // 322
-    void listEnd();                                                     // 323: final count
+    void listBegin();                                                       // 321: clear + mark loading
+    void listAdd(const QString& channel, int users, const QString& topic);  // 322 (live)
+    void listEnd();                                                         // 323: final count
 
 signals:
     void joinRequested(const QString& channel);
 
 private:
-    void applyFilter();
+    void joinCurrent();
+    void updateStatus();
 
     QLineEdit* m_filter = nullptr;
-    QTableWidget* m_table = nullptr;
+    QTableView* m_view = nullptr;
+    QStandardItemModel* m_model = nullptr;
+    QSortFilterProxyModel* m_proxy = nullptr;
     QLabel* m_status = nullptr;
-    int m_count = 0;
     bool m_loading = false;
 };
 

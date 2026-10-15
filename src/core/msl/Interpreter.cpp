@@ -181,6 +181,20 @@ std::string Interpreter::evalParam(std::string_view token, Scope& scope) const {
 
 std::string Interpreter::callIdent(const std::string& name, const std::vector<std::string>& args,
                                    const std::string& prop, Scope& scope) {
+    // mIRC shorthand: a path can be appended directly after $scriptdir / $mircdir
+    // (e.g. $scriptdirmdx.dll → <scriptdir>mdx.dll). The trailing ".ext" is lexed
+    // as a .prop, so fold it back onto the filename. Only the suffixed forms are
+    // handled here; the bare $scriptdir / $mircdir idents dispatch normally.
+    if (args.empty()) {
+        const std::string low = toLowerAscii(name);
+        auto expand = [&](std::size_t pfxLen, const std::string& base) {
+            std::string full = base + name.substr(pfxLen);
+            if (!prop.empty()) full += "." + prop;
+            return full;
+        };
+        if (low.size() > 9 && low.compare(0, 9, "scriptdir") == 0) return expand(9, m_host.scriptDir());
+        if (low.size() > 7 && low.compare(0, 7, "mircdir") == 0) return expand(7, m_host.appDir());
+    }
     const auto it = m_idents.find(name);
     if (it == m_idents.end()) {
         // Custom identifier: $name resolves to an alias of that name, with its
@@ -195,6 +209,7 @@ std::string Interpreter::callIdent(const std::string& name, const std::vector<st
             Scope aliasScope;
             aliasScope.params = args;
             aliasScope.prop = prop;
+            aliasScope.isIdentCall = true;  // $isid is true inside $alias(...)
             execute(alias->second, aliasScope);
             --m_callDepth;
             return aliasScope.returnValue;
@@ -220,7 +235,10 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
         const char c = text[i];
         if (c == '%' && i + 1 < n && identChar(text[i + 1])) {
             std::size_t j = i + 1;
-            while (j < n && identChar(text[j])) ++j;
+            // mIRC variable names may contain '.' (e.g. %blist.msg), but a trailing
+            // dot is sentence punctuation, not part of the name — don't swallow it.
+            while (j < n && (identChar(text[j]) || text[j] == '.')) ++j;
+            while (j > i + 2 && text[j - 1] == '.') --j;
             out += getVariable(std::string(text.substr(i + 1, j - i - 1)), scope);
             i = j;
             continue;
@@ -1038,7 +1056,7 @@ const DialogTable* Interpreter::dialogTable(const std::string& name) const {
 }
 
 void Interpreter::raiseDialogEvent(const std::string& dialogName, const std::string& devent, int id) {
-    const auto it = m_events.find("dialog");
+        const auto it = m_events.find("dialog");
     if (it == m_events.end()) return;
     const std::string idStr = std::to_string(id);
     for (const EventHandler& h : it->second) {

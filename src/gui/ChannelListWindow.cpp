@@ -9,11 +9,42 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QTableWidget>
-#include <QTableWidgetItem>
+#include <QSortFilterProxyModel>
+#include <QStandardItemModel>
+#include <QTableView>
 #include <QVBoxLayout>
 
 namespace lurker::gui {
+
+namespace {
+// Filters on channel name OR topic, and sorts the Users column numerically.
+// Rows stream in live, so the model/view keeps the sort current as /list replies
+// arrive — far cheaper than re-sorting a QTableWidget on every insert.
+class ChannelProxy : public QSortFilterProxyModel {
+public:
+    explicit ChannelProxy(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+    void setNeedle(const QString& n) {
+        m_needle = n.trimmed();
+        invalidate();  // re-filter (version-safe across Qt 6.8+; not the deprecated invalidateFilter)
+    }
+
+protected:
+    bool filterAcceptsRow(int row, const QModelIndex& parent) const override {
+        if (m_needle.isEmpty()) return true;
+        const QString name = sourceModel()->index(row, 0, parent).data().toString();
+        const QString topic = sourceModel()->index(row, 2, parent).data().toString();
+        return name.contains(m_needle, Qt::CaseInsensitive) || topic.contains(m_needle, Qt::CaseInsensitive);
+    }
+    bool lessThan(const QModelIndex& a, const QModelIndex& b) const override {
+        if (a.column() == 1)  // Users: numeric
+            return a.data(Qt::EditRole).toInt() < b.data(Qt::EditRole).toInt();
+        return QSortFilterProxyModel::lessThan(a, b);
+    }
+
+private:
+    QString m_needle;
+};
+}  // namespace
 
 ChannelListWindow::ChannelListWindow(QWidget* parent) : QWidget(parent) {
     auto* outer = new QVBoxLayout(this);
@@ -27,76 +58,74 @@ ChannelListWindow::ChannelListWindow(QWidget* parent) : QWidget(parent) {
     top->addWidget(joinBtn);
     outer->addLayout(top);
 
-    m_table = new QTableWidget(0, 3, this);
-    m_table->setHorizontalHeaderLabels({tr("Channel"), tr("Users"), tr("Topic")});
-    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setSortingEnabled(true);
-    m_table->verticalHeader()->setVisible(false);
-    m_table->horizontalHeader()->setStretchLastSection(true);
-    m_table->setColumnWidth(0, 200);
-    m_table->setColumnWidth(1, 70);
-    outer->addWidget(m_table, 1);
+    m_model = new QStandardItemModel(0, 3, this);
+    m_model->setHorizontalHeaderLabels({tr("Channel"), tr("Users"), tr("Topic")});
+    auto* proxy = new ChannelProxy(this);
+    proxy->setSourceModel(m_model);
+    proxy->setDynamicSortFilter(true);  // re-sort/re-filter as rows arrive
+    m_proxy = proxy;
+
+    m_view = new QTableView(this);
+    m_view->setModel(m_proxy);
+    m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_view->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_view->setSortingEnabled(true);
+    m_view->sortByColumn(1, Qt::DescendingOrder);  // busiest first, like mIRC
+    m_view->verticalHeader()->setVisible(false);
+    m_view->horizontalHeader()->setStretchLastSection(true);
+    m_view->setColumnWidth(0, 200);
+    m_view->setColumnWidth(1, 70);
+    outer->addWidget(m_view, 1);
 
     m_status = new QLabel(tr("Use /list or the toolbar to fetch channels."), this);
     outer->addWidget(m_status);
 
-    auto join = [this] {
-        const int row = m_table->currentRow();
-        if (row < 0) return;
-        if (auto* it = m_table->item(row, 0)) emit joinRequested(it->text());
-    };
-    connect(joinBtn, &QPushButton::clicked, this, join);
-    connect(m_table, &QTableWidget::cellDoubleClicked, this, [join](int, int) { join(); });
-    connect(m_filter, &QLineEdit::textChanged, this, &ChannelListWindow::applyFilter);
+    connect(joinBtn, &QPushButton::clicked, this, &ChannelListWindow::joinCurrent);
+    connect(m_view, &QTableView::doubleClicked, this, [this](const QModelIndex&) { joinCurrent(); });
+    connect(m_filter, &QLineEdit::textChanged, this, [this](const QString& t) {
+        static_cast<ChannelProxy*>(m_proxy)->setNeedle(t);
+        updateStatus();
+    });
+}
+
+void ChannelListWindow::joinCurrent() {
+    const QModelIndex idx = m_view->currentIndex();
+    if (!idx.isValid()) return;
+    const QString chan = m_proxy->index(idx.row(), 0).data().toString();
+    if (!chan.isEmpty()) emit joinRequested(chan);
 }
 
 void ChannelListWindow::listBegin() {
-    m_table->setSortingEnabled(false);
-    m_table->setRowCount(0);
-    m_count = 0;
+    m_model->removeRows(0, m_model->rowCount());
     m_loading = true;
     m_status->setText(tr("Loading channels..."));
 }
 
 void ChannelListWindow::listAdd(const QString& channel, int users, const QString& topic) {
-    if (!m_loading) listBegin();  // some servers omit 321
-    const int row = m_table->rowCount();
-    m_table->insertRow(row);
-    m_table->setItem(row, 0, new QTableWidgetItem(channel));
-    auto* u = new QTableWidgetItem;
-    u->setData(Qt::DisplayRole, users);  // numeric sort
+    if (!m_loading) listBegin();  // some servers omit RPL_LISTSTART (321)
+    auto* name = new QStandardItem(channel);
+    auto* u = new QStandardItem;
+    u->setData(users, Qt::EditRole);  // int → numeric sort + numeric display
     u->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_table->setItem(row, 1, u);
-    m_table->setItem(row, 2, new QTableWidgetItem(topic));
-    ++m_count;
-    if ((m_count % 200) == 0) m_status->setText(tr("Loading channels... %1").arg(m_count));
+    auto* t = new QStandardItem(topic);
+    m_model->appendRow({name, u, t});
+    if ((m_model->rowCount() % 200) == 0) updateStatus();
 }
 
 void ChannelListWindow::listEnd() {
     m_loading = false;
-    m_table->setSortingEnabled(true);
-    m_table->sortItems(1, Qt::DescendingOrder);  // busiest first, like mIRC
-    m_status->setText(tr("%1 channels").arg(m_count));
-    applyFilter();
+    updateStatus();
 }
 
-void ChannelListWindow::applyFilter() {
-    const QString needle = m_filter->text().trimmed();
-    int shown = 0;
-    for (int r = 0; r < m_table->rowCount(); ++r) {
-        bool match = needle.isEmpty();
-        if (!match) {
-            const QString name = m_table->item(r, 0) ? m_table->item(r, 0)->text() : QString();
-            const QString topic = m_table->item(r, 2) ? m_table->item(r, 2)->text() : QString();
-            match = name.contains(needle, Qt::CaseInsensitive) || topic.contains(needle, Qt::CaseInsensitive);
-        }
-        m_table->setRowHidden(r, !match);
-        if (match) ++shown;
+void ChannelListWindow::updateStatus() {
+    const int total = m_model->rowCount();
+    const int shown = m_proxy->rowCount();
+    if (!m_filter->text().trimmed().isEmpty()) {
+        m_status->setText(tr("%1 of %2 channels").arg(shown).arg(total));
+    } else {
+        m_status->setText(m_loading ? tr("Loading channels... %1").arg(total) : tr("%1 channels").arg(total));
     }
-    if (!needle.isEmpty()) m_status->setText(tr("%1 of %2 channels").arg(shown).arg(m_count));
-    else if (!m_loading) m_status->setText(tr("%1 channels").arg(m_count));
 }
 
 }  // namespace lurker::gui

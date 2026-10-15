@@ -141,6 +141,14 @@ public:
         (void)prop;
         return {};
     }
+    // /dll and $dll: call a DLL export. We don't load native DLLs; the GUI host
+    // emulates known addons (mdx.dll) so their scripts run. Default: no-op.
+    virtual std::string dllCall(const std::string& file, const std::string& proc, const std::string& data) {
+        (void)file;
+        (void)proc;
+        (void)data;
+        return {};
+    }
 
     // Filesystem (/write, $read, INI, $exists, ...). Defaults do nothing so a
     // non-GUI host has no disk access; the GUI maps these to QFile/QDir.
