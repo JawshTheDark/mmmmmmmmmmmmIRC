@@ -337,6 +337,41 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         addCategory(displayNode, tr("Colors"), page);
     }
 
+    // Event Colours — colour every kind of line to taste (empty = theme default).
+    addCategory(displayNode, tr("Event Colours"),
+                buildPage(tr("Event Colours"), tr("A colour for each kind of line; leave empty for the theme default."),
+                          [&](QFormLayout* f) {
+                              auto row = [&](const QString& label, const char* name) {
+                                  f->addRow(label, boundColorField(QStringLiteral("colors/event/%1").arg(
+                                                       QString::fromLatin1(name))));
+                              };
+                              row(tr("Timestamp"), "timestamp");
+                              row(tr("Message text"), "message");
+                              row(tr("Joins"), "join");
+                              row(tr("Parts"), "part");
+                              row(tr("Quits"), "quit");
+                              row(tr("Nick changes"), "nick");
+                              row(tr("Mode changes"), "mode");
+                              row(tr("Kicks"), "kick");
+                              row(tr("Topic changes"), "topic");
+                              row(tr("User notices"), "notice");
+                              row(tr("Server notices (snotice)"), "snotice");
+                          }));
+
+    // Backgrounds — colour/image per area (message area, nicklist, buffer list).
+    addCategory(displayNode, tr("Backgrounds"),
+                buildPage(tr("Backgrounds"), tr("Background colour and image per area."), [&](QFormLayout* f) {
+                    const QString img = tr("Images (*.png *.jpg *.jpeg *.bmp *.gif)");
+                    f->addRow(tr("Message area colour"), boundColorField(QStringLiteral("display/bgColor")));
+                    f->addRow(tr("Message area image"), boundFileField(QStringLiteral("display/bgImage"), img));
+                    f->addRow(tr("Nicklist colour"), boundColorField(QStringLiteral("display/nicklistBgColor")));
+                    f->addRow(tr("Nicklist image"), boundFileField(QStringLiteral("display/nicklistBgImage"), img));
+                    f->addRow(tr("Nicklist text"), boundColorField(QStringLiteral("display/nicklistColor")));
+                    f->addRow(tr("Buffer list colour"), boundColorField(QStringLiteral("display/treebarBgColor")));
+                    f->addRow(tr("Buffer list image"), boundFileField(QStringLiteral("display/treebarBgImage"), img));
+                    f->addRow(tr("Buffer list text"), boundColorField(QStringLiteral("display/treebarColor")));
+                }));
+
     // ---- Sound ---------------------------------------------------------
     auto* soundTop = buildPage(tr("Sound"), tr("Event sounds and requests."), [&](QFormLayout* f) {
         f->addRow(boundCheck(tr("Enable event sounds"), QStringLiteral("sound/enabled"), false));

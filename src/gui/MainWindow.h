@@ -116,6 +116,7 @@ private:
     void loadVariables();        // restore %globals from config
     void setupToolbar();         // the top mIRC-style icon toolbar
     void updateMdiBackground();  // tint the MDI workspace to the active theme
+    void applyTreebarStyle();    // user background colour/image + text colour for the networks tree
     Buffer* activeBuffer();
     void echoToWindow(int net, const QString& window, const QString& text);
     void dispatchScriptEvent(const lurker::IrcEvent& event);

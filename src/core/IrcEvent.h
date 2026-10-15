@@ -8,6 +8,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "core/IrcMessage.h"
 
@@ -41,6 +42,22 @@ enum class IrcEventType {
     Unknown,
 };
 
+// IRCv3 reaction standing on a line (+draft/react): a nick reacted with `value`.
+struct Reaction {
+    std::string nick;
+    std::string value;  // emoji or short text
+    bool self = false;  // this reaction is ours
+};
+
+// IRCv3 reply (+reply): the parent line this message answers.
+struct ReplyParent {
+    bool valid = false;        // false when this message isn't a reply (or the parent is gone)
+    long long id = 0;          // the parent line's id (jump target)
+    std::string nick;
+    std::string text;          // the parent's text, clipped
+    bool self = false;         // the parent is our own line
+};
+
 struct IrcEvent {
     IrcEventType type = IrcEventType::Unknown;
     int networkId = -1;       // which network (Lurker gives several at once); -1 = single/unknown
@@ -57,6 +74,8 @@ struct IrcEvent {
     bool self = false;       // the source is this connection's user
     bool highlight = false;  // this line mentions you (Lurker's `matched`)
     int numeric = -1;    // the numeric when the line was one, else -1
+    std::vector<Reaction> reactions;  // IRCv3 reactions standing on this line
+    ReplyParent replyParent;          // set when this message is a reply
     IrcMessage raw;      // the parsed line as received (empty for synthetic events)
 };
 

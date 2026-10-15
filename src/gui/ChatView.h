@@ -38,7 +38,10 @@ public:
     // `utf8Text` may carry IRC formatting codes. `selfEcho` tints your own lines.
     void addMessage(const QString& timestamp, const QString& nick, const QByteArray& utf8Text,
                     bool action = false, bool selfEcho = false, bool highlight = false);
-    void addSystemLine(const QByteArray& utf8Text);
+    // System/event lines (join/part/quit/...). `kind` selects the configurable
+    // event colour (Options ▸ Display ▸ Event Colours).
+    enum class SystemKind { Generic, Join, Part, Quit, Nick, Mode, Kick, Topic };
+    void addSystemLine(const QByteArray& utf8Text, SystemKind kind = SystemKind::Generic);
     // A notice rendered mIRC-style as "-from- text". `server` marks a server
     // notice (SNOTICE) so it's coloured distinctly from a user/service notice.
     void addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server);

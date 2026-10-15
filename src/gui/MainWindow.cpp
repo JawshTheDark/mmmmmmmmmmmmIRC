@@ -289,6 +289,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     loadPersistedScripts();  // reload the scripts loaded last session
     loadVariables();         // restore saved %globals
     m_ignoreMasks = AddressBookDialog::ignoreList();  // apply the saved ignore list
+    applyTreebarStyle();                              // apply any saved networks-tree background
     // mIRC fires `on START` once the client is up and all scripts are loaded.
     {
         lurker::msl::Scope sc;
@@ -352,6 +353,23 @@ void MainWindow::updateMdiBackground() {
     // QMdiArea ignores stylesheet backgrounds, so tint it from the palette: a
     // touch darker than the window gives the classic "workspace" recess.
     m_mdi->setBackground(QBrush(palette().color(QPalette::Window).darker(130)));
+}
+
+void MainWindow::applyTreebarStyle() {
+    if (!m_treebar) return;
+    QSettings s;
+    const QString bg = s.value(QStringLiteral("display/treebarBgColor")).toString();
+    const QString img = s.value(QStringLiteral("display/treebarBgImage")).toString();
+    const QString fg = s.value(QStringLiteral("display/treebarColor")).toString();
+    QString css;
+    if (!bg.isEmpty() || !img.isEmpty() || !fg.isEmpty()) {
+        css = QStringLiteral("QTreeWidget{");
+        if (!bg.isEmpty()) css += QStringLiteral("background-color:%1;").arg(bg);
+        if (!img.isEmpty()) css += QStringLiteral("background-image:url(\"%1\");").arg(img);
+        if (!fg.isEmpty()) css += QStringLiteral("color:%1;").arg(fg);
+        css += QStringLiteral("}");
+    }
+    m_treebar->setStyleSheet(css);
 }
 
 void MainWindow::changeEvent(QEvent* event) {
@@ -576,6 +594,7 @@ void MainWindow::showOptions(const QString& page) {
     if (dlg.exec() == QDialog::Accepted) {
         refreshColorSettings();  // pick up Colors-page edits for new messages
         configurePreviews();     // the inline-previews toggle may have changed
+        applyTreebarStyle();     // networks-tree background/colour
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();
@@ -2185,8 +2204,10 @@ void MainWindow::onEvent(const IrcEvent& event) {
             Buffer* buf = routeTarget(net, target, ChatView::Kind::Channel);
             if (buf) {
                 // Always announce our own join; others only when enabled.
-                if (event.self) buf->view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8());
-                else if (showJoins) buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8());
+                if (event.self)
+                    buf->view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8(), ChatView::SystemKind::Join);
+                else if (showJoins)
+                    buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8(), ChatView::SystemKind::Join);
             }
             break;
         }
@@ -2194,30 +2215,35 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (!showJoins) break;
             if (Buffer* b = findBuffer(keyFor(net, target)))
                 b->view->addSystemLine(tr("%1 left%2").arg(nick, text.isEmpty() ? QString() :
-                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
+                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8(),
+                                       ChatView::SystemKind::Part);
             break;
         case IrcEventType::Quit:
             if (!showJoins) break;
             if (Buffer* b = findBuffer(keyFor(net, target)))
                 b->view->addSystemLine(tr("%1 quit%2").arg(nick, text.isEmpty() ? QString() :
-                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8());
+                                           QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8(),
+                                       ChatView::SystemKind::Quit);
             break;
         case IrcEventType::NickChange:
             if (!target.isEmpty())
                 if (Buffer* b = findBuffer(keyFor(net, target)))
-                    b->view->addSystemLine(tr("%1 is now known as %2").arg(nick, QString::fromStdString(event.arg)).toUtf8());
+                    b->view->addSystemLine(tr("%1 is now known as %2").arg(nick, QString::fromStdString(event.arg)).toUtf8(),
+                                           ChatView::SystemKind::Nick);
             break;
         case IrcEventType::Kick:
             if (Buffer* b = findBuffer(keyFor(net, target)))
-                b->view->addSystemLine(tr("%1 was kicked by %2").arg(QString::fromStdString(event.arg), nick).toUtf8());
+                b->view->addSystemLine(tr("%1 was kicked by %2").arg(QString::fromStdString(event.arg), nick).toUtf8(),
+                                       ChatView::SystemKind::Kick);
             break;
         case IrcEventType::Mode:
             if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
-                b->view->addSystemLine(tr("%1 set mode %2").arg(nick, QString::fromUtf8(text)).toUtf8());
+                b->view->addSystemLine(tr("%1 set mode %2").arg(nick, QString::fromUtf8(text)).toUtf8(),
+                                       ChatView::SystemKind::Mode);
             break;
         case IrcEventType::Topic:
             if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
-                b->view->addSystemLine(tr("%1 changed the topic").arg(nick).toUtf8());
+                b->view->addSystemLine(tr("%1 changed the topic").arg(nick).toUtf8(), ChatView::SystemKind::Topic);
             break;
         case IrcEventType::Invite:
             if (Buffer* s = findBuffer(serverKeyFor(net)))

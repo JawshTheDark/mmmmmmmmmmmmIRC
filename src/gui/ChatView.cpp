@@ -53,6 +53,16 @@ QFont configuredChatFont(const QString& scope = QString()) {
     return f;
 }
 
+// A user-configurable colour for an event element (timestamp, join, notice, …):
+// `colors/event/<name>`, with a per-channel override, falling back to `def` when
+// unset. Lets users colour every kind of line to taste.
+QColor eventColor(const QString& scope, const QString& name, const QColor& def) {
+    const QString key = QStringLiteral("colors/event/") + name;
+    const QString v = scoped(scope, key, key, QString()).toString();
+    const QColor c(v);
+    return (v.isEmpty() || !c.isValid()) ? def : c;
+}
+
 // A stable per-nick colour (hash → hue), tuned for readability on the current
 // theme's message background. mIRC colours nicks this way.
 QColor hashNickColor(const QString& nick, const QPalette& pal) {
@@ -212,6 +222,28 @@ void ChatView::applyDisplaySettings() {
         css += QStringLiteral("}");
     }
     m_messages->setStyleSheet(css);
+
+    // Nicklist background (colour and/or image) and text colour, global or per-channel.
+    if (m_nicklist) {
+        const QString nbColor =
+            scoped(m_settingsScope, QStringLiteral("nicklistBgColor"), QStringLiteral("display/nicklistBgColor"),
+                   QString()).toString();
+        const QString nbImage =
+            scoped(m_settingsScope, QStringLiteral("nicklistBgImage"), QStringLiteral("display/nicklistBgImage"),
+                   QString()).toString();
+        const QString ntColor =
+            scoped(m_settingsScope, QStringLiteral("nicklistColor"), QStringLiteral("display/nicklistColor"),
+                   QString()).toString();
+        QString ncss;
+        if (!nbColor.isEmpty() || !nbImage.isEmpty() || !ntColor.isEmpty()) {
+            ncss = QStringLiteral("QListWidget{");
+            if (!nbColor.isEmpty()) ncss += QStringLiteral("background-color:%1;").arg(nbColor);
+            if (!nbImage.isEmpty()) ncss += QStringLiteral("background-image:url(\"%1\");").arg(nbImage);
+            if (!ntColor.isEmpty()) ncss += QStringLiteral("color:%1;").arg(ntColor);
+            ncss += QStringLiteral("}");
+        }
+        m_nicklist->setStyleSheet(ncss);
+    }
 }
 
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {
@@ -320,7 +352,8 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
     const QPalette pal = m_messages->palette();
 
     QTextCharFormat meta;
-    meta.setForeground(pal.color(QPalette::Disabled, QPalette::Text));
+    meta.setForeground(eventColor(m_settingsScope, QStringLiteral("timestamp"),
+                                  pal.color(QPalette::Disabled, QPalette::Text)));
     if (!timestamp.isEmpty()) cursor.insertText(QStringLiteral("%1 ").arg(timestamp), meta);
 
     const bool colorNicks = QSettings().value(QStringLiteral("display/colorNicks"), true).toBool();
@@ -345,10 +378,12 @@ void ChatView::addMessage(const QString& timestamp, const QString& nick, const Q
 
     if (QSettings().value(QStringLiteral("display/stripColors"), false).toBool()) {
         QTextCharFormat plain;
-        plain.setForeground(pal.color(QPalette::Text));
+        plain.setForeground(eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)));
         cursor.insertText(stripFormattingQt(utf8Text), plain);
     } else {
-        insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
+        insertFormatted(cursor, utf8Text,
+                        {eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)),
+                         pal.color(QPalette::Base)});
     }
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
     requestPreviews(stripFormattingQt(utf8Text));
@@ -362,37 +397,53 @@ void ChatView::addNotice(const QString& timestamp, const QString& from, const QB
     const QPalette pal = m_messages->palette();
 
     QTextCharFormat meta;
-    meta.setForeground(pal.color(QPalette::Disabled, QPalette::Text));
+    meta.setForeground(eventColor(m_settingsScope, QStringLiteral("timestamp"),
+                                  pal.color(QPalette::Disabled, QPalette::Text)));
     if (!timestamp.isEmpty()) cursor.insertText(QStringLiteral("%1 ").arg(timestamp), meta);
 
     // Server notices get a distinct colour and an "snotice" tag so they don't
     // read as a message from a user; user/service notices use the link colour.
     const bool dark = pal.color(QPalette::Base).lightness() < 128;
+    const QColor snoticeDef = dark ? QColor(0x7F, 0xC9, 0xC9) : QColor(0x1F, 0x7A, 0x7A);
     QTextCharFormat fromFmt;
     fromFmt.setFontWeight(QFont::Bold);
-    fromFmt.setForeground(server ? (dark ? QColor(0x7F, 0xC9, 0xC9) : QColor(0x1F, 0x7A, 0x7A))
-                                 : pal.color(QPalette::Link));
+    fromFmt.setForeground(server ? eventColor(m_settingsScope, QStringLiteral("snotice"), snoticeDef)
+                                 : eventColor(m_settingsScope, QStringLiteral("notice"), pal.color(QPalette::Link)));
     const QString label = server ? QStringLiteral("-%1- (snotice) ").arg(from) : QStringLiteral("-%1- ").arg(from);
     cursor.insertText(label, fromFmt);
 
     if (QSettings().value(QStringLiteral("display/stripColors"), false).toBool()) {
         QTextCharFormat plain;
-        plain.setForeground(pal.color(QPalette::Text));
+        plain.setForeground(eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)));
         cursor.insertText(stripFormattingQt(utf8Text), plain);
     } else {
-        insertFormatted(cursor, utf8Text, {pal.color(QPalette::Text), pal.color(QPalette::Base)});
+        insertFormatted(cursor, utf8Text,
+                        {eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)),
+                         pal.color(QPalette::Base)});
     }
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
     requestPreviews(stripFormattingQt(utf8Text));
 }
 
-void ChatView::addSystemLine(const QByteArray& utf8Text) {
+void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
     QTextCursor cursor(m_messages->document());
     cursor.movePosition(QTextCursor::End);
+    const QColor dim = m_messages->palette().color(QPalette::Disabled, QPalette::Text);
+    QString name;
+    switch (kind) {
+        case SystemKind::Join: name = QStringLiteral("join"); break;
+        case SystemKind::Part: name = QStringLiteral("part"); break;
+        case SystemKind::Quit: name = QStringLiteral("quit"); break;
+        case SystemKind::Nick: name = QStringLiteral("nick"); break;
+        case SystemKind::Mode: name = QStringLiteral("mode"); break;
+        case SystemKind::Kick: name = QStringLiteral("kick"); break;
+        case SystemKind::Topic: name = QStringLiteral("topic"); break;
+        case SystemKind::Generic: break;
+    }
     QTextCharFormat fmt;
-    fmt.setForeground(m_messages->palette().color(QPalette::Disabled, QPalette::Text));
+    fmt.setForeground(name.isEmpty() ? dim : eventColor(m_settingsScope, name, dim));
     cursor.insertText(QStringLiteral("— "), fmt);
     cursor.insertText(QString::fromUtf8(utf8Text), fmt);
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
