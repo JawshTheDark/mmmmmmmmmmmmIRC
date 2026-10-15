@@ -57,6 +57,7 @@
 #include "gui/ScriptSockets.h"
 #include "gui/Theme.h"
 #include "gui/ToolbarIcons.h"
+#include "gui/Updater.h"
 
 namespace lurker::gui {
 
@@ -209,6 +210,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     }
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
     m_helpMenu = helpMenu;
+    helpMenu->addAction(tr("Check for &Updates..."), this, [this] {
+        if (!m_updater) m_updater = new Updater(this);
+        m_updater->checkForUpdates(false);
+    });
     helpMenu->addAction(tr("&About Lurker Desktop..."), this, &MainWindow::showAbout);
 
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
@@ -226,6 +231,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setupScripting();
     ensureSectionScripts();  // load the mIRC-style section files so user aliases persist
     statusBar()->showMessage(tr("Not connected — File ▸ Connect"));
+
+    // Quiet check for a newer release a few seconds after startup (opt-out).
+    if (QSettings().value(QStringLiteral("other/checkUpdates"), true).toBool()) {
+        QTimer::singleShot(4000, this, [this] {
+            if (!m_updater) m_updater = new Updater(this);
+            m_updater->checkForUpdates(true);
+        });
+    }
 }
 
 void MainWindow::setupToolbar() {

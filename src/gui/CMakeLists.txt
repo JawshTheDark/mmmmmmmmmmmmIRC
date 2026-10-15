@@ -19,6 +19,8 @@ qt_add_executable(lurker-desktop
     Theme.cpp
     Theme.h
     ToolbarIcons.h
+    Updater.cpp
+    Updater.h
     PictureWindow.cpp
     PictureWindow.h
     ScriptSockets.cpp

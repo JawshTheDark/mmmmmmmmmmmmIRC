@@ -147,6 +147,7 @@ private:
     bool m_windowsMaximized = true;  // MDI mode: active window fills the workspace (mIRC default)
     QList<QAction*> m_scriptMenuBarActions;  // top-level menus added by `menu menubar`
     class QMenu* m_helpMenu = nullptr;       // script menus insert before this
+    class Updater* m_updater = nullptr;      // in-app GitHub updater
 
     GuiScriptHost m_scriptHost;
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
