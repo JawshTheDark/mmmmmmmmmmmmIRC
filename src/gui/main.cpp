@@ -61,6 +61,47 @@ struct TestChatView : lurker::gui::ChatView {
     using ChatView::ChatView;
     bool deliver(QEvent* e) { return event(e); }
 };
+
+// A no-op backend that announces one network + channel + line, for --multidemo.
+// Two of these use the SAME local network id (1), so the demo shows the
+// MultiplexBackend keeping them apart in the treebar (issue #3).
+class DemoBackend : public lurker::backend::ChatBackend {
+public:
+    DemoBackend(QString net, QString chan) : m_net(std::move(net)), m_chan(std::move(chan)) {}
+    bool isReady() const override { return true; }
+    void sendMessage(int, const QString&, const QString&) override {}
+    void sendAction(int, const QString&, const QString&) override {}
+    void sendNotice(int, const QString&, const QString&) override {}
+    void sendRaw(int, const QString&) override {}
+    void joinChannel(int, const QString&, const QString&) override {}
+    void partChannel(int, const QString&, const QString&) override {}
+    void setTopic(int, const QString&, const QString&) override {}
+    void setAway(int, const QString&) override {}
+    void clearAway(int) override {}
+    void sendCtcp(int, const QString&, const QString&, const QString&) override {}
+    void requestHistory(int, const QString&) override {}
+    void markRead(int, const QString&, qlonglong) override {}
+    void disconnectAll() override {}
+    void start() {
+        lurker::backend::NetworkInfo ni;
+        ni.id = 1;  // both demo backends use id 1 on purpose
+        ni.name = m_net;
+        ni.state = QStringLiteral("connected");
+        ni.nick = QStringLiteral("jawsh");
+        emit networkUpdated(ni);
+        emit bufferOpened(1, m_chan, 0);
+        lurker::IrcEvent ev;
+        ev.type = lurker::IrcEventType::Message;
+        ev.networkId = 1;
+        ev.nick = "neighbour";
+        ev.target = m_chan.toStdString();
+        ev.text = ("hello from " + m_net).toStdString();
+        emit event(ev);
+    }
+
+private:
+    QString m_net, m_chan;
+};
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -110,7 +151,7 @@ int main(int argc, char* argv[]) {
         QObject::connect(&view, &ChatView::shareImage, [&](const QImage&) { gotImage = true; });
 
         QTemporaryFile tmp(QDir::tempPath() + QStringLiteral("/mmirc-XXXXXX.txt"));
-        tmp.open();
+        if (!tmp.open()) return 1;
         tmp.write("hi");
         tmp.flush();
         QMimeData m1;
@@ -199,6 +240,15 @@ int main(int argc, char* argv[]) {
             QTimer::singleShot(500, &window, [&window] { window.channelCentralDemo(); });
         } else if (arg == QStringLiteral("--cascadedemo")) {
             QTimer::singleShot(500, &window, [&window] { window.cascadeDemo(); });
+        } else if (arg == QStringLiteral("--multidemo")) {
+            QTimer::singleShot(500, &window, [&window] {
+                auto* d1 = new DemoBackend(QStringLiteral("Lurker"), QStringLiteral("#lurker"));
+                auto* d2 = new DemoBackend(QStringLiteral("Libera.Chat (direct)"), QStringLiteral("#linux"));
+                window.useBackend(d1);  // child 0
+                window.useBackend(d2);  // child 1 — same local id 1, namespaced by the mux
+                d1->start();
+                d2->start();
+            });
         } else if (arg == QStringLiteral("--addressbook")) {
             QTimer::singleShot(500, &window, [&window] { window.showAddressBook(); });
         } else if (arg == QStringLiteral("--serverlist")) {

@@ -10,6 +10,10 @@
 #include <memory>
 
 #include "backend/ChatBackend.h"
+
+namespace lurker::backend {
+class MultiplexBackend;
+}
 #include "core/IrcEvent.h"
 #include "core/msl/Interpreter.h"
 #include "gui/ChatView.h"
@@ -160,7 +164,8 @@ private:
     QAction* m_disconnectAction = nullptr;
     QAction* m_tbDisconnect = nullptr;  // toolbar twin of m_disconnectAction
 
-    lurker::backend::ChatBackend* m_backend = nullptr;
+    lurker::backend::ChatBackend* m_backend = nullptr;      // == m_mux (the active connection set)
+    lurker::backend::MultiplexBackend* m_mux = nullptr;     // owns all child connections
     QHash<QString, Buffer> m_buffers;              // key -> buffer
     QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
     QHash<int, QString> m_networkNames;            // networkId -> display name

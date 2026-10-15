@@ -52,6 +52,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include "backend/MultiplexBackend.h"
 #include "core/CommandParser.h"
 #include "gui/AddressBookDialog.h"
 #include "gui/ChannelCentralDialog.h"
@@ -1912,52 +1913,54 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
 }
 
 void MainWindow::useBackend(ChatBackend* backend) {
-    if (m_backend) {
-        m_backend->disconnect(this);
-        m_backend->deleteLater();
+    // The GUI talks to a single MultiplexBackend; each connection is added as a
+    // child so a Lurker connection and one or more direct-IRC networks can run at
+    // the same time (issue #3). Signals are wired to the multiplex once.
+    if (!m_mux) {
+        m_mux = new lurker::backend::MultiplexBackend(this);
+        m_backend = m_mux;
+        connect(m_mux, &ChatBackend::statusText, this, &MainWindow::onStatusText);
+        connect(m_mux, &ChatBackend::networkUpdated, this, &MainWindow::onNetworkUpdated);
+        connect(m_mux, &ChatBackend::bufferOpened, this, &MainWindow::onBufferOpened);
+        connect(m_mux, &ChatBackend::event, this, &MainWindow::onEvent);
+        connect(m_mux, &ChatBackend::membersReplaced, this, &MainWindow::onMembersReplaced);
+        connect(m_mux, &ChatBackend::topicChanged, this, &MainWindow::onTopicChanged);
+        connect(m_mux, &ChatBackend::readStateChanged, this, &MainWindow::onReadStateChanged);
+        connect(m_mux, &ChatBackend::readyChanged, this, [this] {
+            const bool ready = m_backend && m_backend->isReady();
+            m_disconnectAction->setEnabled(ready);
+            if (m_tbDisconnect) m_tbDisconnect->setEnabled(ready);
+            statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
+            configurePreviews();  // the feature flag + token are known once ready
+            if (ready) pollNotify();  // begin watching the notify list
+        });
+        connect(m_mux, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
+        connect(m_mux, &ChatBackend::dccTransferList, this, [this](const QList<lurker::backend::DccTransfer>& list) {
+            if (!list.isEmpty()) ensureDccWindow(false)->setTransfers(list);  // seed quietly on connect
+        });
+        connect(m_mux, &ChatBackend::dccTransferUpdated, this, [this](const lurker::backend::DccTransfer& t) {
+            // Raise the window for a fresh incoming offer; stay quiet for progress ticks.
+            ensureDccWindow(t.awaitingApproval() && t.direction != QLatin1String("outgoing"))->upsert(t);
+        });
+        connect(m_mux, &ChatBackend::dccFileSaved, this, [this](int, const QString& path) {
+            statusBar()->showMessage(tr("Saved %1").arg(path), 8000);
+        });
+        connect(m_mux, &ChatBackend::fileUploadProgress, this, [this](const QString& name, int pct) {
+            statusBar()->showMessage(tr("Uploading %1… %2%").arg(name).arg(pct));
+        });
+        connect(m_mux, &ChatBackend::fileUploaded, this,
+                [this](int net, const QString& target, const QString& name, const QString& url) {
+                    // Drop the shared link into the target's composer so the user confirms the
+                    // send (and can add a caption) rather than it going out silently.
+                    openConversation(net, target);
+                    if (Buffer* b = findBuffer(keyFor(net, target))) b->view->setInputText(url);
+                    statusBar()->showMessage(tr("Uploaded %1 — press Enter to send the link").arg(name), 8000);
+                });
+        connect(m_mux, &ChatBackend::fileUploadError, this, [this](const QString& name, const QString& err) {
+            statusBar()->showMessage(tr("Upload of %1 failed: %2").arg(name, err), 10000);
+        });
     }
-    m_backend = backend;
-    backend->setParent(this);
-    connect(backend, &ChatBackend::statusText, this, &MainWindow::onStatusText);
-    connect(backend, &ChatBackend::networkUpdated, this, &MainWindow::onNetworkUpdated);
-    connect(backend, &ChatBackend::bufferOpened, this, &MainWindow::onBufferOpened);
-    connect(backend, &ChatBackend::event, this, &MainWindow::onEvent);
-    connect(backend, &ChatBackend::membersReplaced, this, &MainWindow::onMembersReplaced);
-    connect(backend, &ChatBackend::topicChanged, this, &MainWindow::onTopicChanged);
-    connect(backend, &ChatBackend::readStateChanged, this, &MainWindow::onReadStateChanged);
-    connect(backend, &ChatBackend::readyChanged, this, [this] {
-        const bool ready = m_backend && m_backend->isReady();
-        m_disconnectAction->setEnabled(ready);
-        if (m_tbDisconnect) m_tbDisconnect->setEnabled(ready);
-        statusBar()->showMessage(ready ? tr("Connected") : tr("Disconnected"));
-        configurePreviews();  // the feature flag + token are known once ready
-        if (ready) pollNotify();  // begin watching the notify list
-    });
-    connect(backend, &ChatBackend::closed, this, [this] { statusBar()->showMessage(tr("Disconnected")); });
-    connect(backend, &ChatBackend::dccTransferList, this, [this](const QList<lurker::backend::DccTransfer>& list) {
-        if (!list.isEmpty()) ensureDccWindow(false)->setTransfers(list);  // seed quietly on connect
-    });
-    connect(backend, &ChatBackend::dccTransferUpdated, this, [this](const lurker::backend::DccTransfer& t) {
-        // Raise the window for a fresh incoming offer; stay quiet for progress ticks.
-        ensureDccWindow(t.awaitingApproval() && t.direction != QLatin1String("outgoing"))->upsert(t);
-    });
-    connect(backend, &ChatBackend::dccFileSaved, this, [this](int, const QString& path) {
-        statusBar()->showMessage(tr("Saved %1").arg(path), 8000);
-    });
-    connect(backend, &ChatBackend::fileUploadProgress, this, [this](const QString& name, int pct) {
-        statusBar()->showMessage(tr("Uploading %1… %2%").arg(name).arg(pct));
-    });
-    connect(backend, &ChatBackend::fileUploaded, this, [this](int net, const QString& target, const QString& name,
-                                                              const QString& url) {
-        // Drop the shared link into the target's composer so the user confirms the
-        // send (and can add a caption) rather than it going out silently.
-        openConversation(net, target);
-        if (Buffer* b = findBuffer(keyFor(net, target))) b->view->setInputText(url);
-        statusBar()->showMessage(tr("Uploaded %1 — press Enter to send the link").arg(name), 8000);
-    });
-    connect(backend, &ChatBackend::fileUploadError, this, [this](const QString& name, const QString& err) {
-        statusBar()->showMessage(tr("Upload of %1 failed: %2").arg(name, err), 10000);
-    });
+    m_mux->addChild(backend);
     configurePreviews();
 }
 
