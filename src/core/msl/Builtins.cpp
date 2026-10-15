@@ -17,6 +17,7 @@
 #include <regex>
 #include <string>
 
+#include "core/msl/Hash.h"
 #include "core/msl/Interpreter.h"
 
 namespace lurker::msl {
@@ -688,7 +689,7 @@ void registerBuiltins(Interpreter& in) {
         std::size_t p = std::string::npos, from = 0;
         for (int i = 0; i < n; ++i) {
             p = s.find(sub, from);
-            if (p == std::string::npos) return std::string("0");
+            if (p == std::string::npos) return std::string();  // not found: $null, like mIRC
             from = p + sub.size();  // non-overlapping, like mIRC
         }
         return std::to_string(p + 1);
@@ -1210,6 +1211,10 @@ void registerBuiltins(Interpreter& in) {
             return n >= 1 ? std::to_string(v & ~(1LL << (n - 1))) : std::to_string(v);
         } catch (...) { return std::string(); }
     });
+    in.registerIdent("md5", [](Interpreter&, S&, const A& a, const std::string&) { return md5Hex(arg(a, 0)); });
+    in.registerIdent("sha1", [](Interpreter&, S&, const A& a, const std::string&) { return sha1Hex(arg(a, 0)); });
+    in.registerIdent("sha256",
+                     [](Interpreter&, S&, const A& a, const std::string&) { return sha256Hex(arg(a, 0)); });
     in.registerIdent("base", [](Interpreter&, S&, const A& a, const std::string&) {
         // $base(value, fromBase, toBase, [zeropad])
         try {

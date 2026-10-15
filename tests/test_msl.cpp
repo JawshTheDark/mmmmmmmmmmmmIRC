@@ -106,6 +106,7 @@ int main() {
     CHECK_EQ(eval(in, "$pos(hello,ll)"), std::string("3"));
     CHECK_EQ(eval(in, "$pos(banana,a,2)"), std::string("4"));  // Nth occurrence
     CHECK_EQ(eval(in, "$pos(banana,a,0)"), std::string("3"));  // N=0 => count
+    CHECK_EQ(eval(in, "$pos(hello,x,1)"), std::string());      // not found => $null
     CHECK_EQ(eval(in, "$count(banana,a)"), std::string("3"));
 
     // $calc arithmetic and precedence.
@@ -346,6 +347,10 @@ int main() {
     CHECK_EQ(eval(in, "$ceil(3.2)"), std::string("4"));
     CHECK_EQ(eval(in, "$floor(3.8)"), std::string("3"));
     CHECK_EQ(eval(in, "$sqrt(144)"), std::string("12"));
+    CHECK_EQ(eval(in, "$md5(hello)"), std::string("5d41402abc4b2a76b9719d911017c592"));
+    CHECK_EQ(eval(in, "$sha1(hello)"), std::string("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"));
+    CHECK_EQ(eval(in, "$sha256(hello)"),
+             std::string("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"));
     CHECK_EQ(eval(in, "$gettok(a b c,0,32)"), std::string("3"));  // N=0 => token count
     CHECK_EQ(eval(in, "$calc(2 ^ 3 ^ 2)"), std::string("64"));    // ^ is left-associative
     CHECK_EQ(eval(in, "$calc(17 // 5)"), std::string("3"));    // // is floored integer division

@@ -28,6 +28,7 @@ add_library(lurker_core STATIC
     src/core/msl/Interpreter.cpp
     src/core/msl/Builtins.cpp
     src/core/msl/Dialog.cpp
+    src/core/msl/Hash.cpp
 )
 target_include_directories(lurker_core PUBLIC src)
 target_compile_options(lurker_core PRIVATE ${LURKER_WARNINGS})
