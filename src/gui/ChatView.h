@@ -53,6 +53,9 @@ public:
     // event colour (Options ▸ Display ▸ Event Colours).
     enum class SystemKind { Generic, Join, Part, Quit, Nick, Mode, Kick, Topic };
     void addSystemLine(const QByteArray& utf8Text, SystemKind kind = SystemKind::Generic);
+    // A whole line of mIRC-formatted text (an MTS event template already filled
+    // in): timestamp + the line rendered through the IRC colour codes it carries.
+    void addThemedLine(const QString& timestamp, const QByteArray& utf8);
     // A notice rendered mIRC-style as "-from- text". `server` marks a server
     // notice (SNOTICE) so it's coloured distinctly from a user/service notice.
     void addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server);

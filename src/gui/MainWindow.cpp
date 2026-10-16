@@ -651,6 +651,16 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         tr("Loaded MTS theme: %1").arg(theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name), 5000);
 }
 
+bool MainWindow::renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
+                                   const QString& ts) {
+    const lurker::gui::MtsTheme* theme = lurker::gui::activeMtsTheme();
+    if (!theme || !buf || !buf->view) return false;
+    const QString line = theme->renderEvent(key, vars);
+    if (line.isEmpty()) return false;
+    buf->view->addThemedLine(ts, line.toUtf8());
+    return true;
+}
+
 void MainWindow::promptLoadScript() {
     const QString path = QFileDialog::getOpenFileName(this, tr("Load MSL script"), m_scriptHost.baseDir,
                                                       tr("mIRC scripts (*.mrc);;All files (*)"));
@@ -1673,6 +1683,36 @@ void MainWindow::simulateMessage(int net, const QString& nick, const QString& ta
     onEvent(ev);
 }
 
+void MainWindow::themeEventDemo() {
+    const int net = 1;
+    m_networkNames.insert(net, QStringLiteral("DemoNet"));
+    m_networkNicks.insert(net, QStringLiteral("jawsh"));
+    auto fire = [&](IrcEventType t, const QString& nick, const QString& text, const QString& arg, bool self) {
+        lurker::IrcEvent e;
+        e.type = t;
+        e.networkId = net;
+        e.nick = nick.toStdString();
+        e.user = nick.toLower().toStdString();
+        e.host = "host.local";
+        e.target = "#test";
+        e.text = text.toStdString();
+        e.arg = arg.toStdString();
+        e.self = self;
+        onEvent(e);
+    };
+    fire(IrcEventType::Join, QStringLiteral("jawsh"), {}, {}, true);
+    fire(IrcEventType::Join, QStringLiteral("alice"), {}, {}, false);
+    fire(IrcEventType::Message, QStringLiteral("bob"), QStringLiteral("hey all, testing the theme"), {}, false);
+    fire(IrcEventType::Action, QStringLiteral("alice"), QStringLiteral("waves at everyone"), {}, false);
+    fire(IrcEventType::Mode, QStringLiteral("op"), QStringLiteral("+o alice"), {}, false);
+    fire(IrcEventType::NickChange, QStringLiteral("carol"), {}, QStringLiteral("carolyn"), false);
+    fire(IrcEventType::Topic, QStringLiteral("op"), QStringLiteral("Welcome to the themed test channel"), {}, false);
+    fire(IrcEventType::Part, QStringLiteral("dave"), QStringLiteral("heading out"), {}, false);
+    fire(IrcEventType::Quit, QStringLiteral("bob"), QStringLiteral("Ping timeout: 240 seconds"), {}, false);
+    fire(IrcEventType::Kick, QStringLiteral("op"), QStringLiteral("no flooding please"), QStringLiteral("alice"), false);
+    openConversation(net, QStringLiteral("#test"));
+}
+
 void MainWindow::previewDemo() {
     // Seed synthetic descriptors + images so previews resolve from cache (no
     // network), then inject messages that reference them. Dev/screenshot aid.
@@ -2444,48 +2484,84 @@ void MainWindow::onEvent(const IrcEvent& event) {
         }
         case IrcEventType::Join: {
             Buffer* buf = routeTarget(net, target, ChatView::Kind::Channel);
-            if (buf) {
-                // Always announce our own join; others only when enabled.
-                if (event.self)
-                    buf->view->addSystemLine(tr("Now talking in %1").arg(target).toUtf8(), ChatView::SystemKind::Join);
-                else if (showJoins)
-                    buf->view->addSystemLine(tr("%1 joined").arg(nick).toUtf8(), ChatView::SystemKind::Join);
+            if (buf && (event.self || showJoins)) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("address"), QString::fromStdString(event.user + "@" + event.host)},
+                                                {QStringLiteral("chan"), target}};
+                if (renderThemedEvent(buf, event.self ? QStringLiteral("JOINSELF") : QStringLiteral("JOIN"), v, ts))
+                    break;
+                buf->view->addSystemLine(event.self ? tr("Now talking in %1").arg(target).toUtf8()
+                                                    : tr("%1 joined").arg(nick).toUtf8(),
+                                         ChatView::SystemKind::Join);
             }
             break;
         }
         case IrcEventType::Part:
             if (!showJoins) break;
-            if (Buffer* b = findBuffer(keyFor(net, target)))
+            if (Buffer* b = findBuffer(keyFor(net, target))) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("address"), QString::fromStdString(event.user + "@" + event.host)},
+                                                {QStringLiteral("chan"), target},
+                                                {QStringLiteral("text"), QString::fromUtf8(text)}};
+                if (renderThemedEvent(b, QStringLiteral("PART"), v, ts)) break;
                 b->view->addSystemLine(tr("%1 left%2").arg(nick, text.isEmpty() ? QString() :
                                            QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8(),
                                        ChatView::SystemKind::Part);
+            }
             break;
         case IrcEventType::Quit:
             if (!showJoins) break;
-            if (Buffer* b = findBuffer(keyFor(net, target)))
+            if (Buffer* b = findBuffer(keyFor(net, target))) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("address"), QString::fromStdString(event.user + "@" + event.host)},
+                                                {QStringLiteral("text"), QString::fromUtf8(text)}};
+                if (renderThemedEvent(b, QStringLiteral("QUIT"), v, ts)) break;
                 b->view->addSystemLine(tr("%1 quit%2").arg(nick, text.isEmpty() ? QString() :
                                            QStringLiteral(" (%1)").arg(QString::fromUtf8(text))).toUtf8(),
                                        ChatView::SystemKind::Quit);
+            }
             break;
         case IrcEventType::NickChange:
             if (!target.isEmpty())
-                if (Buffer* b = findBuffer(keyFor(net, target)))
+                if (Buffer* b = findBuffer(keyFor(net, target))) {
+                    const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                    {QStringLiteral("newnick"), QString::fromStdString(event.arg)}};
+                    if (renderThemedEvent(b, event.self ? QStringLiteral("NICKSELF") : QStringLiteral("NICK"), v, ts))
+                        break;
                     b->view->addSystemLine(tr("%1 is now known as %2").arg(nick, QString::fromStdString(event.arg)).toUtf8(),
                                            ChatView::SystemKind::Nick);
+                }
             break;
         case IrcEventType::Kick:
-            if (Buffer* b = findBuffer(keyFor(net, target)))
+            if (Buffer* b = findBuffer(keyFor(net, target))) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("knick"), QString::fromStdString(event.arg)},
+                                                {QStringLiteral("chan"), target},
+                                                {QStringLiteral("text"), QString::fromUtf8(text)}};
+                if (renderThemedEvent(b, event.self ? QStringLiteral("KICKSELF") : QStringLiteral("KICK"), v, ts))
+                    break;
                 b->view->addSystemLine(tr("%1 was kicked by %2").arg(QString::fromStdString(event.arg), nick).toUtf8(),
                                        ChatView::SystemKind::Kick);
+            }
             break;
         case IrcEventType::Mode:
-            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
+            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel)) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("modes"), QString::fromUtf8(text)},
+                                                {QStringLiteral("chan"), target}};
+                if (renderThemedEvent(b, QStringLiteral("MODE"), v, ts)) break;
                 b->view->addSystemLine(tr("%1 set mode %2").arg(nick, QString::fromUtf8(text)).toUtf8(),
                                        ChatView::SystemKind::Mode);
+            }
             break;
         case IrcEventType::Topic:
-            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel))
+            if (Buffer* b = routeTarget(net, target, ChatView::Kind::Channel)) {
+                const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                {QStringLiteral("text"), QString::fromUtf8(text)},
+                                                {QStringLiteral("chan"), target}};
+                if (renderThemedEvent(b, QStringLiteral("TOPIC"), v, ts)) break;
                 b->view->addSystemLine(tr("%1 changed the topic").arg(nick).toUtf8(), ChatView::SystemKind::Topic);
+            }
             break;
         case IrcEventType::Invite:
             if (Buffer* s = findBuffer(serverKeyFor(net)))

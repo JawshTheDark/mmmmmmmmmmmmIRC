@@ -80,6 +80,7 @@ public:
     void simulateMessage(int net, const QString& nick, const QString& target, const QString& text);
     void simulateListReply();  // dev/screenshot: feed synthetic RPL_LIST (321/322/323)
     void previewDemo();        // dev/screenshot: seed synthetic link/media previews
+    void themeEventDemo();     // dev/screenshot: fire join/part/mode/… events (MTS templates)
     void previewDriftDemo();   // dev/screenshot: verify a late preview lands under its message
     void dccDemo();            // dev/screenshot: seed synthetic DCC transfers
     void urlDemo();            // dev/screenshot: seed synthetic caught URLs
@@ -155,6 +156,10 @@ private:
     // mIRC-style message routing: where a category (notice/whois/ctcp) lands,
     // per Options (Active window / Status / query). `def` is the fallback setting.
     Buffer* routeFor(const QString& category, const QString& def, int net);
+    // Render an event via the active MTS theme's template (phase 2). Returns
+    // true if a theme handled it, so the caller skips its built-in line.
+    bool renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
+                           const QString& ts);
     QString timestampFor(const std::string& isoTime) const;
 
     QMdiArea* m_mdi = nullptr;

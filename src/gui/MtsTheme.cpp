@@ -18,7 +18,12 @@ namespace {
 // 15=light-grey bg, 1=black text).
 constexpr int kSlotBackground = 0;
 constexpr int kSlotText = 1;
+
+// The currently-applied theme (valid=false when none). Event rendering reads it.
+MtsTheme g_active;
 }  // namespace
+
+const MtsTheme* activeMtsTheme() { return g_active.valid ? &g_active : nullptr; }
 
 MtsTheme MtsTheme::parse(const QString& path) {
     MtsTheme t;
@@ -90,11 +95,26 @@ bool MtsTheme::apply() const {
     if (!fontFamily.isEmpty()) s.setValue(QStringLiteral("display/fontFamily"), fontFamily);
     if (fontSize > 0) s.setValue(QStringLiteral("display/fontSize"), fontSize);
     s.setValue(QStringLiteral("mts/loaded"), name.isEmpty() ? QStringLiteral("theme") : name);
+    g_active = *this;  // becomes the active theme for event rendering
     return true;
+}
+
+QString MtsTheme::renderEvent(const QString& key, const QHash<QString, QString>& vars) const {
+    const QString tmpl = directives.value(key.toUpper());
+    if (tmpl.isEmpty()) return QString();
+    if (tmpl.startsWith(QLatin1String("!script"))) return QString();  // companion script: phase 3
+    QString out = tmpl;
+    out.replace(QLatin1String("<pre>"), directives.value(QStringLiteral("PREFIX")));
+    out.replace(QLatin1String("<lt>"), QStringLiteral("<"));
+    out.replace(QLatin1String("<gt>"), QStringLiteral(">"));
+    for (auto it = vars.constBegin(); it != vars.constEnd(); ++it)
+        out.replace(QStringLiteral("<%1>").arg(it.key()), it.value());
+    return out;
 }
 
 void clearMtsTheme() {
     lurker::resetPalette();
+    g_active.valid = false;  // stop routing events through templates
     QSettings s;
     s.remove(QStringLiteral("display/bgColor"));
     s.remove(QStringLiteral("colors/event/message"));

@@ -40,7 +40,17 @@ struct MtsTheme {
     // Write this theme onto our display settings and install its colour palette.
     // Caller refreshes open views afterwards. Returns false if not valid.
     bool apply() const;
+
+    // Fill the event template `key` (e.g. "JOIN", "TEXTCHAN") with `vars`
+    // (nick, text, chan, address, …) and return the resulting mIRC-formatted
+    // line. Empty when the theme has no template for `key` or it delegates to a
+    // companion script (`!script …`, handled in a later phase) — the caller then
+    // falls back to its built-in rendering.
+    QString renderEvent(const QString& key, const QHash<QString, QString>& vars) const;
 };
+
+// The theme currently applied (nullptr if none). Event rendering consults it.
+const MtsTheme* activeMtsTheme();
 
 // Restore the built-in palette and clear the MTS display overrides (revert to
 // the plain theme). Caller refreshes views.

@@ -618,6 +618,25 @@ void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
 }
 
+void ChatView::addThemedLine(const QString& timestamp, const QByteArray& utf8) {
+    const bool atBottom = m_messages->verticalScrollBar()->value() >=
+                          m_messages->verticalScrollBar()->maximum() - 4;
+    appendBlock();
+    QTextCursor cursor(m_messages->document());
+    cursor.movePosition(QTextCursor::End);
+    const QPalette pal = m_messages->palette();
+    if (!timestamp.isEmpty()) {
+        QTextCharFormat meta;
+        meta.setForeground(eventColor(m_settingsScope, QStringLiteral("timestamp"),
+                                      pal.color(QPalette::Disabled, QPalette::Text)));
+        cursor.insertText(QStringLiteral("%1 ").arg(timestamp), meta);
+    }
+    insertFormatted(cursor, utf8,
+                    {eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)),
+                     pal.color(QPalette::Base)});
+    if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+}
+
 void ChatView::clearMessages() {
     m_messages->clear();
     m_reactSlots.clear();  // the anchors point into the now-cleared document
