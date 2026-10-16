@@ -1681,12 +1681,54 @@ void MainWindow::ensureSectionScripts() {
     QDir().mkpath(ScriptEditor::sectionDir());
     static const char* headers[] = {"; Aliases\n", "; Popups\n", "; Remote scripts (on events, aliases, dialogs)\n",
                                     "; Users\n"};
+    // Default right-click menus, editable here or extendable via remote `menu`
+    // blocks (both merge). $1 is the clicked nick; # is the channel.
+    static const char* kDefaultPopups =
+        "; Popups — mIRC-style right-click menus. Edit these, or add `menu <type> { }`\n"
+        "; blocks in a remote script; both merge. $1 = clicked nick, # = channel.\n\n"
+        "menu nicklist {\n"
+        "  Query: query $1\n"
+        "  Whois: whois $1\n"
+        "  Slap: describe # slaps $1 around a bit with a large trout\n"
+        "  -\n"
+        "  Control\n"
+        "  .Op: mode # +o $1\n"
+        "  .Deop: mode # -o $1\n"
+        "  .Voice: mode # +v $1\n"
+        "  .Devoice: mode # -v $1\n"
+        "  .-\n"
+        "  .Kick: kick # $1\n"
+        "  .Ban: ban # $1\n"
+        "  .Kick + Ban: ban # $1 | kick # $1\n"
+        "  CTCP\n"
+        "  .Version: ctcp $1 version\n"
+        "  .Ping: ctcp $1 ping\n"
+        "  .Time: ctcp $1 time\n"
+        "  .Client Info: ctcp $1 clientinfo\n"
+        "}\n\n"
+        "menu channel {\n"
+        "  Part: part #\n"
+        "  Clear: clear\n"
+        "}\n\n"
+        "menu query {\n"
+        "  Whois: whois $1\n"
+        "  Close: close\n"
+        "}\n";
     const QStringList files = ScriptEditor::sectionFiles();
     bool loadedAny = false;
     for (int i = 0; i < files.size(); ++i) {
         if (!QFile::exists(files[i])) {
             QFile f(files[i]);
-            if (f.open(QIODevice::WriteOnly)) f.write(headers[i]);
+            if (f.open(QIODevice::WriteOnly)) f.write(i == 1 ? kDefaultPopups : headers[i]);
+        } else if (i == 1) {
+            // Seed the default menus into an existing Popups file that has none yet.
+            QFile r(files[i]);
+            QString content = r.open(QIODevice::ReadOnly) ? QString::fromUtf8(r.readAll()) : QString();
+            r.close();
+            if (!content.contains(QStringLiteral("menu "), Qt::CaseInsensitive)) {
+                QFile w(files[i]);
+                if (w.open(QIODevice::Append)) w.write(kDefaultPopups);
+            }
         }
         if (!m_scriptFiles.contains(files[i])) {  // load quietly (no per-file status spam)
             QFile f(files[i]);

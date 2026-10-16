@@ -160,32 +160,34 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
             QMenu menu(this);
             menu.addAction(nick)->setEnabled(false);
             menu.addSeparator();
-            auto act = [&](QMenu* m, const QString& label, const QString& action) {
-                m->addAction(label, this, [this, nick, action] { emit nickContextAction(nick, action); });
-            };
-            act(&menu, tr("Query"), QStringLiteral("query"));
-            act(&menu, tr("Whois"), QStringLiteral("whois"));
-            act(&menu, tr("Send file…"), QStringLiteral("sendfile"));
-            act(&menu, tr("Slap"), QStringLiteral("slap"));
-            menu.addSeparator();
-            QMenu* control = menu.addMenu(tr("Control"));
-            act(control, tr("Op (+o)"), QStringLiteral("op"));
-            act(control, tr("Deop (-o)"), QStringLiteral("deop"));
-            act(control, tr("Voice (+v)"), QStringLiteral("voice"));
-            act(control, tr("Devoice (-v)"), QStringLiteral("devoice"));
-            control->addSeparator();
-            act(control, tr("Kick"), QStringLiteral("kick"));
-            act(control, tr("Ban"), QStringLiteral("ban"));
-            act(control, tr("Kick + Ban"), QStringLiteral("kickban"));
-            QMenu* ctcp = menu.addMenu(tr("CTCP"));
-            act(ctcp, tr("Version"), QStringLiteral("ctcp-version"));
-            act(ctcp, tr("Ping"), QStringLiteral("ctcp-ping"));
-            act(ctcp, tr("Time"), QStringLiteral("ctcp-time"));
-            act(ctcp, tr("Client Info"), QStringLiteral("ctcp-clientinfo"));
-            // Script-defined (menu nicklist) items, appended after the built-ins.
-            if (m_nickPopupProvider) {
+            // Prefer the editable Popups `menu nicklist` (seeded with the defaults,
+            // merged with any script's). Only if none is defined do we fall back to
+            // the built-in menu, so there's never an empty right-click.
+            const int base = menu.actions().size();
+            if (m_nickPopupProvider) m_nickPopupProvider(&menu, nick);
+            if (menu.actions().size() == base) {
+                auto act = [&](QMenu* m, const QString& label, const QString& action) {
+                    m->addAction(label, this, [this, nick, action] { emit nickContextAction(nick, action); });
+                };
+                act(&menu, tr("Query"), QStringLiteral("query"));
+                act(&menu, tr("Whois"), QStringLiteral("whois"));
+                act(&menu, tr("Send file…"), QStringLiteral("sendfile"));
+                act(&menu, tr("Slap"), QStringLiteral("slap"));
                 menu.addSeparator();
-                m_nickPopupProvider(&menu, nick);
+                QMenu* control = menu.addMenu(tr("Control"));
+                act(control, tr("Op (+o)"), QStringLiteral("op"));
+                act(control, tr("Deop (-o)"), QStringLiteral("deop"));
+                act(control, tr("Voice (+v)"), QStringLiteral("voice"));
+                act(control, tr("Devoice (-v)"), QStringLiteral("devoice"));
+                control->addSeparator();
+                act(control, tr("Kick"), QStringLiteral("kick"));
+                act(control, tr("Ban"), QStringLiteral("ban"));
+                act(control, tr("Kick + Ban"), QStringLiteral("kickban"));
+                QMenu* ctcp = menu.addMenu(tr("CTCP"));
+                act(ctcp, tr("Version"), QStringLiteral("ctcp-version"));
+                act(ctcp, tr("Ping"), QStringLiteral("ctcp-ping"));
+                act(ctcp, tr("Time"), QStringLiteral("ctcp-time"));
+                act(ctcp, tr("Client Info"), QStringLiteral("ctcp-clientinfo"));
             }
             menu.exec(m_nicklist->mapToGlobal(pos));
         });
