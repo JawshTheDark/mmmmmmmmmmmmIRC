@@ -49,12 +49,16 @@ DccTransfersWindow::DccTransfersWindow(QWidget* parent) : QWidget(parent) {
     auto* outer = new QVBoxLayout(this);
 
     auto* bar = new QHBoxLayout;
+    m_send = new QPushButton(tr("Send File…"), this);
     m_accept = new QPushButton(tr("Accept"), this);
     m_reject = new QPushButton(tr("Reject"), this);
     m_cancel = new QPushButton(tr("Cancel"), this);
     m_save = new QPushButton(tr("Save As…"), this);
     m_delete = new QPushButton(tr("Delete"), this);
+    bar->addWidget(m_send);
+    bar->addSpacing(12);
     for (QPushButton* b : {m_accept, m_reject, m_cancel, m_save, m_delete}) bar->addWidget(b);
+    connect(m_send, &QPushButton::clicked, this, [this] { emit sendRequested(); });
     bar->addStretch(1);
     outer->addLayout(bar);
 

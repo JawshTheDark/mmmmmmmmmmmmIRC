@@ -1046,6 +1046,27 @@ DccTransfersWindow* MainWindow::ensureDccWindow(bool raise) {
             const QString path = QFileDialog::getSaveFileName(this, tr("Save received file"), suggested);
             if (!path.isEmpty() && m_backend) m_backend->saveDccFile(id, path);
         });
+        connect(m_dccWindow, &DccTransfersWindow::sendRequested, this, [this] {
+            if (!ensureFileSend()) return;
+            // Choose the network (prompt only when there's more than one).
+            const QList<int> nets = m_networkNames.keys();
+            int net = nets.size() == 1 ? nets.first() : (activeBuffer() ? activeBuffer()->networkId : -1);
+            if (nets.size() > 1) {
+                QStringList names;
+                for (int n : nets) names << m_networkNames.value(n);
+                bool ok = false;
+                const QString pick = QInputDialog::getItem(this, tr("Send File"), tr("Network:"), names, 0, false, &ok);
+                if (!ok) return;
+                net = nets.value(names.indexOf(pick), net);
+            }
+            bool ok = false;
+            const QString nick =
+                QInputDialog::getText(this, tr("Send File"), tr("Send to nick:"), QLineEdit::Normal, QString(), &ok)
+                    .trimmed();
+            if (!ok || nick.isEmpty()) return;
+            const QString file = QFileDialog::getOpenFileName(this, tr("Send File to %1").arg(nick));
+            if (!file.isEmpty()) uploadFileTo(net, nick, file);
+        });
         connect(m_dccWindow, &QObject::destroyed, this, [this](QObject*) {
             if (m_closing) return;
             m_dccWindow = nullptr;

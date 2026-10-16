@@ -29,6 +29,7 @@ public:
     void upsert(const lurker::backend::DccTransfer& t);
 
 signals:
+    void sendRequested();  // user clicked "Send File…"
     void acceptRequested(int id);
     void rejectRequested(int id);
     void cancelRequested(int id);
@@ -42,6 +43,7 @@ private:
 
     QTableWidget* m_table = nullptr;
     QLabel* m_status = nullptr;
+    QPushButton* m_send = nullptr;
     QPushButton* m_accept = nullptr;
     QPushButton* m_reject = nullptr;
     QPushButton* m_cancel = nullptr;
