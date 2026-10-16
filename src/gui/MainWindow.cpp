@@ -315,7 +315,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(m_mdi, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* w) {
         if (m_closing) return;
         for (auto& b : m_buffers) {
-            if (b.sub == w && b.switchAction) b.switchAction->setChecked(true);
+            if (b.sub == w) {
+                if (b.switchAction) b.switchAction->setChecked(true);
+                m_activeKey = b.key;  // remember the focused conversation ($active fallback)
+            }
         }
     });
 
@@ -1497,6 +1500,11 @@ MainWindow::Buffer* MainWindow::activeBuffer() {
             if (b.sub == w) return &b;
         }
     }
+    // The MDI's active window can be null (focus on the tree/input) or a non-buffer
+    // window (channel list, DCC, URL catcher); fall back to the last conversation
+    // the user actually selected before giving up on the status window, so $active
+    // and /echo -a land where the user is looking (#30 follow-up).
+    if (Buffer* b = findBuffer(m_activeKey)) return b;
     return findBuffer(statusKey());
 }
 
@@ -2494,6 +2502,7 @@ void MainWindow::activateBuffer(Buffer* buffer) {
     if (m_windowsMaximized) buffer->sub->showMaximized();
     else if (buffer->sub->isMinimized()) buffer->sub->showNormal();
     m_mdi->setActiveSubWindow(buffer->sub);
+    m_activeKey = buffer->key;  // the conversation $active / echo -a should resolve to
     buffer->view->focusInput();
     hydrateBuffer(buffer);
     if (buffer->lastMessageId > 0 && m_backend) m_backend->markRead(buffer->networkId, buffer->display, buffer->lastMessageId);

@@ -187,6 +187,7 @@ private:
     lurker::backend::ChatBackend* m_backend = nullptr;      // == m_mux (the active connection set)
     lurker::backend::MultiplexBackend* m_mux = nullptr;     // owns all child connections
     QHash<QString, Buffer> m_buffers;              // key -> buffer
+    QString m_activeKey;                            // last conversation the user activated ($active fallback)
     QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
     QTreeWidgetItem* m_favouritesNode = nullptr;   // combined pins node (#26); null when unused
     QHash<int, QString> m_networkNames;            // networkId -> display name
