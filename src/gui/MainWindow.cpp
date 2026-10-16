@@ -287,8 +287,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(themeMenu->addAction(tr("Clear MTS theme")), &QAction::triggered, this, [this] {
         clearMtsTheme();
         refreshColorSettings();
+        applyTreebarStyle();
         for (auto& b : m_buffers)
             if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+        reRenderConversations();
         QSettings().remove(QStringLiteral("mts/path"));
         statusBar()->showMessage(tr("MTS theme cleared"), 4000);
     });
@@ -658,8 +660,24 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         palette().color(QPalette::Window).lightness() < 128 ? 130 : 105)));
     for (auto& b : m_buffers)
         if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+    reRenderConversations();  // redraw history with the new palette (baked colours)
     statusBar()->showMessage(
         tr("Loaded MTS theme: %1").arg(theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name), 5000);
+}
+
+void MainWindow::reRenderConversations() {
+    // The message document bakes resolved colours, so a palette change can't
+    // re-colour existing lines — clear each conversation and re-fetch its history
+    // so it redraws with the active theme (the visible one immediately, the rest
+    // when next viewed). Status has no server-side history to refetch, so it keeps
+    // its lines.
+    for (auto& b : m_buffers) {
+        if (b.view && b.kind != ChatView::Kind::Status) {
+            b.view->clearMessages();
+            b.hydrated = false;
+        }
+    }
+    if (Buffer* a = activeBuffer()) hydrateBuffer(a);
 }
 
 bool MainWindow::renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
