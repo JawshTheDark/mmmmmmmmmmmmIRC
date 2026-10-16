@@ -149,6 +149,17 @@ void LurkerChatBackend::emitMembers(int net, const QString& target) {
     emit membersReplaced(net, target, out);
 }
 
+// Order a member's mode letters highest-rank first (per the network's PREFIX),
+// so sigilFor() and sorting use the strongest prefix (e.g. "ov" -> "@").
+QString LurkerChatBackend::sortModes(int net, QString modes) const {
+    const PrefixInfo prefix = m_prefix.value(net);
+    std::sort(modes.begin(), modes.end(), [&](QChar a, QChar b) {
+        const int ra = prefix.order.indexOf(a), rb = prefix.order.indexOf(b);
+        return (ra < 0 ? 1000 : ra) < (rb < 0 ? 1000 : rb);
+    });
+    return modes;
+}
+
 void LurkerChatBackend::replaceMembers(int net, const QString& target, const QJsonArray& members, int) {
     QMap<QString, Member> map;
     for (const QJsonValue& v : members) {
@@ -156,11 +167,68 @@ void LurkerChatBackend::replaceMembers(int net, const QString& target, const QJs
         Member m;
         m.nick = o.value("nick").toString();
         for (const QJsonValue& mode : o.value("modes").toArray()) m.modes += mode.toString();
+        m.modes = sortModes(net, m.modes);
         m.away = o.value("away").toBool();
         if (!m.nick.isEmpty()) map.insert(m.nick.toLower(), m);
     }
     m_members.insert(key(net, target), map);
     emitMembers(net, target);
+}
+
+// Apply a single updated member object (nick + optional away/modes) to the live
+// set. Returns true if that member existed and anything changed.
+bool LurkerChatBackend::applyMemberUpdate(int net, const QString& target, const QJsonObject& m) {
+    auto mapIt = m_members.find(key(net, target));
+    if (mapIt == m_members.end()) return false;
+    auto it = mapIt->find(m.value("nick").toString().toLower());
+    if (it == mapIt->end()) return false;
+    bool changed = false;
+    if (m.contains("away")) {
+        const bool a = m.value("away").toBool(it->away);
+        if (a != it->away) { it->away = a; changed = true; }
+    }
+    if (m.contains("modes")) {
+        QString modes;
+        for (const QJsonValue& v : m.value("modes").toArray()) modes += v.toString();
+        modes = sortModes(net, modes);
+        if (modes != it->modes) { it->modes = modes; changed = true; }
+    }
+    return changed;
+}
+
+// Apply a raw mode string ("+o-v", args = affected nicks) as a fallback when the
+// event carries no structured member data. Only parsed when every mode letter is
+// a prefix mode (one nick arg each) — mixed modes need CHANMODES arg-arity we
+// don't track, so we bail rather than risk misaligning args.
+bool LurkerChatBackend::applyModeString(int net, const QString& target, const QString& modeStr,
+                                        const QJsonArray& args) {
+    if (modeStr.isEmpty()) return false;
+    const PrefixInfo prefix = m_prefix.value(net);
+    int argsNeeded = 0;
+    for (const QChar c : modeStr) {
+        if (c == '+' || c == '-') continue;
+        if (!prefix.order.contains(c)) return false;  // non-prefix mode: bail
+        ++argsNeeded;
+    }
+    if (argsNeeded == 0 || argsNeeded > args.size()) return false;
+    auto mapIt = m_members.find(key(net, target));
+    if (mapIt == m_members.end()) return false;
+    bool adding = true, changed = false;
+    int argIdx = 0;
+    for (const QChar c : modeStr) {
+        if (c == '+') { adding = true; continue; }
+        if (c == '-') { adding = false; continue; }
+        auto it = mapIt->find(args.at(argIdx++).toString().toLower());
+        if (it == mapIt->end()) continue;
+        if (adding && !it->modes.contains(c)) {
+            it->modes = sortModes(net, it->modes + c);
+            changed = true;
+        } else if (!adding && it->modes.contains(c)) {
+            it->modes.remove(c);
+            changed = true;
+        }
+    }
+    return changed;
 }
 
 void LurkerChatBackend::onSnapshot(const QJsonObject& frame) {
@@ -241,18 +309,21 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
         return;
     }
     if (typeStr == "member-update") {
-        const QJsonObject m = ev.value("member").toObject();
-        const QString k = key(net, target);
-        if (m_members.contains(k)) {
-            const QString nick = m.value("nick").toString();
-            auto& map = m_members[k];
-            auto it = map.find(nick.toLower());
-            if (it != map.end()) {
-                it->away = m.value("away").toBool(it->away);
-                emitMembers(net, target);
-            }
-        }
+        if (applyMemberUpdate(net, target, ev.value("member").toObject())) emitMembers(net, target);
         return;
+    }
+    // A mode change updates nicklist prefixes. Lurker may deliver the result as
+    // a fresh member list, a single updated member, or a raw mode string — apply
+    // whichever is present so sigils (~ & @ % +) track live mode changes (#21).
+    if (type == IrcEventType::Mode) {
+        if (ev.value("members").isArray()) {
+            replaceMembers(net, target, ev.value("members").toArray(), net);
+        } else if (ev.value("member").isObject()) {
+            if (applyMemberUpdate(net, target, ev.value("member").toObject())) emitMembers(net, target);
+        } else if (applyModeString(net, target, ev.value("modes").toString(), ev.value("args").toArray())) {
+            emitMembers(net, target);
+        }
+        // fall through: a mode line is still shown in the buffer like other events
     }
 
     IrcEvent out;
@@ -277,6 +348,11 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
         if (type == IrcEventType::Join && m_members.contains(k)) {
             Member m;
             m.nick = nick;
+            // Honour any modes the join carries (e.g. auto-op/voice on join).
+            const QJsonObject mo = ev.value("member").toObject();
+            for (const QJsonValue& v : mo.value("modes").toArray()) m.modes += v.toString();
+            m.modes = sortModes(net, m.modes);
+            m.away = mo.value("away").toBool(false);
             touch().insert(nick.toLower(), m);
             emitMembers(net, target);
         } else if ((type == IrcEventType::Part || type == IrcEventType::Quit) && m_members.contains(k)) {
