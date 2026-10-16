@@ -280,6 +280,21 @@ void ChatView::applyDisplaySettings() {
         }
         m_nicklist->setStyleSheet(ncss);
     }
+
+    // Editbox follows the theme: match the message area's background and the themed
+    // message text colour, so what you type stays legible on dark/custom themes
+    // instead of defaulting to black-on-dark. Cleared when no theme colour is set.
+    const QString msgColorRaw = scoped(m_settingsScope, QStringLiteral("colors/event/message"),
+                                       QStringLiteral("colors/event/message"), QString()).toString();
+    if (!bgColor.isEmpty() || !msgColorRaw.isEmpty()) {
+        const QColor bgc(bgColor);
+        const QColor bg = bgc.isValid() ? bgc : m_messages->palette().color(QPalette::Base);
+        const QColor fg =
+            eventColor(m_settingsScope, QStringLiteral("message"), m_messages->palette().color(QPalette::Text));
+        m_input->setStyleSheet(QStringLiteral("QLineEdit{background-color:%1;color:%2;}").arg(bg.name(), fg.name()));
+    } else {
+        m_input->setStyleSheet(QString());
+    }
 }
 
 bool ChatView::eventFilter(QObject* watched, QEvent* event) {
