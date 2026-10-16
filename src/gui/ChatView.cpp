@@ -442,9 +442,50 @@ void ChatView::appendBlock() {
     if (!m_messages->document()->isEmpty()) cursor.insertBlock();
 }
 
+void ChatView::record(const LogEntry& e) {
+    if (m_replaying) return;  // reRender() is replaying; don't re-record
+    m_log.append(e);
+    constexpr int kCap = 5000;  // keep the replay log near the visible scrollback
+    if (m_log.size() > kCap + 512) m_log.remove(0, m_log.size() - kCap);
+}
+
+void ChatView::reRender() {
+    // The document bakes resolved colours, so re-tinting in place is impossible:
+    // snapshot reactions (their anchors die with the document), clear, and replay
+    // every recorded line through the same code with the now-current theme.
+    const QHash<qlonglong, ReactSlot> savedReacts = m_reactSlots;
+    m_messages->clear();
+    m_reactSlots.clear();
+    const QList<LogEntry> entries = m_log;  // add* won't touch m_log while replaying
+    m_replaying = true;
+    for (const LogEntry& e : entries) {
+        switch (e.what) {
+            case LogEntry::What::Message:
+                addMessage(e.ts, e.nick, e.utf8, e.action, e.self, e.highlight, e.msgId, e.replyNick, e.replyText);
+                break;
+            case LogEntry::What::System: addSystemLine(e.utf8, e.sysKind); break;
+            case LogEntry::What::Themed: addThemedLine(e.ts, e.utf8); break;
+            case LogEntry::What::Notice: addNotice(e.ts, e.nick, e.utf8, e.server); break;
+        }
+    }
+    m_replaying = false;
+    // Restore reaction chips onto the freshly-recreated slots.
+    for (auto it = savedReacts.constBegin(); it != savedReacts.constEnd(); ++it) {
+        auto slot = m_reactSlots.find(it.key());
+        if (slot != m_reactSlots.end()) {
+            slot->nicks = it->nicks;
+            slot->selfValues = it->selfValues;
+            renderChips(it.key());
+        }
+    }
+    m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+}
+
 void ChatView::addMessage(const QString& timestamp, const QString& nick, const QByteArray& utf8Text, bool action,
                           bool selfEcho, bool highlight, qlonglong msgId, const QString& replyNick,
                           const QString& replyText) {
+    record({.what = LogEntry::What::Message, .ts = timestamp, .nick = nick, .utf8 = utf8Text, .action = action,
+            .self = selfEcho, .highlight = highlight, .msgId = msgId, .replyNick = replyNick, .replyText = replyText});
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
     QTextCursor cursor(m_messages->document());
@@ -560,6 +601,13 @@ void ChatView::renderChips(qlonglong msgId) {
 }
 
 void ChatView::addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server) {
+    LogEntry le;
+    le.what = LogEntry::What::Notice;
+    le.ts = timestamp;
+    le.nick = from;
+    le.utf8 = utf8Text;
+    le.server = server;
+    record(le);
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
     QTextCursor cursor(m_messages->document());
@@ -596,6 +644,11 @@ void ChatView::addNotice(const QString& timestamp, const QString& from, const QB
 }
 
 void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
+    LogEntry le;
+    le.what = LogEntry::What::System;
+    le.utf8 = utf8Text;
+    le.sysKind = kind;
+    record(le);
     const bool atBottom = m_messages->verticalScrollBar()->value() >= m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
     QTextCursor cursor(m_messages->document());
@@ -623,6 +676,11 @@ void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
 }
 
 void ChatView::addThemedLine(const QString& timestamp, const QByteArray& utf8) {
+    LogEntry le;
+    le.what = LogEntry::What::Themed;
+    le.ts = timestamp;
+    le.utf8 = utf8;
+    record(le);
     const bool atBottom = m_messages->verticalScrollBar()->value() >=
                           m_messages->verticalScrollBar()->maximum() - 4;
     appendBlock();
@@ -648,6 +706,7 @@ void ChatView::addThemedLine(const QString& timestamp, const QByteArray& utf8) {
 void ChatView::clearMessages() {
     m_messages->clear();
     m_reactSlots.clear();  // the anchors point into the now-cleared document
+    m_log.clear();         // a real /clear forgets the lines (reRender has nothing to replay)
 }
 
 int ChatView::lineCount() const {

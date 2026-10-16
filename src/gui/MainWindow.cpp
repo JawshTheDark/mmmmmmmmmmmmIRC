@@ -708,17 +708,12 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
 
 void MainWindow::reRenderConversations() {
     // The message document bakes resolved colours, so a palette change can't
-    // re-colour existing lines — clear each conversation and re-fetch its history
-    // so it redraws with the active theme (the visible one immediately, the rest
-    // when next viewed). Status has no server-side history to refetch, so it keeps
-    // its lines.
-    for (auto& b : m_buffers) {
-        if (b.view && b.kind != ChatView::Kind::Status) {
-            b.view->clearMessages();
-            b.hydrated = false;
-        }
-    }
-    if (Buffer* a = activeBuffer()) hydrateBuffer(a);
+    // re-colour existing lines in place. Each view replays its recorded lines with
+    // the now-active theme — synchronously, for every buffer (Status and direct
+    // IRC included), with no history re-fetch (which only worked for the active
+    // Lurker window and lost the rest until re-viewed).
+    for (auto& b : m_buffers)
+        if (b.view) b.view->reRender();
 }
 
 bool MainWindow::renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,

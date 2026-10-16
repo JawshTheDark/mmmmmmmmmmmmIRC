@@ -61,6 +61,11 @@ public:
     void addNotice(const QString& timestamp, const QString& from, const QByteArray& utf8Text, bool server);
 
     void clearMessages();
+    // Re-render every line recorded so far with the current theme/palette. The
+    // document bakes resolved colours, so a palette change can't re-tint existing
+    // text in place — this clears and replays the stored lines (and reactions),
+    // synchronously and for every buffer, without re-fetching history.
+    void reRender();
     int lineCount() const;          // $line(window,0)
     QString lineAt(int oneBased) const;  // $line(window,N)
     void setTopic(const QByteArray& utf8Topic);
@@ -141,6 +146,27 @@ private:
         QSet<QString> selfValues;            // values we reacted with
     };
     QHash<qlonglong, ReactSlot> m_reactSlots;
+
+    // A recorded line, replayed verbatim by reRender() when the theme changes.
+    // One variant per public add* method (what selects which).
+    struct LogEntry {
+        enum class What { Message, System, Themed, Notice };
+        What what;
+        QString ts;
+        QString nick;   // Message: nick; Notice: from
+        QByteArray utf8;
+        bool action = false;
+        bool self = false;
+        bool highlight = false;
+        qlonglong msgId = 0;
+        QString replyNick;
+        QString replyText;
+        bool server = false;                        // Notice: server notice
+        SystemKind sysKind = SystemKind::Generic;   // System: event colour
+    };
+    QList<LogEntry> m_log;      // recorded lines for reRender(); capped to scrollback
+    bool m_replaying = false;   // true while reRender() replays, to suppress re-recording
+    void record(const LogEntry& e);
 
     Kind m_kind;
     QString m_settingsScope;  // per-channel theme override prefix, empty = globals only
