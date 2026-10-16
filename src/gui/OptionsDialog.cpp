@@ -114,6 +114,8 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         f->addRow(boundCheck(tr("Rejoin channel when kicked"), QStringLiteral("irc/rejoinOnKick"), false));
         f->addRow(boundCheck(tr("Show mode changes"), QStringLiteral("irc/showModes"), true));
         f->addRow(boundCheck(tr("Show join/part/quit events"), QStringLiteral("irc/showJoins"), true));
+        f->addRow(boundCheck(tr("Enforce script access levels (on <level>: events)"),
+                             QStringLiteral("scripting/accessLevels"), false));
         f->addRow(tr("Quit message"),
                   boundEdit(QStringLiteral("irc/quitMessage"), tr("mmmmmmmmmmmmIRC")));
     });

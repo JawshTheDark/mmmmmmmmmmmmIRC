@@ -31,6 +31,11 @@ struct FakeHost : Host {
     bool isOn(int, const std::string&, const std::string& nick) const override {
         return std::find(chanNicks.begin(), chanNicks.end(), nick) != chanNicks.end();
     }
+    std::map<std::string, std::string> chanModes;  // nick -> prefix sigils, for access gating
+    std::string channelUserModes(int, const std::string&, const std::string& nick) const override {
+        auto it = chanModes.find(nick);
+        return it == chanModes.end() ? std::string() : it->second;
+    }
 
     std::vector<std::string> echoTargets;  // where.window for each echo, to test routing
     void echo(const ScriptTarget& w, const std::string& t) override {
@@ -906,6 +911,45 @@ int main() {
         CHECK(!host.echoed.empty() && host.echoed.back() == std::string("hello bob"));
         in.execute("haltdef", s);                      // registered no-op, not an error
         CHECK(host.errors.empty());
+    }
+
+    // Access-level gating (#30): on<level>: fires only for matching users when on.
+    {
+        Interpreter g(host);
+        g.loadUsers("100:*!*@trusted.org\n5:bob!*@*\n");
+        g.loadScript(
+            "on 10:text:*:#:{ echo -a NUM }\n"
+            "on *:text:*:#:{ echo -a ANY }\n"
+            "on @:text:*:#:{ echo -a OP }");
+        host.chanModes.clear();
+        host.chanModes["carol"] = "@";  // carol is an op on the channel
+        auto has = [&](const char* v) {
+            return std::find(host.echoed.begin(), host.echoed.end(), std::string(v)) != host.echoed.end();
+        };
+        auto fire = [&](const std::string& addr, const std::string& nick) {
+            Scope s;
+            s.address = addr;
+            s.nick = nick;
+            s.chan = "#c";
+            s.target = "#c";
+            s.networkId = 1;
+            host.echoed.clear();
+            g.raiseEvent("text", "hi", s);
+        };
+
+        // Gating off (default): every handler fires regardless of level.
+        fire("nobody!x@nowhere.net", "nobody");
+        CHECK_EQ(host.echoed.size(), 3u);
+
+        g.setAccessGating(true);
+        fire("alice!a@trusted.org", "alice");  // level 100 >= 10, not op
+        CHECK(has("NUM") && has("ANY") && !has("OP"));
+        fire("nobody!x@nowhere.net", "nobody");  // unlisted, not op
+        CHECK(!has("NUM") && has("ANY") && !has("OP"));
+        fire("carol!c@host", "carol");  // op via channelUserModes, no numeric level
+        CHECK(has("OP") && has("ANY") && !has("NUM"));
+        fire("bob!b@host", "bob");  // level 5 < 10, not op
+        CHECK(!has("NUM") && has("ANY") && !has("OP"));
     }
 
     return check::summary();

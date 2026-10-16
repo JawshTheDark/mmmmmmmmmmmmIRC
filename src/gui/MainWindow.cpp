@@ -333,6 +333,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     ensureSectionScripts();  // load the mIRC-style section files so user aliases persist
     loadPersistedScripts();  // reload the scripts loaded last session
     loadVariables();         // restore saved %globals
+    if (m_msl) m_msl->setAccessGating(QSettings().value(QStringLiteral("scripting/accessLevels"), false).toBool());
     m_ignoreMasks = AddressBookDialog::ignoreList();  // apply the saved ignore list
     applyTreebarStyle();                              // apply any saved networks-tree background
     // mIRC fires `on START` once the client is up and all scripts are loaded.
@@ -655,6 +656,8 @@ void MainWindow::showOptions(const QString& page) {
         applyTreebarStyle();     // networks-tree background/colour
         setupToolbar();          // the toolbar icon style may have changed
         reapplyPinPlacement();   // the combined-favourites toggle may have changed
+        if (m_msl)               // the access-level gating toggle may have changed
+            m_msl->setAccessGating(QSettings().value(QStringLiteral("scripting/accessLevels"), false).toBool());
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();
@@ -1364,6 +1367,14 @@ void MainWindow::setupScripting() {
         for (const QString& n : b->memberNicks)
             if (n.compare(nick, Qt::CaseInsensitive) == 0) return true;
         return false;
+    };
+    m_scriptHost.channelUserModesFn = [this](int net, const QString& chan, const QString& nick) -> QString {
+        Buffer* b = findBuffer(keyFor(net, chan));
+        if (!b) return QString();
+        for (int i = 0; i < b->memberNicks.size(); ++i)  // parallel sigils/nicks
+            if (b->memberNicks[i].compare(nick, Qt::CaseInsensitive) == 0)
+                return i < b->memberSigils.size() ? b->memberSigils[i] : QString();
+        return QString();
     };
     m_scriptHost.networkNameFn = [this](int net) { return m_networkNames.value(net); };
     m_scriptHost.serverHostFn = [this](int) {
@@ -2091,6 +2102,7 @@ void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
     scope.nick = event.nick;
     if (event.type == IrcEventType::NickChange) scope.newnick = event.arg;
     scope.address = event.user.empty() ? event.nick : event.nick + "!" + event.user + "@" + event.host;
+    scope.networkId = event.networkId;  // for @/%/+ channel-status level gating (#30)
     const bool isChan = looksLikeChannel(target);
     scope.chan = isChan ? target.toStdString() : std::string();
     scope.target = isChan ? target.toStdString() : event.nick;
@@ -2915,6 +2927,7 @@ void MainWindow::onMembersReplaced(int net, const QString& target, const QList<D
         nicks << m.nick;
     }
     buf->memberNicks = nicks;
+    buf->memberSigils = sigils;  // parallel to memberNicks, for access-level gating
     buf->view->setMembers(sigils, nicks);
     buf->sub->setWindowTitle(QStringLiteral("%1 (%2)").arg(buf->display).arg(nicks.size()));
 }

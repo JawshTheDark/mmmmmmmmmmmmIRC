@@ -53,6 +53,7 @@ public:
     std::function<QStringList(int, const QString&)> channelNicksFn;  // $nick(#,N)
     std::function<QStringList(int)> myChannelsFn;                    // $chan(N)
     std::function<bool(int, const QString&, const QString&)> isOnFn; // $comchan / $ison
+    std::function<QString(int, const QString&, const QString&)> channelUserModesFn;  // @/%/+ gating
     std::function<QString(int)> networkNameFn;                       // $network
     std::function<QString(int)> serverHostFn;                        // $server
     std::function<QStringList()> scriptFilesFn;                      // $script
@@ -91,6 +92,11 @@ public:
         if (myChannelsFn)
             for (const QString& c : myChannelsFn(net)) out.push_back(c.toStdString());
         return out;
+    }
+    std::string channelUserModes(int net, const std::string& chan, const std::string& nick) const override {
+        return channelUserModesFn
+                   ? channelUserModesFn(net, QString::fromStdString(chan), QString::fromStdString(nick)).toStdString()
+                   : std::string();
     }
     bool isOn(int net, const std::string& chan, const std::string& nick) const override {
         return isOnFn ? isOnFn(net, QString::fromStdString(chan), QString::fromStdString(nick)) : false;

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 
 namespace lurker::msl {
 
@@ -1011,6 +1012,79 @@ std::string Interpreter::serializeUsers() const {
     return out;
 }
 
+// Rank of a channel-status sigil (owner highest), 0 for none.
+static int sigilRank(char c) {
+    switch (c) {
+        case '~': return 5;
+        case '&': return 4;
+        case '@': return 3;
+        case '%': return 2;
+        case '+': return 1;
+        default: return 0;
+    }
+}
+
+// Collect the numeric tokens of a comma-separated level list ("100,op" -> {100}).
+static std::vector<int> numericLevels(const std::string& list) {
+    std::vector<int> out;
+    std::size_t i = 0;
+    while (i < list.size()) {
+        std::size_t c = list.find(',', i);
+        if (c == std::string::npos) c = list.size();
+        std::string tok = list.substr(i, c - i);
+        i = c + 1;
+        while (!tok.empty() && (tok.front() == ' ')) tok.erase(tok.begin());
+        while (!tok.empty() && (tok.back() == ' ')) tok.pop_back();
+        if (!tok.empty() && tok.find_first_not_of("0123456789") == std::string::npos)
+            out.push_back(std::atoi(tok.c_str()));
+    }
+    return out;
+}
+
+bool Interpreter::levelMatches(const std::string& level, const Scope& scope) {
+    if (level.empty() || level == "*") return true;  // any user
+
+    // Channel-status levels: @ ops, % halfops, + voiced, & admins, ~ owners —
+    // and higher ranks satisfy a lower requirement (an op matches `on +:`).
+    if (level.size() == 1 && sigilRank(level[0]) > 0) {
+        const std::string modes = m_host.channelUserModes(scope.networkId, scope.chan, scope.nick);
+        int have = 0;
+        for (char c : modes) have = std::max(have, sigilRank(c));
+        return have >= sigilRank(level[0]);
+    }
+
+    // Numeric levels, matched against the user's access-list levels. Unlisted
+    // users (no numeric level) never match a numeric handler.
+    const std::vector<int> have = numericLevels(userLevels(scope.address));
+    if (have.empty()) return false;
+    const int top = *std::max_element(have.begin(), have.end());
+
+    // The handler level may be a comma list; each item is =N (exact), N-M (range)
+    // or N (that level or higher, the mIRC default).
+    std::size_t i = 0;
+    while (i < level.size()) {
+        std::size_t c = level.find(',', i);
+        if (c == std::string::npos) c = level.size();
+        std::string spec = level.substr(i, c - i);
+        i = c + 1;
+        if (spec.empty()) continue;
+        if (spec[0] == '=') {  // exactly N
+            const int n = std::atoi(spec.c_str() + 1);
+            for (int h : have)
+                if (h == n) return true;
+        } else if (spec.find('-') != std::string::npos && spec.find('-') != 0) {  // range N-M
+            const std::size_t dash = spec.find('-');
+            const int lo = std::atoi(spec.substr(0, dash).c_str());
+            const int hi = std::atoi(spec.substr(dash + 1).c_str());
+            for (int h : have)
+                if (h >= lo && h <= hi) return true;
+        } else if (spec.find_first_not_of("0123456789") == std::string::npos) {  // N or higher
+            if (top >= std::atoi(spec.c_str())) return true;
+        }
+    }
+    return false;
+}
+
 void Interpreter::setGroup(const std::string& nameWild, bool on) {
     for (auto& g : m_groups)
         if (matchWild(nameWild, g.first)) g.second = on;
@@ -1240,6 +1314,7 @@ void Interpreter::raiseEvent(const std::string& event, const std::string& subjec
     scope.event = event;
     for (const EventHandler& h : it->second) {
         if (!h.group.empty() && groupState(h.group) == 0) continue;  // group disabled
+        if (m_accessGating && !levelMatches(h.level, scope)) continue;  // access-level gate (#30)
         if (!targetMatches(h.target, scope)) continue;
         if (!matchWild(h.match, subject)) continue;
         Scope local = scope;  // each handler gets a fresh copy of the context

@@ -40,6 +40,7 @@ struct Scope {
     std::string address;  // nick!user@host
     std::string chan;     // channel the event is on
     std::string target;   // the window ($target): channel, query nick or @window
+    int networkId = -1;   // which network the event is on (for channel-status level gating)
     std::string v1;                               // $v1 / $v2: the operands of the
     std::string v2;                               // most recent if/while comparison
     bool halted = false;                          // /halt stops the whole script
@@ -107,6 +108,15 @@ public:
     std::string userLevels(const std::string& addressOrNick) const;          // levels of the first match
     const std::vector<UserEntry>& users() const { return m_users; }
     std::string serializeUsers() const;  // back to `<levels>:<mask>` lines
+
+    // Access-level event gating (#30): when on, an `on <level>:EVENT` handler fires
+    // only if the triggering user matches <level> (a numeric user-list level, a
+    // `@`/`%`/`+`/`&`/`~` channel status, `*` for anyone, or `=N`/`N-M`/`N,M` forms).
+    // Off by default so existing scripts (which may use `on <N>:` loosely) are
+    // unaffected until the user opts in.
+    void setAccessGating(bool on) { m_accessGating = on; }
+    bool accessGating() const { return m_accessGating; }
+    bool levelMatches(const std::string& level, const Scope& scope);  // does <level> admit this user?
 
     // Script groups (#name on/off ... #name end): /enable, /disable toggle them;
     // events in a disabled group don't fire. `nameWild` may be a wildcard.
@@ -210,6 +220,7 @@ private:
     std::map<std::string, std::vector<MenuItem>, CiLess> m_menus;     // popup menus by type
     std::vector<std::pair<std::string, bool>> m_groups;              // #group -> enabled, in order
     std::vector<UserEntry> m_users;                                  // user access list (#30)
+    bool m_accessGating = false;                                     // gate on<level>: by access (#30)
     std::map<std::string, std::string, CiLess> m_aliasDir;           // alias -> source dir ($scriptdir)
     std::map<std::string, std::string, CiLess> m_dialogDir;          // dialog -> source dir
     std::string m_currentScriptDir;                                  // source dir of the code running now

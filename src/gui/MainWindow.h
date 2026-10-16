@@ -101,6 +101,7 @@ private:
         QString display;        // channel/nick as shown
         QString key;            // "net\x1ffoldedtarget"
         QStringList memberNicks; // current nicklist (no sigils), for tab-completion
+        QStringList memberSigils; // parallel prefix sigils ("@","+",""), for access gating
         bool hydrated = false;   // history has been requested for this buffer
         qlonglong lastMessageId = 0;  // newest persisted id seen here (for mark-read)
         int unread = 0;          // server-authoritative unread count

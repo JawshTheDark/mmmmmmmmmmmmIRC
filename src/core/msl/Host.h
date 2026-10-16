@@ -65,6 +65,14 @@ public:
         (void)nick;
         return false;
     }
+    //   `nick`'s prefix sigils on `channel` ("@", "@+", "", …), strongest first —
+    //   used for @/%/+ access-level gating. Empty when unknown or not present.
+    virtual std::string channelUserModes(int networkId, const std::string& channel, const std::string& nick) const {
+        (void)networkId;
+        (void)channel;
+        (void)nick;
+        return {};
+    }
     //   network display name ($network) and server host ($server) for a network
     virtual std::string networkName(int networkId) const {
         (void)networkId;
