@@ -31,6 +31,10 @@ public:
     // (passes it to MainWindow::useBackend, which reparents it).
     lurker::backend::ChatBackend* createBackend(QObject* parent) const;
 
+    // A stable key for "this server + account" (mode|host|user), so the caller can
+    // warn before opening a second connection to a Lurker server it already holds.
+    QString identity() const;
+
     // Build a connected backend from the last-saved connection (QSettings) for
     // auto-connect at launch. Returns nullptr if no server or no stored creds.
     static lurker::backend::ChatBackend* createBackendFromSettings(QObject* parent);

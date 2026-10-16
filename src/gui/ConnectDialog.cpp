@@ -207,6 +207,16 @@ lurker::backend::ChatBackend* ConnectDialog::createBackend(QObject* parent) cons
     return b;
 }
 
+QString ConnectDialog::identity() const {
+    const int mode = m_mode->currentIndex();
+    QString user = m_username->text().trimmed();
+    if (mode == 1) {  // bouncer binds user/network
+        const QString net = m_network->currentText().trimmed();
+        if (!net.isEmpty()) user += QLatin1Char('/') + net;
+    }
+    return QStringLiteral("%1|%2|%3").arg(mode).arg(m_host->text().trimmed().toLower(), user.toLower());
+}
+
 lurker::backend::ChatBackend* ConnectDialog::createBackendFromSettings(QObject* parent) {
     QSettings s;
     s.beginGroup(QStringLiteral("connect"));

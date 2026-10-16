@@ -205,6 +205,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         } else {  // Status / network node
             menu.addAction(tr("Disconnect"), this, [this] {
                 if (m_backend) m_backend->disconnectAll();
+                m_liveConnIds.clear();
             });
             menu.addAction(tr("Join channel..."), this, &MainWindow::showJoinDialog);
         }
@@ -222,6 +223,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     file->addAction(tr("Server &List..."), this, &MainWindow::showServerList);
     m_disconnectAction = file->addAction(tr("&Disconnect"), this, [this] {
         if (m_backend) m_backend->disconnectAll();
+        m_liveConnIds.clear();
     });
     m_disconnectAction->setEnabled(false);
     file->addSeparator();
@@ -383,6 +385,7 @@ void MainWindow::setupToolbar() {
     add(Glyph::Connect, tr("Connect to a server"), &MainWindow::showConnectDialog);
     m_tbDisconnect = add(Glyph::Disconnect, tr("Disconnect"), [this] {
         if (m_backend) m_backend->disconnectAll();
+        m_liveConnIds.clear();
     });
     m_tbDisconnect->setEnabled(wasConnected);
     m_toolbar->addSeparator();
@@ -3044,6 +3047,17 @@ void MainWindow::showServerList() {
 void MainWindow::showConnectDialog() {
     ConnectDialog dialog(this);
     if (dialog.exec() != QDialog::Accepted) return;
+    // Guard against a second connection to the same server + account: two live
+    // sessions share network ids, and disconnecting one strands the other (the
+    // "unknown network" flood). Warn, but let the user override on purpose.
+    const QString id = dialog.identity();
+    if (m_liveConnIds.contains(id) &&
+        QMessageBox::question(this, tr("Already connected"),
+                              tr("You already have a connection open to this server with the same account.\n\n"
+                                 "Connecting again can confuse both sessions. Connect anyway?"),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+        return;
+    m_liveConnIds << id;
     useBackend(dialog.createBackend(this));
     if (Buffer* s = findBuffer(statusKey())) {
         m_mdi->setActiveSubWindow(s->sub);
