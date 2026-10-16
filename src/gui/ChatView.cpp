@@ -69,6 +69,23 @@ QColor eventColor(const QString& scope, const QString& name, const QColor& def) 
     return (v.isEmpty() || !c.isValid()) ? def : c;
 }
 
+// A distinct default colour per system-event kind, so the buffer reads as
+// colourful out of the box instead of one flat grey (#22). Muted, theme-aware
+// hues; a user's colors/event/<name> setting still overrides these.
+QColor defaultEventColor(const QString& name, const QPalette& pal) {
+    const bool dark = pal.color(QPalette::Base).lightness() < 128;
+    const int sat = dark ? 115 : 160, val = dark ? 205 : 150;
+    auto hue = [&](int h) { return QColor::fromHsv(h, sat, val); };
+    if (name == QLatin1String("join")) return hue(135);   // green
+    if (name == QLatin1String("part")) return hue(30);    // amber
+    if (name == QLatin1String("quit")) return hue(5);     // red
+    if (name == QLatin1String("nick")) return hue(280);   // purple
+    if (name == QLatin1String("mode")) return hue(205);   // blue
+    if (name == QLatin1String("kick")) return hue(350);   // pink-red
+    if (name == QLatin1String("topic")) return hue(175);  // teal
+    return pal.color(QPalette::Disabled, QPalette::Text);  // generic: dim
+}
+
 // A stable per-nick colour (hash → hue), tuned for readability on the current
 // theme's message background. mIRC colours nicks this way.
 QColor hashNickColor(const QString& nick, const QPalette& pal) {
@@ -592,7 +609,10 @@ void ChatView::addSystemLine(const QByteArray& utf8Text, SystemKind kind) {
         case SystemKind::Generic: break;
     }
     QTextCharFormat fmt;
-    fmt.setForeground(name.isEmpty() ? dim : eventColor(m_settingsScope, name, dim));
+    fmt.setForeground(name.isEmpty()
+                          ? dim
+                          : eventColor(m_settingsScope, name,
+                                       defaultEventColor(name, m_messages->palette())));
     cursor.insertText(QStringLiteral("— "), fmt);
     cursor.insertText(QString::fromUtf8(utf8Text), fmt);
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
