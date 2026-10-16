@@ -5,11 +5,29 @@
 #include "backend/LurkerChatBackend.h"
 
 #include <QJsonArray>
+#include <QJsonObject>
 #include <algorithm>
+#include <vector>
 
 namespace lurker::backend {
 
 namespace {
+// A history/backlog batch's events, oldest first. Lurker may return "latest"
+// history newest-first; sorting by (time, id) renders them chronologically
+// either way, and is a no-op when they already arrive in order (#25).
+std::vector<QJsonObject> inChronoOrder(const QJsonArray& events) {
+    std::vector<QJsonObject> v;
+    v.reserve(events.size());
+    for (const QJsonValue& e : events) v.push_back(e.toObject());
+    std::stable_sort(v.begin(), v.end(), [](const QJsonObject& a, const QJsonObject& b) {
+        const QString ta = a.value(QStringLiteral("time")).toString();
+        const QString tb = b.value(QStringLiteral("time")).toString();
+        if (ta != tb) return ta < tb;  // ISO-8601 sorts chronologically
+        return a.value(QStringLiteral("id")).toDouble() < b.value(QStringLiteral("id")).toDouble();
+    });
+    return v;
+}
+
 IrcEventType typeFromString(const QString& t) {
     if (t == "message") return IrcEventType::Message;
     if (t == "action") return IrcEventType::Action;
@@ -279,11 +297,11 @@ void LurkerChatBackend::onBacklog(const QJsonObject& frame) {
     // Seed the unread badge from the snapshot's per-buffer counts.
     if (frame.contains("unread"))
         emit readStateChanged(net, target, frame.value("unread").toInt(), frame.value("highlights").toInt());
-    for (const QJsonValue& ev : frame.value("events").toArray()) translateEvent(ev.toObject(), false);
+    for (const QJsonObject& ev : inChronoOrder(frame.value("events").toArray())) translateEvent(ev, false);
 }
 
 void LurkerChatBackend::onHistory(const QJsonObject& frame) {
-    for (const QJsonValue& ev : frame.value("events").toArray()) translateEvent(ev.toObject(), false);
+    for (const QJsonObject& ev : inChronoOrder(frame.value("events").toArray())) translateEvent(ev, false);
 }
 
 void LurkerChatBackend::onLive(const QJsonObject& frame) { translateEvent(frame, true); }
