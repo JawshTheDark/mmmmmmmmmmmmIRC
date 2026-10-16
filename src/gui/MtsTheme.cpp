@@ -4,12 +4,17 @@
 
 #include "gui/MtsTheme.h"
 
+#include <QApplication>
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
+#include <QPalette>
 #include <QSettings>
 #include <QStringList>
+#include <QStyleFactory>
 #include <QTextStream>
+
+#include "gui/Theme.h"
 
 namespace lurker::gui {
 
@@ -93,9 +98,41 @@ bool MtsTheme::apply() const {
     QSettings s;
     if (background.isValid()) s.setValue(QStringLiteral("display/bgColor"), background.name());
     if (text.isValid()) s.setValue(QStringLiteral("colors/event/message"), text.name());
+    if (text.isValid()) s.setValue(QStringLiteral("display/nicklistColor"), text.name());
+    if (background.isValid()) s.setValue(QStringLiteral("display/nicklistBgColor"), background.name());
     if (!fontFamily.isEmpty()) s.setValue(QStringLiteral("display/fontFamily"), fontFamily);
     if (fontSize > 0) s.setValue(QStringLiteral("display/fontSize"), fontSize);
     s.setValue(QStringLiteral("mts/loaded"), name.isEmpty() ? QStringLiteral("theme") : name);
+
+    // Theme the whole client (tree/nicklist/previews/chrome), not just the
+    // message area: an app-wide palette plus the item-view stylesheet the item
+    // views need to actually repaint on Windows — the same treatment the built-in
+    // themes use. "Clear MTS theme" restores the app theme.
+    if (background.isValid() && text.isValid()) {
+        QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+        const bool dark = background.lightness() < 128;
+        const QColor accent = hasPalette ? QColor(palette[12].r, palette[12].g, palette[12].b)
+                                         : QColor(0x3D, 0x7E, 0xFF);
+        QPalette p;
+        p.setColor(QPalette::Window, background);
+        p.setColor(QPalette::WindowText, text);
+        p.setColor(QPalette::Base, background);
+        p.setColor(QPalette::AlternateBase, dark ? background.lighter(130) : background.darker(105));
+        p.setColor(QPalette::Text, text);
+        p.setColor(QPalette::Button, dark ? background.lighter(120) : background.darker(103));
+        p.setColor(QPalette::ButtonText, text);
+        p.setColor(QPalette::Highlight, accent);
+        p.setColor(QPalette::HighlightedText, dark ? text : QColor(Qt::white));
+        p.setColor(QPalette::Link, accent);
+        p.setColor(QPalette::ToolTipBase, background);
+        p.setColor(QPalette::ToolTipText, text);
+        p.setColor(QPalette::Disabled, QPalette::Text, text.darker(dark ? 170 : 130));
+        qApp->setPalette(p);
+        qApp->setStyleSheet(QStringLiteral("QTreeView,QTreeWidget,QListView,QListWidget{background:%1;color:%2;}"
+                                           "QHeaderView::section{background:%1;color:%2;}"
+                                           "QDockWidget{color:%2;}QDockWidget::title{background:%1;}")
+                                .arg(background.name(), text.name()));
+    }
     g_active = *this;  // becomes the active theme for event rendering
     return true;
 }
@@ -186,7 +223,11 @@ void clearMtsTheme() {
     QSettings s;
     s.remove(QStringLiteral("display/bgColor"));
     s.remove(QStringLiteral("colors/event/message"));
+    s.remove(QStringLiteral("display/nicklistColor"));
+    s.remove(QStringLiteral("display/nicklistBgColor"));
     s.remove(QStringLiteral("mts/loaded"));
+    // Restore the app theme's palette + stylesheet (the MTS palette overrode it).
+    applyTheme(*qApp, s.value(QStringLiteral("theme"), QStringLiteral("default")).toString());
     // Font is left as the user set it; MTS only overrode it while active.
 }
 

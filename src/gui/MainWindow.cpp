@@ -649,8 +649,13 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         const QString scriptPath = QFileInfo(path).dir().filePath(theme.script);
         if (QFile::exists(scriptPath)) loadScriptFile(scriptPath);
     }
-    // Push the new palette, background and font to every open conversation.
+    // Push the new palette to every open conversation and the chrome: the tree
+    // (treebar), the MDI backdrop, and each view's background/font/nicklist.
     refreshColorSettings();
+    applyTreebarStyle();
+    configurePreviews();
+    m_mdi->setBackground(QBrush(palette().color(QPalette::Window).darker(
+        palette().color(QPalette::Window).lightness() < 128 ? 130 : 105)));
     for (auto& b : m_buffers)
         if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
     statusBar()->showMessage(
