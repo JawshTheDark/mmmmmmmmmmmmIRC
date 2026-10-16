@@ -657,7 +657,11 @@ bool MainWindow::renderThemedEvent(Buffer* buf, const QString& key, const QHash<
     if (!theme || !buf || !buf->view) return false;
     const QString line = theme->renderEvent(key, vars);
     if (line.isEmpty()) return false;
-    buf->view->addThemedLine(ts, line.toUtf8());
+    // Prefer the theme's own timestamp (its format carries colour codes, so the
+    // whole line renders through the formatter); otherwise keep our plain stamp.
+    const QString mtsTs = theme->timestamp(QDateTime::currentDateTime());
+    if (!mtsTs.isEmpty()) buf->view->addThemedLine(QString(), (mtsTs + QLatin1Char(' ') + line).toUtf8());
+    else buf->view->addThemedLine(ts, line.toUtf8());
     return true;
 }
 

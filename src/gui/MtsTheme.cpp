@@ -4,6 +4,7 @@
 
 #include "gui/MtsTheme.h"
 
+#include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
 #include <QSettings>
@@ -96,6 +97,73 @@ bool MtsTheme::apply() const {
     if (fontSize > 0) s.setValue(QStringLiteral("display/fontSize"), fontSize);
     s.setValue(QStringLiteral("mts/loaded"), name.isEmpty() ? QStringLiteral("theme") : name);
     g_active = *this;  // becomes the active theme for event rendering
+    return true;
+}
+
+QString MtsTheme::timestamp(const QDateTime& dt) const {
+    if (directives.value(QStringLiteral("TIMESTAMP")).compare(QLatin1String("on"), Qt::CaseInsensitive) != 0)
+        return QString();
+    const QString fmt = directives.value(QStringLiteral("TIMESTAMPFORMAT"));
+    if (fmt.isEmpty()) return QString();
+    const QTime t = dt.time();
+    const QDate d = dt.date();
+    auto two = [](int v) { return QStringLiteral("%1").arg(v, 2, 10, QLatin1Char('0')); };
+    const int h12 = (t.hour() % 12) == 0 ? 12 : t.hour() % 12;
+    // mIRC $asctime time/date tokens, matched longest-first; other chars (literals
+    // and \x03 colour codes) pass through untouched.
+    const std::vector<std::pair<QString, QString>> toks{
+        {QStringLiteral("HH"), two(t.hour())},   {QStringLiteral("hh"), two(h12)},
+        {QStringLiteral("nn"), two(t.minute())}, {QStringLiteral("ss"), two(t.second())},
+        {QStringLiteral("TT"), t.hour() < 12 ? QStringLiteral("AM") : QStringLiteral("PM")},
+        {QStringLiteral("tt"), t.hour() < 12 ? QStringLiteral("am") : QStringLiteral("pm")},
+        {QStringLiteral("yyyy"), QString::number(d.year())},
+        {QStringLiteral("dd"), two(d.day())},
+        {QStringLiteral("H"), QString::number(t.hour())}, {QStringLiteral("h"), QString::number(h12)},
+        {QStringLiteral("n"), QString::number(t.minute())}, {QStringLiteral("s"), QString::number(t.second())},
+        {QStringLiteral("T"), t.hour() < 12 ? QStringLiteral("A") : QStringLiteral("P")},
+        {QStringLiteral("t"), t.hour() < 12 ? QStringLiteral("a") : QStringLiteral("p")}};
+    QString out;
+    for (int i = 0; i < fmt.size();) {
+        bool hit = false;
+        for (const auto& [tok, val] : toks) {
+            if (QStringView(fmt).mid(i).startsWith(tok)) {
+                out += val;
+                i += tok.size();
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) out += fmt[i++];
+    }
+    return out;
+}
+
+bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color) const {
+    const QChar s = sigil.isEmpty() ? QChar() : sigil.at(0);
+    QString rank;
+    if (s == QLatin1Char('~') || s == QLatin1Char('&')) rank = QStringLiteral("OWNER");
+    else if (s == QLatin1Char('@')) rank = QStringLiteral("OP");
+    else if (s == QLatin1Char('%')) rank = QStringLiteral("HOP");
+    else if (s == QLatin1Char('+')) rank = QStringLiteral("VOICE");
+    else rank = QStringLiteral("REGULAR");
+    const QString clineKey = QStringLiteral("CLINE") + rank;
+    const QString charKey = QStringLiteral("CLINECHAR") + rank;
+    if (!directives.contains(clineKey) && !directives.contains(charKey)) return false;
+    glyph = directives.value(charKey);  // themed prefix glyph (@, +, ., %, …)
+    // The CLINE value carries a palette index (e.g. "\x037"); resolve via the
+    // theme palette, else leave the colour invalid (caller keeps the default).
+    const QString cv = directives.value(clineKey);
+    QString digits;
+    for (const QChar c : cv) {
+        if (c.isDigit()) digits += c;
+        else if (!digits.isEmpty()) break;
+    }
+    if (!digits.isEmpty() && hasPalette) {
+        const int idx = digits.toInt();
+        if (idx >= 0 && idx < 16)
+            color = QColor(palette[static_cast<std::size_t>(idx)].r, palette[static_cast<std::size_t>(idx)].g,
+                           palette[static_cast<std::size_t>(idx)].b);
+    }
     return true;
 }
 

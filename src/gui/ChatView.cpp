@@ -32,6 +32,7 @@
 #include "core/CommandParser.h"
 #include "core/Completion.h"
 #include "gui/FormattedText.h"
+#include "gui/MtsTheme.h"
 #include "gui/PreviewService.h"
 
 namespace lurker::gui {
@@ -682,9 +683,17 @@ QString ChatView::currentTopic() const {
 void ChatView::setMembers(const QStringList& sigils, const QStringList& nicks) {
     if (!m_nicklist) return;
     m_nicklist->clear();
+    const lurker::gui::MtsTheme* theme = lurker::gui::activeMtsTheme();
     for (int i = 0; i < nicks.size(); ++i) {
         const QString sigil = i < sigils.size() ? sigils[i] : QString();
-        m_nicklist->addItem(sigil + nicks[i]);
+        QString glyph;
+        QColor color;
+        if (theme && theme->nicklistDecor(sigil, glyph, color)) {
+            auto* item = new QListWidgetItem(glyph + nicks[i], m_nicklist);
+            if (color.isValid()) item->setForeground(color);
+        } else {
+            m_nicklist->addItem(sigil + nicks[i]);
+        }
     }
 }
 

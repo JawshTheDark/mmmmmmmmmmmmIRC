@@ -14,6 +14,7 @@
 #pragma once
 
 #include <QColor>
+#include <QDateTime>
 #include <QHash>
 #include <QString>
 #include <array>
@@ -47,6 +48,15 @@ struct MtsTheme {
     // companion script (`!script …`, handled in a later phase) — the caller then
     // falls back to its built-in rendering.
     QString renderEvent(const QString& key, const QHash<QString, QString>& vars) const;
+
+    // The TIMESTAMPFORMAT for `dt` (mIRC time tokens filled, colour codes kept),
+    // or empty when the theme has timestamps off or no format.
+    QString timestamp(const QDateTime& dt) const;
+
+    // Nicklist decoration for a member with channel sigil `sigil` (~ & @ % + or
+    // empty): the theme's CLINECHAR glyph and CLINE colour for that rank. Returns
+    // false when the theme carries no CLINE data (caller keeps the plain sigil).
+    bool nicklistDecor(const QString& sigil, QString& glyph, QColor& color) const;
 };
 
 // The theme currently applied (nullptr if none). Event rendering consults it.
