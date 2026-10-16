@@ -1651,7 +1651,9 @@ void MainWindow::reloadScripts() {
     const QStringList files = m_scriptFiles;
     for (const QString& file : files) {
         QFile f(file);
-        if (f.open(QIODevice::ReadOnly)) m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        m_scriptHost.baseDir = QFileInfo(file).absolutePath();  // so $scriptdir tags are correct (#32)
+        m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
     }
     rebuildScriptMenus();
     onStatusText(tr("Reloaded scripts — %1").arg(scriptSummary()));
@@ -1733,6 +1735,7 @@ void MainWindow::ensureSectionScripts() {
         if (!m_scriptFiles.contains(files[i])) {  // load quietly (no per-file status spam)
             QFile f(files[i]);
             if (f.open(QIODevice::ReadOnly) && m_msl) {
+                m_scriptHost.baseDir = QFileInfo(files[i]).absolutePath();  // correct $scriptdir tag (#32)
                 m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
                 m_scriptFiles << files[i];
                 loadedAny = true;

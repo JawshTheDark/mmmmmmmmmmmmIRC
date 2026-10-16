@@ -860,11 +860,19 @@ std::string Interpreter::callAlias(const std::string& name, const std::vector<st
         return {};
     }
     ++m_callDepth;
+    const std::string prevDir = m_currentScriptDir;
+    const auto dirIt = m_aliasDir.find(name);
+    if (dirIt != m_aliasDir.end()) m_currentScriptDir = dirIt->second;  // $scriptdir for this alias
     Scope scope;
     scope.params = params;
     execute(it->second, scope);
+    m_currentScriptDir = prevDir;
     --m_callDepth;
     return scope.returnValue;
+}
+
+std::string Interpreter::currentScriptDir() const {
+    return m_currentScriptDir.empty() ? m_host.scriptDir() : m_currentScriptDir;
 }
 
 // --- wildcard + remote scripts ------------------------------------------
@@ -896,6 +904,9 @@ void Interpreter::clearScripts() {
     m_menus.clear();
     m_dialogs.clear();
     m_groups.clear();
+    m_aliasDir.clear();
+    m_dialogDir.clear();
+    m_currentScriptDir.clear();
 }
 
 void Interpreter::setGroup(const std::string& nameWild, bool on) {
@@ -1011,6 +1022,10 @@ void Interpreter::loadScript(std::string_view text) {
     std::size_t i = 0;
     const std::size_t n = text.size();
     std::string currentGroup;  // set by "#name on/off", cleared by "#name end"
+    // The directory this file is loaded from, so $scriptdir resolves per-script
+    // (each alias/event/dialog remembers its own folder) instead of a single
+    // global dir that shifts with load order and loses a script's data (#32).
+    const std::string sdir = m_host.scriptDir();
     auto skipWs = [&] {
         while (i < n && (std::isspace(static_cast<unsigned char>(text[i])))) ++i;
     };
@@ -1056,10 +1071,14 @@ void Interpreter::loadScript(std::string_view text) {
             const std::string name = firstWord(rest);
             std::string inlineBody = trimmed(rest.substr(std::min(name.size(), rest.size())));
             defineAlias(name, body.empty() ? inlineBody : body);
+            if (!name.empty()) m_aliasDir[name] = sdir;
         } else if (kw == "dialog") {
             std::string rest = trimmed(header.substr(6));
             const std::string name = firstWord(rest);
-            if (!name.empty()) m_dialogs[name] = parseDialogTable(name, body);
+            if (!name.empty()) {
+                m_dialogs[name] = parseDialogTable(name, body);
+                m_dialogDir[name] = sdir;
+            }
         } else if (kw == "menu") {
             // menu <type>[,<type>...] { items }. Accumulate per type.
             const std::string typesStr = trimmed(header.substr(4));
@@ -1092,6 +1111,7 @@ void Interpreter::loadScript(std::string_view text) {
                 if (h.match.empty()) h.match = "*";
                 h.body = body;
                 h.group = currentGroup;  // gated by this #group's enabled state
+                h.sourceDir = sdir;      // for $scriptdir while this handler runs
                 m_events[event].push_back(std::move(h));
             }
         }
@@ -1121,7 +1141,10 @@ void Interpreter::raiseEvent(const std::string& event, const std::string& subjec
         if (!targetMatches(h.target, scope)) continue;
         if (!matchWild(h.match, subject)) continue;
         Scope local = scope;  // each handler gets a fresh copy of the context
+        const std::string prevDir = m_currentScriptDir;
+        if (!h.sourceDir.empty()) m_currentScriptDir = h.sourceDir;  // $scriptdir for this handler
         execute(h.body, local);
+        m_currentScriptDir = prevDir;
         if (local.halted) {
             scope.halted = true;
             break;
@@ -1148,7 +1171,13 @@ void Interpreter::raiseDialogEvent(const std::string& dialogName, const std::str
         scope.event = "DIALOG";
         scope.target = dialogName;
         scope.params = {dialogName, devent, idStr};
+        const std::string prevDir = m_currentScriptDir;
+        // $scriptdir while the dialog's handler runs: the handler's file, else the
+        // dialog table's file — so a dialog persists its data to its own folder.
+        if (!h.sourceDir.empty()) m_currentScriptDir = h.sourceDir;
+        else if (auto d = m_dialogDir.find(dialogName); d != m_dialogDir.end()) m_currentScriptDir = d->second;
         execute(h.body, scope);
+        m_currentScriptDir = prevDir;
     }
 }
 

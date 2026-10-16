@@ -67,6 +67,7 @@ struct EventHandler {
     std::vector<std::string> fields;  // all colon-fields after the EVENT (for on DIALOG etc)
     std::string body;
     std::string group;         // enclosing #group (empty = none); skipped while disabled
+    std::string sourceDir;     // folder of the file that defined it ($scriptdir)
 };
 
 class Interpreter {
@@ -151,6 +152,10 @@ public:
     std::string ifMatch;    // $ifmatch: last matched/read text ($read, if-wildcard)
     int readN = 0;          // $readn: line number from the most recent $read match
 
+    // The directory $scriptdir resolves to for the code running now: the source
+    // folder of the active alias/event/dialog, else the host's base dir (#32).
+    std::string currentScriptDir() const;
+
     std::string getVariable(const std::string& name, const Scope& scope) const;
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);
     void unsetVariable(const std::string& name, Scope& scope);
@@ -185,6 +190,9 @@ private:
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
     std::map<std::string, std::vector<MenuItem>, CiLess> m_menus;     // popup menus by type
     std::vector<std::pair<std::string, bool>> m_groups;              // #group -> enabled, in order
+    std::map<std::string, std::string, CiLess> m_aliasDir;           // alias -> source dir ($scriptdir)
+    std::map<std::string, std::string, CiLess> m_dialogDir;          // dialog -> source dir
+    std::string m_currentScriptDir;                                  // source dir of the code running now
     std::map<std::string, std::vector<unsigned char>, CiLess> m_binvars;  // &binary variables
     int m_callDepth = 0;  // guards alias/identifier recursion across scopes
 };

@@ -1008,7 +1008,7 @@ void registerBuiltins(Interpreter& in) {
         return a.empty() || a[0].empty() ? d : d + arg(a, 0);  // $mircdir or $mircdirsub\file
     });
     in.registerIdent("scriptdir", [](Interpreter& i, S&, const A& a, const std::string&) {
-        const std::string d = i.host().scriptDir();
+        const std::string d = i.currentScriptDir();  // per-script folder (#32)
         return a.empty() || a[0].empty() ? d : d + arg(a, 0);
     });
     in.registerIdent("gmt", [](Interpreter& i, S&, const A&, const std::string&) {

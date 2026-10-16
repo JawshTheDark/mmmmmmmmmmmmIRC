@@ -43,7 +43,8 @@ struct FakeHost : Host {
     std::string me(int) const override { return "jawsh"; }
     long long unixTime() const override { return now; }
     std::string appDir() const override { return "/app/"; }
-    std::string scriptDir() const override { return "/scripts/"; }
+    std::string scriptDirValue = "/scripts/";
+    std::string scriptDir() const override { return scriptDirValue; }
     std::string networkName(int) const override { return "TestNet"; }
     std::string serverHost(int) const override { return "irc.test"; }
     std::vector<std::string> timers;  // "repeat\tinterval\tcommand"
@@ -214,6 +215,20 @@ int main() {
         CHECK_EQ(eval(in, "%::nick"), std::string("alice"));
         in.setVariable(":echo", "echo -a", false, s);
         CHECK_EQ(eval(in, "%:echo done"), std::string("echo -a done"));
+
+        // $scriptdir is per-script: each alias resolves it to the folder it was
+        // loaded from, even after another script loaded from elsewhere (#32).
+        host.scriptDirValue = "/a/";
+        in.loadScript("alias wherea { echo -a $scriptdir $+ data.txt }");
+        host.scriptDirValue = "/b/";
+        in.loadScript("alias whereb { echo -a $scriptdir $+ data.txt }");
+        host.scriptDirValue = "/other/";  // current base dir now differs from both
+        host.echoed.clear();
+        in.execute("wherea", s);
+        CHECK(!host.echoed.empty() && host.echoed.back() == std::string("/a/data.txt"));
+        in.execute("whereb", s);
+        CHECK(!host.echoed.empty() && host.echoed.back() == std::string("/b/data.txt"));
+        host.scriptDirValue = "/scripts/";  // restore for the tests that follow
     }
 
     // if / elseif / else.
