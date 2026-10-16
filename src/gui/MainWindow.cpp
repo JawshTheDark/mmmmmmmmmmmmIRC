@@ -680,9 +680,11 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
     // don't accumulate scripts. Reload only when the companion actually changed.
     const QString oldScript = m_mtsScriptPath;
     m_mtsScriptPath.clear();
+    bool companionMissing = false;
     if (!theme.script.isEmpty()) {
         const QString sp = QFileInfo(QFileInfo(path).dir().filePath(theme.script)).absoluteFilePath();
         if (QFile::exists(sp)) m_mtsScriptPath = sp;
+        else companionMissing = true;  // theme wants a .mrc that isn't beside it
     }
     if (oldScript != m_mtsScriptPath) {
         if (!oldScript.isEmpty()) m_scriptFiles.removeAll(oldScript);
@@ -702,8 +704,19 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
     for (auto& b : m_buffers)
         if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
     reRenderConversations();  // redraw history with the new palette (baked colours)
-    statusBar()->showMessage(
-        tr("Loaded MTS theme: %1").arg(theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name), 5000);
+    const QString themeName = theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name;
+    if (companionMissing) {
+        // The theme's !script events (whois, etc.) need its companion script, which
+        // the loader resolves next to the .mts — tell the user it wasn't there.
+        const QString note = tr("Loaded MTS theme: %1 — but its companion script \"%2\" was not found "
+                                "next to the theme; script-driven events (e.g. whois) won't render. "
+                                "Put the .mrc beside the .mts and reload.")
+                                 .arg(themeName, theme.script);
+        statusBar()->showMessage(note, 12000);
+        if (Buffer* s = findBuffer(statusKey())) s->view->addSystemLine(note.toUtf8());
+    } else {
+        statusBar()->showMessage(tr("Loaded MTS theme: %1").arg(themeName), 5000);
+    }
 }
 
 void MainWindow::reRenderConversations() {
