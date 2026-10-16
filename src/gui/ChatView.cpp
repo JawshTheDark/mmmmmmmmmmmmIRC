@@ -145,8 +145,9 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         split->setSizes({560, 160});
         outer->addWidget(split, 1);
         connect(m_nicklist, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
-            QString nick = item->text();
-            // strip a leading prefix sigil for the emitted nick
+            // Drop any theme colour codes, then the leading prefix sigil, so the
+            // query opens to the real nick (not "7@WAR-GEN").
+            QString nick = stripFormattingQt(item->text().toUtf8());
             if (!nick.isEmpty() && QStringLiteral("~&@%+").contains(nick.front())) nick.remove(0, 1);
             emit nickActivated(nick);
         });
@@ -155,7 +156,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         connect(m_nicklist, &QListWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
             QListWidgetItem* item = m_nicklist->itemAt(pos);
             if (!item) return;
-            QString nick = item->text();
+            QString nick = stripFormattingQt(item->text().toUtf8());  // drop theme colour codes
             if (!nick.isEmpty() && QStringLiteral("~&@%+").contains(nick.front())) nick.remove(0, 1);
             QMenu menu(this);
             menu.addAction(nick)->setEnabled(false);
@@ -691,7 +692,9 @@ void ChatView::setMembers(const QStringList& sigils, const QStringList& nicks) {
         QString glyph;
         QColor color;
         if (theme && theme->nicklistDecor(sigil, glyph, color)) {
-            auto* item = new QListWidgetItem(glyph + nicks[i], m_nicklist);
+            // The glyph may carry a colour code; strip it (lists can't render
+            // codes) and apply the colour via the item's foreground instead.
+            auto* item = new QListWidgetItem(stripFormattingQt(glyph.toUtf8()) + nicks[i], m_nicklist);
             if (color.isValid()) item->setForeground(color);
         } else {
             m_nicklist->addItem(sigil + nicks[i]);

@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QPalette>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QStringList>
 #include <QStyleFactory>
@@ -172,6 +173,7 @@ QString MtsTheme::timestamp(const QDateTime& dt) const {
         }
         if (!hit) out += fmt[i++];
     }
+    out.remove(QRegularExpression(QStringLiteral("<c\\d+>")));  // strip scheme placeholders
     return out;
 }
 
@@ -212,6 +214,9 @@ QString MtsTheme::renderEvent(const QString& key, const QHash<QString, QString>&
     out.replace(QLatin1String("<pre>"), directives.value(QStringLiteral("PREFIX")));
     out.replace(QLatin1String("<lt>"), QStringLiteral("<"));
     out.replace(QLatin1String("<gt>"), QStringLiteral(">"));
+    // Scheme colour placeholders (<c1>..<cN>) — strip before substituting user
+    // text so they don't print literally (we don't resolve themed schemes yet).
+    out.remove(QRegularExpression(QStringLiteral("<c\\d+>")));
     for (auto it = vars.constBegin(); it != vars.constEnd(); ++it)
         out.replace(QStringLiteral("<%1>").arg(it.key()), it.value());
     return out;
