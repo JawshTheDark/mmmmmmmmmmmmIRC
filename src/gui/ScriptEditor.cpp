@@ -14,6 +14,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QSettings>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPlainTextEdit>
@@ -176,6 +177,10 @@ ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, 
     editMenu->addAction(tr("&Replace..."), QKeySequence::Replace, this, [this] { toggleFind(true); });
     editMenu->addAction(tr("Find &Next"), QKeySequence::FindNext, this, [this] { findNext(false); });
 
+    // View: the list of loaded remote .mrc files (mIRC-style) — pick which one
+    // the Remote tab shows. Populated by rebuildViewMenu().
+    m_viewMenu = menubar->addMenu(tr("&View"));
+
     m_tabs = new QTabWidget(this);
     m_tabs->setDocumentMode(true);
     outer->addWidget(m_tabs, 1);
@@ -235,10 +240,14 @@ void ScriptEditor::rebuildTabs() {
     const QString keep = currentPath();
     m_tabs->clear();
 
-    // mIRC's section tabs, each backed by a dedicated file.
-    const QStringList sections = sectionFiles();
-    const QStringList labels = {tr("Aliases"), tr("Popups"), tr("Remotes"), tr("Users")};
-    for (int i = 0; i < sections.size(); ++i) addEditorTab(labels[i], sections[i]);
+    // Fixed mIRC-style section tabs. Aliases/Popups/Users are one file each; the
+    // Remote tab shows the active remote file — other loaded .mrc files are NOT
+    // separate tabs, they're switchable from the View menu.
+    const QStringList sections = sectionFiles();  // [aliases, popups, remote, users]
+    addEditorTab(tr("Aliases"), sections.value(0));
+    addEditorTab(tr("Popups"), sections.value(1));
+    m_remoteEditor = addEditorTab(tr("Remote"), activeRemote());
+    addEditorTab(tr("Users"), sections.value(3));
 
     // Variables: a live, read-only view of the engine's %globals.
     m_varsView = new QPlainTextEdit;
@@ -247,13 +256,9 @@ void ScriptEditor::rebuildTabs() {
     m_tabs->addTab(m_varsView, tr("Variables"));
     refreshVariables();
 
-    // Any other loaded scripts (e.g. imported .mrc) as extra tabs.
-    for (const QString& f : m_files()) {
-        if (sections.contains(f)) continue;
-        addEditorTab(QFileInfo(f).fileName(), f);
-    }
+    rebuildViewMenu();
 
-    // Restore the previously-focused document if it still exists.
+    // Restore the previously-focused section if it still exists.
     for (int i = 0; i < m_tabs->count(); ++i) {
         if (m_tabs->tabToolTip(i) == keep) {
             m_tabs->setCurrentIndex(i);
@@ -261,6 +266,49 @@ void ScriptEditor::rebuildTabs() {
         }
     }
     refreshStatus();
+}
+
+QStringList ScriptEditor::remoteFiles() const {
+    const QStringList sections = sectionFiles();
+    QStringList out;
+    if (sections.size() > 2) out << sections[2];  // remote.mrc, always first
+    for (const QString& f : m_files())
+        if (!sections.contains(f) && !out.contains(f)) out << f;  // loaded .mrc remotes
+    return out;
+}
+
+QString ScriptEditor::activeRemote() const {
+    const QStringList files = remoteFiles();
+    const QString saved = QSettings().value(QStringLiteral("editor/activeRemote")).toString();
+    if (!saved.isEmpty() && files.contains(saved)) return saved;  // the one shown last time
+    return files.isEmpty() ? sectionFiles().value(2) : files.first();
+}
+
+void ScriptEditor::setActiveRemote(const QString& path) {
+    if (m_remoteEditor) {
+        const QString cur = m_remoteEditor->property("path").toString();
+        if (!cur.isEmpty()) {  // keep edits to the remote we're leaving
+            QFile f(cur);
+            if (f.open(QIODevice::WriteOnly)) f.write(m_remoteEditor->toPlainText().toUtf8());
+        }
+        m_remoteEditor->setProperty("path", path);
+        QFile f(path);
+        m_remoteEditor->setPlainText(f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()) : QString());
+        m_tabs->setCurrentWidget(m_remoteEditor);
+    }
+    QSettings().setValue(QStringLiteral("editor/activeRemote"), path);
+    rebuildViewMenu();
+}
+
+void ScriptEditor::rebuildViewMenu() {
+    if (!m_viewMenu) return;
+    m_viewMenu->clear();
+    const QString active = activeRemote();
+    for (const QString& f : remoteFiles()) {
+        QAction* a = m_viewMenu->addAction(QFileInfo(f).fileName(), this, [this, f] { setActiveRemote(f); });
+        a->setCheckable(true);
+        a->setChecked(f == active);
+    }
 }
 
 void ScriptEditor::refreshVariables() {
@@ -313,13 +361,11 @@ void ScriptEditor::openFile() {
     const QString path = QFileDialog::getOpenFileName(this, tr("Open Script"), QString(),
                                                       tr("mIRC scripts (*.mrc);;All files (*)"));
     if (path.isEmpty()) return;
-    if (m_loadFile) m_loadFile(path);
+    if (m_loadFile) m_loadFile(path);  // load into the engine + track it as a remote
+    // A loaded script becomes the active remote, shown now and next time (#33).
+    QSettings().setValue(QStringLiteral("editor/activeRemote"), path);
     rebuildTabs();
-    for (int i = 0; i < m_tabs->count(); ++i)
-        if (m_tabs->tabToolTip(i) == path) {
-            m_tabs->setCurrentIndex(i);
-            break;
-        }
+    m_tabs->setCurrentWidget(m_remoteEditor);
 }
 
 void ScriptEditor::toggleFind(bool withReplace) {

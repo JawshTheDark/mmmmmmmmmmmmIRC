@@ -57,8 +57,15 @@ private:
     std::function<QString()> m_variables;
     std::function<void(const QString&)> m_unloadFile;
 
+    void rebuildViewMenu();        // the View menu's list of loaded remote files
+    QString activeRemote() const;  // the remote file shown in the Remote tab (persisted)
+    void setActiveRemote(const QString& path);
+    QStringList remoteFiles() const;  // remote.mrc + any other loaded .mrc (not the sections)
+
     QTabWidget* m_tabs = nullptr;
     QPlainTextEdit* m_varsView = nullptr;
+    QPlainTextEdit* m_remoteEditor = nullptr;  // the Remote tab's editor (active remote)
+    class QMenu* m_viewMenu = nullptr;         // lists the loaded remote files
     QLabel* m_status = nullptr;
     QWidget* m_findBar = nullptr;
     QLineEdit* m_findEdit = nullptr;
