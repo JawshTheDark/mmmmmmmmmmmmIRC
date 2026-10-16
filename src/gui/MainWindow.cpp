@@ -192,6 +192,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 if (Buffer* b = findBuffer(key)) closeBuffer(b);
             });
             menu.addSeparator();
+            const bool pinned = isPinned(net, chan);
+            menu.addAction(pinned ? tr("Unpin") : tr("Pin to top"), this, [this, net, chan, key = target->key] {
+                setPinned(net, chan, !isPinned(net, chan));
+                if (Buffer* b = findBuffer(key)) repositionPinned(b);
+            });
             menu.addAction(tr("Channel theme..."), this, [this, key = target->key] { showChannelTheme(key); });
         } else if (target->kind == ChatView::Kind::Query) {
             menu.addAction(tr("Close query"), this, [this, key = target->key] {
@@ -2039,6 +2044,33 @@ QTreeWidgetItem* MainWindow::networkNode(int net) {
     return node;
 }
 
+bool MainWindow::isPinned(int net, const QString& chan) const {
+    return QSettings()
+        .value(QStringLiteral("pins"))
+        .toStringList()
+        .contains(m_networkNames.value(net) + QLatin1Char('\t') + chan.toLower());
+}
+
+void MainWindow::setPinned(int net, const QString& chan, bool pin) {
+    QSettings s;
+    QStringList pins = s.value(QStringLiteral("pins")).toStringList();
+    const QString key = m_networkNames.value(net) + QLatin1Char('\t') + chan.toLower();
+    pins.removeAll(key);
+    if (pin) pins.prepend(key);
+    s.setValue(QStringLiteral("pins"), pins);
+}
+
+void MainWindow::repositionPinned(Buffer* buf) {
+    if (!buf || !buf->treeItem || buf->kind != ChatView::Kind::Channel) return;
+    QTreeWidgetItem* parent = buf->treeItem->parent();
+    if (!parent) return;
+    const int idx = parent->indexOfChild(buf->treeItem);
+    if (idx < 0) return;
+    QTreeWidgetItem* taken = parent->takeChild(idx);
+    if (isPinned(buf->networkId, buf->display)) parent->insertChild(0, taken);  // float to top
+    else parent->addChild(taken);
+}
+
 MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const QString& display, const QString& key) {
     if (Buffer* existing = findBuffer(key)) return *existing;
 
@@ -2089,6 +2121,7 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     } else {
         b.treeItem = new QTreeWidgetItem(m_treebar, {display});
     }
+    if (kind == ChatView::Kind::Channel) repositionPinned(&b);  // pinned float to top (#26)
 
     b.switchAction = m_switchbar->addAction(display);
     b.switchAction->setCheckable(true);

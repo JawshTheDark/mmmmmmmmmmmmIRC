@@ -158,6 +158,11 @@ private:
     // mIRC-style message routing: where a category (notice/whois/ctcp) lands,
     // per Options (Active window / Status / query). `def` is the fallback setting.
     Buffer* routeFor(const QString& category, const QString& def, int net);
+    // Pinned/favourite channels (#26): persisted by network name + channel, they
+    // float to the top of their network node in the tree.
+    bool isPinned(int net, const QString& chan) const;
+    void setPinned(int net, const QString& chan, bool pin);
+    void repositionPinned(Buffer* buf);
     // Render an event via the active MTS theme's template (phase 2). Returns
     // true if a theme handled it, so the caller skips its built-in line.
     bool renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
