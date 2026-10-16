@@ -28,7 +28,7 @@ class ScriptEditor : public QDialog {
 public:
     ScriptEditor(QWidget* parent, std::function<QStringList()> files, std::function<void()> reload,
                  std::function<QString()> summary, std::function<void(const QString&)> loadFile,
-                 std::function<QString()> variables);
+                 std::function<QString()> variables, std::function<void(const QString&)> unloadFile);
 
     // The dedicated section files (Aliases, Popups, Remotes, Users), in order,
     // under <app-data>/scripts. MainWindow ensures + loads these at startup.
@@ -55,6 +55,7 @@ private:
     std::function<QString()> m_summary;
     std::function<void(const QString&)> m_loadFile;
     std::function<QString()> m_variables;
+    std::function<void(const QString&)> m_unloadFile;
 
     QTabWidget* m_tabs = nullptr;
     QPlainTextEdit* m_varsView = nullptr;

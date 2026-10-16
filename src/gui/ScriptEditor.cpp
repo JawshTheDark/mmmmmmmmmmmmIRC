@@ -84,13 +84,14 @@ QStringList ScriptEditor::sectionFiles() {
 
 ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, std::function<void()> reload,
                            std::function<QString()> summary, std::function<void(const QString&)> loadFile,
-                           std::function<QString()> variables)
+                           std::function<QString()> variables, std::function<void(const QString&)> unloadFile)
     : QDialog(parent),
       m_files(std::move(files)),
       m_reload(std::move(reload)),
       m_summary(std::move(summary)),
       m_loadFile(std::move(loadFile)),
-      m_variables(std::move(variables)) {
+      m_variables(std::move(variables)),
+      m_unloadFile(std::move(unloadFile)) {
     setWindowTitle(tr("Scripts Editor"));
     resize(920, 620);
 
@@ -108,6 +109,14 @@ ScriptEditor::ScriptEditor(QWidget* parent, std::function<QStringList()> files, 
         if (m_reload) m_reload();
         refreshVariables();
         refreshStatus(tr("Reloaded"));
+    });
+    fileMenu->addAction(tr("&Unload Current Script"), this, [this] {
+        const QString path = currentPath();
+        if (path.isEmpty() || !m_unloadFile) return;
+        saveCurrent();       // keep edits on disk
+        m_unloadFile(path);  // remove it from the engine
+        rebuildTabs();       // it drops out of the tab list
+        refreshStatus(tr("Unloaded %1").arg(QFileInfo(path).fileName()));
     });
     fileMenu->addAction(tr("&Close"), QKeySequence(QStringLiteral("Ctrl+W")), this, &QDialog::close);
 

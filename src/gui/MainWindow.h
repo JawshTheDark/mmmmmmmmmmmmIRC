@@ -73,6 +73,7 @@ public:
     // Run an MSL line in the active (or status) window — used by // input and --msl.
     void runScript(const QString& line);
     void loadScriptFile(const QString& path, bool fireLoad = false);  // fireLoad: run `on LOAD` (interactive only)
+    void unloadScriptFile(const QString& path);  // forget a script and reload the rest (mIRC /unload)
     void reloadScripts();        // clear + reload all tracked script files
     void openScriptEditor();     // Scripts Editor window
     QStringList scriptFiles() const { return m_scriptFiles; }
@@ -192,6 +193,7 @@ private:
     std::unique_ptr<lurker::msl::Interpreter> m_msl;
     class ScriptSockets* m_sockets = nullptr;
     QStringList m_scriptFiles;  // loaded .mrc paths, for the editor + reload
+    QString m_mtsScriptPath;    // the current MTS theme's companion .mrc (unloaded on theme change)
     QHash<QString, class ScriptDialog*> m_dialogs;  // open script dialogs by instance name
     // DCX (dcx.dll) emulation: dispatch its verbs, remember each marked dialog's
     // event-callback alias, and the last /dcxml load result ($dcxml(Loaded)).

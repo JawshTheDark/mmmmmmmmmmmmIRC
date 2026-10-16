@@ -286,6 +286,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             [this] { promptLoadMtsTheme(); });
     connect(themeMenu->addAction(tr("Clear MTS theme")), &QAction::triggered, this, [this] {
         clearMtsTheme();
+        if (!m_mtsScriptPath.isEmpty()) {  // unload the theme's companion script
+            const QString s = m_mtsScriptPath;
+            m_mtsScriptPath.clear();
+            unloadScriptFile(s);
+        }
         refreshColorSettings();
         applyTreebarStyle();
         for (auto& b : m_buffers)
@@ -645,11 +650,22 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         return;
     }
     QSettings().setValue(QStringLiteral("mts/path"), path);
-    // Load the companion script (SCRIPT directive), resolved next to the .mts, so
-    // the theme's aliases/events register for its !script hooks.
+    // Swap the companion script: unload the previous theme's .mrc (if any) and
+    // load this theme's (SCRIPT directive, resolved next to the .mts) so themes
+    // don't accumulate scripts. Reload only when the companion actually changed.
+    const QString oldScript = m_mtsScriptPath;
+    m_mtsScriptPath.clear();
     if (!theme.script.isEmpty()) {
-        const QString scriptPath = QFileInfo(path).dir().filePath(theme.script);
-        if (QFile::exists(scriptPath)) loadScriptFile(scriptPath);
+        const QString sp = QFileInfo(QFileInfo(path).dir().filePath(theme.script)).absoluteFilePath();
+        if (QFile::exists(sp)) m_mtsScriptPath = sp;
+    }
+    if (oldScript != m_mtsScriptPath) {
+        if (!oldScript.isEmpty()) m_scriptFiles.removeAll(oldScript);
+        if (!m_mtsScriptPath.isEmpty() && !m_scriptFiles.contains(m_mtsScriptPath))
+            m_scriptFiles << m_mtsScriptPath;
+        reloadScripts();
+        saveScriptList();
+        rebuildScriptMenus();
     }
     // Push the new palette to every open conversation and the chrome: the tree
     // (treebar), the MDI backdrop, and each view's background/font/nicklist.
@@ -1618,6 +1634,17 @@ QString MainWindow::scriptSummary() const {
                  : QString();
 }
 
+void MainWindow::unloadScriptFile(const QString& path) {
+    if (!m_msl) return;
+    const QString file = QFileInfo(path).absoluteFilePath();
+    if (m_scriptFiles.removeAll(file) > 0) {
+        reloadScripts();  // clears the engine and reloads the remaining files
+        saveScriptList();
+        rebuildScriptMenus();
+        onStatusText(tr("Unloaded %1 — %2").arg(QFileInfo(file).fileName(), scriptSummary()));
+    }
+}
+
 void MainWindow::reloadScripts() {
     if (!m_msl) return;
     m_msl->clearScripts();
@@ -1641,7 +1668,8 @@ void MainWindow::openScriptEditor() {
             for (const auto& [name, value] : m_msl->globals())
                 out += QStringLiteral("%%1 %2\n").arg(QString::fromStdString(name), QString::fromStdString(value));
             return out;
-        });
+        },
+        [this](const QString& path) { unloadScriptFile(path); });
     ed->setAttribute(Qt::WA_DeleteOnClose);
     ed->show();
 }
