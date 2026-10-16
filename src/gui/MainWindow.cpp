@@ -2378,10 +2378,13 @@ void MainWindow::onEvent(const IrcEvent& event) {
         }
         case IrcEventType::Notice: {
             if (isIgnored(event)) break;  // ignore list applies to notices too
-            // A notice from a source with no user@host is a *server* notice
-            // (SNOTICE) — route it to the status/server window and mark it so,
-            // rather than rendering it like a user's notice.
-            const bool serverNotice = event.user.empty() && event.host.empty() && !nick.isEmpty();
+            // A *server* notice (snote) comes from the server itself: no source
+            // nick, or a server-name source (contains '.'). A service such as
+            // OperServ/NickServ has a plain nick, so its notice is a USER notice
+            // and must honour the route/notice preference — Lurker often omits a
+            // service's user@host, so classifying by that sent service replies to
+            // the server buffer where they were easy to miss (#24).
+            const bool serverNotice = nick.isEmpty() || nick.contains(QLatin1Char('.'));
             Buffer* buf = nullptr;
             if (serverNotice) {
                 buf = findBuffer(serverKeyFor(net));
@@ -2390,7 +2393,10 @@ void MainWindow::onEvent(const IrcEvent& event) {
                                                         QStringLiteral("Active window")).toString();
                 if (where.contains(QStringLiteral("query"), Qt::CaseInsensitive) ||
                     where.contains(QStringLiteral("Separate"), Qt::CaseInsensitive))
-                    buf = routeTarget(net, target, ChatView::Kind::Query);
+                    // Open the query with the other party: the sender for an
+                    // incoming notice, the target for our own echoed notice.
+                    buf = routeTarget(net, event.self ? target : QString::fromStdString(event.nick),
+                                      ChatView::Kind::Query);
                 else
                     buf = routeFor(QStringLiteral("notice"), QStringLiteral("Active window"), net);
             }
