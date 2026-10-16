@@ -158,11 +158,16 @@ private:
     // mIRC-style message routing: where a category (notice/whois/ctcp) lands,
     // per Options (Active window / Status / query). `def` is the fallback setting.
     Buffer* routeFor(const QString& category, const QString& def, int net);
-    // Pinned/favourite channels (#26): persisted by network name + channel, they
-    // float to the top of their network node in the tree.
+    // Pinned/favourite channels (#26): persisted by network name + channel. In
+    // the default per-network mode they float to the top of their network node;
+    // with "tree/combinedPins" on they gather under one top-level Favourites node.
     bool isPinned(int net, const QString& chan) const;
     void setPinned(int net, const QString& chan, bool pin);
     void repositionPinned(Buffer* buf);
+    QTreeWidgetItem* favouritesNode();     // the combined node, created on demand
+    void pruneFavouritesNode();            // remove it once it holds nothing
+    void reapplyPinPlacement();            // re-place every channel (on mode change)
+    QString treeLabel(const Buffer& b) const;  // tree text (network prefix under Favourites)
     // Render an event via the active MTS theme's template (phase 2). Returns
     // true if a theme handled it, so the caller skips its built-in line.
     bool renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
@@ -183,6 +188,7 @@ private:
     lurker::backend::MultiplexBackend* m_mux = nullptr;     // owns all child connections
     QHash<QString, Buffer> m_buffers;              // key -> buffer
     QHash<int, QTreeWidgetItem*> m_networkNodes;   // networkId -> tree node (server buffer item)
+    QTreeWidgetItem* m_favouritesNode = nullptr;   // combined pins node (#26); null when unused
     QHash<int, QString> m_networkNames;            // networkId -> display name
     QHash<int, QString> m_networkNicks;            // networkId -> our nick (for $me)
     bool m_closing = false;

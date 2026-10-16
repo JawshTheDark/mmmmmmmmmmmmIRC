@@ -30,6 +30,7 @@ public:
     std::function<void(int, const QString&, const QString&)> actionFn;
     std::function<void(int, const QString&)> rawFn;
     std::function<lurker::msl::ScriptTarget()> activeFn;
+    std::function<lurker::msl::ScriptTarget()> activeWindowFn;  // focused window for $active / echo -a
     std::function<QString(int)> meFn;
     std::function<void(const QString&)> errorFn;
     std::function<void(const QString&)> usersChangedFn;  // persist the user access list (#30)
@@ -72,6 +73,10 @@ public:
         if (rawFn) rawFn(net, QString::fromStdString(line));
     }
     lurker::msl::ScriptTarget activeTarget() const override {
+        return activeFn ? activeFn() : lurker::msl::ScriptTarget{};
+    }
+    lurker::msl::ScriptTarget activeWindow() const override {
+        if (activeWindowFn) return activeWindowFn();
         return activeFn ? activeFn() : lurker::msl::ScriptTarget{};
     }
     std::string me(int net) const override { return meFn ? meFn(net).toStdString() : std::string(); }

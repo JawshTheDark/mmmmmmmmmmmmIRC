@@ -19,7 +19,8 @@ struct FakeHost : Host {
     std::vector<std::string> actions;  // "target\ttext"
     std::vector<std::string> raws;
     std::vector<std::string> errors;
-    ScriptTarget active{1, "#test"};
+    ScriptTarget active{1, "#test"};    // activeTarget(): the running script's window
+    ScriptTarget focused{1, "#focus"};  // activeWindow(): the window the user is looking at
     long long now = 1000;
 
     // IRC state for $nick(#,N) / $chan(N) / $comchan / $ison.
@@ -31,7 +32,11 @@ struct FakeHost : Host {
         return std::find(chanNicks.begin(), chanNicks.end(), nick) != chanNicks.end();
     }
 
-    void echo(const ScriptTarget&, const std::string& t) override { echoed.push_back(t); }
+    std::vector<std::string> echoTargets;  // where.window for each echo, to test routing
+    void echo(const ScriptTarget& w, const std::string& t) override {
+        echoed.push_back(t);
+        echoTargets.push_back(w.window);
+    }
     void sendMessage(int, const std::string& target, const std::string& text) override {
         sent.push_back(target + "\t" + text);
     }
@@ -40,6 +45,7 @@ struct FakeHost : Host {
     }
     void sendRaw(int, const std::string& line) override { raws.push_back(line); }
     ScriptTarget activeTarget() const override { return active; }
+    ScriptTarget activeWindow() const override { return focused; }
     std::string me(int) const override { return "jawsh"; }
     long long unixTime() const override { return now; }
     std::string appDir() const override { return "/app/"; }
@@ -869,6 +875,23 @@ int main() {
         u.loadScript("alias foo { echo hi }");
         u.clearScripts();
         CHECK_EQ(eval(u, "$level(bob!x@h)"), std::string("op,voice"));
+    }
+
+    // /echo switch routing: -a → the focused window (activeWindow), -s → status,
+    // bare → the running script's window (activeTarget). $active = focused window.
+    {
+        Scope s;
+        host.echoed.clear();
+        host.echoTargets.clear();
+        in.execute("echo -a hello", s);
+        CHECK(!host.echoTargets.empty() && host.echoTargets.back() == std::string("#focus"));
+        in.execute("echo -s world", s);
+        CHECK_EQ(host.echoTargets.back(), std::string("@status"));
+        in.execute("echo plain", s);
+        CHECK_EQ(host.echoTargets.back(), std::string("#test"));  // activeTarget default
+        in.execute("echo #chan targeted", s);
+        CHECK_EQ(host.echoTargets.back(), std::string("#chan"));
+        CHECK_EQ(eval(in, "$active"), std::string("#focus"));  // focused window, not activeTarget
     }
 
     return check::summary();

@@ -648,6 +648,7 @@ void MainWindow::showOptions(const QString& page) {
         configurePreviews();     // the inline-previews toggle may have changed
         applyTreebarStyle();     // networks-tree background/colour
         setupToolbar();          // the toolbar icon style may have changed
+        reapplyPinPlacement();   // the combined-favourites toggle may have changed
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();
@@ -1297,7 +1298,13 @@ void MainWindow::setupScripting() {
         if (m_backend && m_backend->isReady()) m_backend->sendRaw(net, line);
     };
     m_scriptHost.activeFn = [this]() -> lurker::msl::ScriptTarget {
-        if (m_inEvent) return m_eventContext;  // during an on-event, "active" is the event's target
+        if (m_inEvent) return m_eventContext;  // during an on-event, the default target is the event's
+        Buffer* b = activeBuffer();
+        if (!b) return {};
+        return {b->networkId, b->display.toStdString()};
+    };
+    // $active and /echo -a want the window the user is looking at, even mid-event.
+    m_scriptHost.activeWindowFn = [this]() -> lurker::msl::ScriptTarget {
         Buffer* b = activeBuffer();
         if (!b) return {};
         return {b->networkId, b->display.toStdString()};
@@ -2092,15 +2099,52 @@ void MainWindow::setPinned(int net, const QString& chan, bool pin) {
     s.setValue(QStringLiteral("pins"), pins);
 }
 
+QTreeWidgetItem* MainWindow::favouritesNode() {
+    if (!m_favouritesNode) {
+        m_favouritesNode = new QTreeWidgetItem({QStringLiteral("★ Favourites")});
+        QFont f = m_favouritesNode->font(0);
+        f.setBold(true);
+        m_favouritesNode->setFont(0, f);
+        m_treebar->insertTopLevelItem(0, m_favouritesNode);  // sits above the networks
+        m_favouritesNode->setExpanded(true);
+    }
+    return m_favouritesNode;
+}
+
+void MainWindow::pruneFavouritesNode() {
+    if (m_favouritesNode && m_favouritesNode->childCount() == 0) {
+        delete m_favouritesNode;  // top-level: deleting detaches it from the tree
+        m_favouritesNode = nullptr;
+    }
+}
+
 void MainWindow::repositionPinned(Buffer* buf) {
     if (!buf || !buf->treeItem || buf->kind != ChatView::Kind::Channel) return;
-    QTreeWidgetItem* parent = buf->treeItem->parent();
-    if (!parent) return;
-    const int idx = parent->indexOfChild(buf->treeItem);
-    if (idx < 0) return;
-    QTreeWidgetItem* taken = parent->takeChild(idx);
-    if (isPinned(buf->networkId, buf->display)) parent->insertChild(0, taken);  // float to top
-    else parent->addChild(taken);
+    QTreeWidgetItem* item = buf->treeItem;
+    QTreeWidgetItem* home = networkNode(buf->networkId);
+    if (!home) return;
+    const bool pinned = isPinned(buf->networkId, buf->display);
+    const bool combined = QSettings().value(QStringLiteral("tree/combinedPins"), false).toBool();
+
+    // Detach from wherever it currently hangs (a node's child, or top-level).
+    auto detach = [&] {
+        if (QTreeWidgetItem* p = item->parent()) p->takeChild(p->indexOfChild(item));
+        else m_treebar->takeTopLevelItem(m_treebar->indexOfTopLevelItem(item));
+    };
+
+    if (pinned && combined) {
+        QTreeWidgetItem* fav = favouritesNode();
+        detach();
+        fav->insertChild(0, item);  // newest pin on top of the Favourites list
+    } else if (pinned) {
+        detach();
+        home->insertChild(0, item);  // float to the top of its own network
+    } else {
+        detach();
+        home->addChild(item);  // unpinned: back under its network, at the bottom
+    }
+    updateBufferLabel(buf);  // network prefix appears/disappears with the move
+    pruneFavouritesNode();   // a move out of Favourites may have emptied it
 }
 
 MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const QString& display, const QString& key) {
@@ -2224,6 +2268,7 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
             if (nodeNet != -2) m_networkNodes.remove(nodeNet);
             delete buf->treeItem;
             m_buffers.remove(key_);
+            pruneFavouritesNode();  // a favourited channel may have been the last one
         }
     });
 
@@ -2838,15 +2883,32 @@ bool MainWindow::bufferIsActive(const Buffer& buffer) const {
     return buffer.sub && m_mdi->activeSubWindow() == buffer.sub && !buffer.sub->isMinimized();
 }
 
+QString MainWindow::treeLabel(const Buffer& b) const {
+    // Under the combined Favourites node, channels from different networks mix,
+    // so prefix the network to keep same-named channels apart.
+    QString base = b.display;
+    if (m_favouritesNode && b.treeItem && b.treeItem->parent() == m_favouritesNode)
+        base = m_networkNames.value(b.networkId, QString::number(b.networkId)) + QLatin1Char('/') + b.display;
+    return b.unread > 0 ? QStringLiteral("%1 (%2)").arg(base).arg(b.unread) : base;
+}
+
 void MainWindow::updateBufferLabel(Buffer* buffer) {
     if (!buffer || !buffer->treeItem) return;
-    const QString label =
-        buffer->unread > 0 ? QStringLiteral("%1 (%2)").arg(buffer->display).arg(buffer->unread) : buffer->display;
-    buffer->treeItem->setText(0, label);
+    buffer->treeItem->setText(0, treeLabel(*buffer));
     QFont f = buffer->treeItem->font(0);
     f.setBold(buffer->unread > 0);
     buffer->treeItem->setFont(0, f);
-    if (buffer->switchAction) buffer->switchAction->setText(label);
+    if (buffer->switchAction) {  // the switchbar is a flat list → plain name, no prefix
+        buffer->switchAction->setText(
+            buffer->unread > 0 ? QStringLiteral("%1 (%2)").arg(buffer->display).arg(buffer->unread) : buffer->display);
+    }
+}
+
+void MainWindow::reapplyPinPlacement() {
+    // The combined/per-network mode changed: re-place every channel row.
+    for (auto& b : m_buffers)
+        if (b.kind == ChatView::Kind::Channel) repositionPinned(&b);
+    pruneFavouritesNode();
 }
 
 void MainWindow::onReadStateChanged(int net, const QString& rawTarget, int unread, int /*highlights*/) {

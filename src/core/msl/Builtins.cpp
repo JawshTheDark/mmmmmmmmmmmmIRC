@@ -317,7 +317,7 @@ void registerBuiltins(Interpreter& in) {
         return std::string();
     });
     in.registerIdent("active", [](Interpreter& i, S&, const A&, const std::string&) {
-        return i.host().activeTarget().window;
+        return i.host().activeWindow().window;  // the focused window, not the event's
     });
     in.registerIdent("event", [](Interpreter&, S& s, const A&, const std::string&) { return s.event; });
     in.registerIdent("signal", [](Interpreter&, S& s, const A&, const std::string&) {
@@ -1407,7 +1407,8 @@ void registerBuiltins(Interpreter& in) {
     // message/echo text is evaluated; a target variable NAME is kept literal.
     auto echoCmd = [](Interpreter& i, S& sc, const std::string& rawArgs) {
         std::string rest = i.evaluate(rawArgs, sc);
-        // Strip a leading -switches token and an optional target.
+        // Default destination: the running script's window (the event's target
+        // during an on-event). Switches redirect it the way mIRC does.
         ScriptTarget where = i.host().activeTarget();
         auto firstTok = [](const std::string& s) {
             std::size_t sp = s.find(' ');
@@ -1415,8 +1416,14 @@ void registerBuiltins(Interpreter& in) {
         };
         std::string tok = firstTok(rest);
         if (!tok.empty() && tok[0] == '-') {
+            const std::string sw = tok;
             rest = rest.size() > tok.size() ? rest.substr(tok.size() + 1) : std::string();
             tok = firstTok(rest);
+            // -a routes to the window the user is looking at (not the event's);
+            // -s routes to the status window. Earlier builds dropped the switch,
+            // so /echo -a landed in the event window instead of the active one.
+            if (sw.find('a') != std::string::npos) where = i.host().activeWindow();
+            else if (sw.find('s') != std::string::npos) where.window = "@status";
         }
         if (!tok.empty() && (tok[0] == '#' || tok[0] == '@')) {
             where.window = tok;

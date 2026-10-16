@@ -35,8 +35,13 @@ public:
     virtual void sendAction(int networkId, const std::string& target, const std::string& text) = 0;
     virtual void sendRaw(int networkId, const std::string& line) = 0;
 
-    // Context the script was triggered in.
+    // Context the script was triggered in. During an on-event this is the event's
+    // own window (so /msg without a target and $chan fall back to it).
     virtual ScriptTarget activeTarget() const = 0;
+    // The window the user is actually looking at, for $active and /echo -a. Unlike
+    // activeTarget(), it is always the focused window, never the running event's
+    // target. Defaults to activeTarget() so non-GUI/test hosts need not override.
+    virtual ScriptTarget activeWindow() const { return activeTarget(); }
     virtual std::string me(int networkId) const = 0;  // $me
 
     // IRC state queries for identifiers like $nick(#,N), $chan(N), $comchan,
