@@ -207,6 +207,13 @@ int main() {
         host.raws.clear();
         in.execute("userhost someone", s);
         CHECK(!host.raws.empty() && host.raws.back() == std::string("USERHOST someone"));
+
+        // MTS theme engines namespace their variables with leading colons
+        // (%::nick, %:echo); the scanner reads those as one variable name.
+        in.setVariable("::nick", "alice", false, s);
+        CHECK_EQ(eval(in, "%::nick"), std::string("alice"));
+        in.setVariable(":echo", "echo -a", false, s);
+        CHECK_EQ(eval(in, "%:echo done"), std::string("echo -a done"));
     }
 
     // if / elseif / else.

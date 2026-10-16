@@ -233,8 +233,11 @@ std::string Interpreter::evaluate(std::string_view text, Scope& scope) {
     const std::size_t n = text.size();
     while (i < n) {
         const char c = text[i];
-        if (c == '%' && i + 1 < n && identChar(text[i + 1])) {
+        if (c == '%' && i + 1 < n && (identChar(text[i + 1]) || text[i + 1] == ':')) {
             std::size_t j = i + 1;
+            // Leading colons right after '%' are the MTS theme-engine namespacing
+            // convention (%::nick, %:echo); include them in the name.
+            while (j < n && text[j] == ':') ++j;
             // mIRC variable names may contain '.' (e.g. %blist.msg), but a trailing
             // dot is sentence punctuation, not part of the name — don't swallow it.
             while (j < n && (identChar(text[j]) || text[j] == '.')) ++j;

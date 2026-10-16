@@ -643,6 +643,12 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         return;
     }
     QSettings().setValue(QStringLiteral("mts/path"), path);
+    // Load the companion script (SCRIPT directive), resolved next to the .mts, so
+    // the theme's aliases/events register for its !script hooks.
+    if (!theme.script.isEmpty()) {
+        const QString scriptPath = QFileInfo(path).dir().filePath(theme.script);
+        if (QFile::exists(scriptPath)) loadScriptFile(scriptPath);
+    }
     // Push the new palette, background and font to every open conversation.
     refreshColorSettings();
     for (auto& b : m_buffers)
