@@ -41,12 +41,47 @@ public:
         var.setForeground(dark ? QColor(0xD6, 0x9C, 0xF0) : QColor(0x90, 0x00, 0x90));
         comment.setForeground(dark ? QColor(0x8A, 0xA0, 0x8A) : QColor(0x50, 0x80, 0x50));
         comment.setFontItalic(true);
-        reKw.setPattern(QStringLiteral("^\\s*(on|alias|menu|dialog|ctcp|raw|scon|scid)\\b|"
-                                       "\\b(if|elseif|else|while|var|set|unset|inc|dec|goto|return|halt|"
-                                       "haltdef|break|continue|tokenize)\\b"));
+        cmd.setForeground(dark ? QColor(0x7F, 0xC8, 0xFF) : QColor(0x12, 0x4A, 0x8C));
+        // The full mSL command set (from the mSL-VSCode grammar). Commands sit at a
+        // statement position (line start, or after | or {), optionally with a /.
+        static const char kCommands[] =
+            "abook aclear action advertise ajinvite alias aline allnick ame amsg anick aop aquit auser "
+            "auto autoconnect autojoin avoice away back background ban banlist bcopy beep betaup bin2txt "
+            "bindip bread break breplace bset btrunc bunset bw bwrite channel channels charset clear "
+            "clearall clearial cline clipboard close closemsg cnick color colour comclose comlist comopen "
+            "comreg config continue copy creq ctcp ctcpreply ctcps cycleall dcc dccserver dde ddeserver "
+            "debug dec dehalfop deop describe desop devoice dialog did didtok disable disconnect dlevel "
+            "dline dll dns dock dockpanels download dqwindow drawcopy drawdot drawfill drawline drawpic "
+            "drawrect drawreplace drawrot drawsave drawscroll drawsize drawtext ebeeps echo echomonitor "
+            "echox edit editbox else elseif emailaddr enable encoding events exit fakeraw fclose fget "
+            "filter findtext finger firewall flash flist flood flush flushini fnord font fopen fseek "
+            "fsend fserve fullname fullscreen fupdate fwrite gcmem ghide gload globalkeys gmove google "
+            "gopts goto gplay gpoint gqreq groups gshow gsize gstop gtalk gunload guser hadd halfop halt "
+            "haltdef hdec hdel help hfree highlight hinc hload hmake hop hotlink hsave ial ialclear "
+            "ialfill ialmark icon identd if ignore iline inc inick inlineimage iuser join kblayout lag "
+            "leave linemarker linesep links list load loadbuf localinfo lock log logs logview mdi me "
+            "menubar mkdir mnick mode msg msgbox mute nextunread nickcolumn nicklist nmsg noop notice "
+            "notify np oline omsg onotice options parseline part partall paths pause pdcc perform pgoogle "
+            "play playctrl plugins pop priv privmsg protect proxy pvoice qme qmsg query queryrn quickconnect "
+            "quicksave quit quote raw rawlog rawx realname reconnect refreshsong registration rejoin reload "
+            "remini remote remove rename renwin reseterror resetidle resolve restart return returnex rlevel "
+            "rline rmdir run ruser save savebuf saveini say scid scon scripts scrolltext search sendkeys "
+            "server serverlist set setconfig setlayer setoption showadiirc showmenu showmirc signal slap "
+            "sleep sline sockaccept sockclose socklist socklisten sockmark sockopen sockpause sockread "
+            "sockrename sockudp sockwrite sop sound speak splay sreq statusbar strip switchbar tab themes "
+            "timer timers timestamp tip tips titlebar tnick tokenize toolbar topicbox tray treebar txt2bin "
+            "ulist unban unignore unload unnotify unset unsetall update updatenl url username usernick uwho "
+            "var vars vcadd vcmd vcrem viewlog vmsg vnotice voice vol wallchops wallvoices wdown while "
+            "window winhelp wjump wnext wpause wplay write writeini xyzzy";
+        const QString cmds = QString::fromLatin1(kCommands).simplified().replace(QLatin1Char(' '), QLatin1Char('|'));
+        reCmd.setPattern(QStringLiteral("(?:^|[|{])\\s*/?(") + cmds + QStringLiteral(")\\b"));
+        reCmd.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
+        reKw.setPattern(QStringLiteral("^\\s*(on|alias|menu|dialog|ctcp|raw|scon|scid|group)\\b|"
+                                       "\\b(if|elseif|else|while|var|set|unset|inc|dec|goto|return|returnex|"
+                                       "halt|haltdef|break|continue|tokenize)\\b"));
         reKw.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
-        reIdent.setPattern(QStringLiteral("\\$\\+?[A-Za-z_][A-Za-z0-9_]*"));
-        reVar.setPattern(QStringLiteral("%[A-Za-z0-9_.]+"));
+        reIdent.setPattern(QStringLiteral("\\$\\+?!?[A-Za-z_][A-Za-z0-9_]*"));
+        reVar.setPattern(QStringLiteral("%:*[A-Za-z0-9_.]+"));  // incl. MTS %::name / %:name
     }
 
 protected:
@@ -58,6 +93,12 @@ protected:
                 setFormat(m.capturedStart(), m.capturedLength(), fmt);
             }
         };
+        // Commands: highlight capture group 1 (the name), not the leading |/{//.
+        auto cit = reCmd.globalMatch(text);
+        while (cit.hasNext()) {
+            const auto m = cit.next();
+            setFormat(m.capturedStart(1), m.capturedLength(1), cmd);
+        }
         apply(reKw, kw);
         apply(reIdent, ident);
         apply(reVar, var);
@@ -66,8 +107,8 @@ protected:
     }
 
 private:
-    QTextCharFormat kw, ident, var, comment;
-    QRegularExpression reKw, reIdent, reVar;
+    QTextCharFormat kw, cmd, ident, var, comment;
+    QRegularExpression reKw, reCmd, reIdent, reVar;
 };
 
 }  // namespace
