@@ -4,6 +4,8 @@
 
 #include "gui/ScriptDialog.h"
 
+#include "gui/DcxView.h"
+
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
@@ -21,6 +23,7 @@
 #include <QSignalBlocker>
 #include <QRadioButton>
 #include <QTreeWidget>
+#include <QVBoxLayout>
 
 namespace lurker::gui {
 
@@ -211,6 +214,27 @@ void ScriptDialog::applyMdxControl(int id, const QString& type, const QStringLis
         m_byId.insert(id, tree);
     }
 }
+
+bool ScriptDialog::loadDcxml(const QString& xmlPath, const QString& dialogName) {
+    if (!m_dcx) m_dcx = new DcxView(this);
+    const QSize sz = m_dcx->load(xmlPath, dialogName);
+    if (!sz.isValid()) return false;
+    // The host dialog was created from an empty (size 0 0 0 0) table and fixed
+    // to that size — release it and let the DCX layout drive the window.
+    setMinimumSize(0, 0);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    if (!layout()) {
+        auto* l = new QVBoxLayout(this);
+        l->setContentsMargins(0, 0, 0, 0);
+        l->addWidget(m_dcx);
+    }
+    if (!m_dcx->caption().isEmpty()) setWindowTitle(m_dcx->caption());
+    resize(sz);
+    m_dcx->show();
+    return true;
+}
+
+bool ScriptDialog::dcxLoaded() const { return m_dcx && m_dcx->loaded(); }
 
 void ScriptDialog::applyDid(int id, const QString& sw, const QString& text) {
     QWidget* w = m_byId.value(id);

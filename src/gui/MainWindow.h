@@ -185,6 +185,11 @@ private:
     class ScriptSockets* m_sockets = nullptr;
     QStringList m_scriptFiles;  // loaded .mrc paths, for the editor + reload
     QHash<QString, class ScriptDialog*> m_dialogs;  // open script dialogs by instance name
+    // DCX (dcx.dll) emulation: dispatch its verbs, remember each marked dialog's
+    // event-callback alias, and the last /dcxml load result ($dcxml(Loaded)).
+    QString dcxCall(const QString& proc, const QString& data);
+    QHash<QString, QString> m_dcxEventAlias;  // dialog name -> marked event alias
+    bool m_dcxLastLoad = false;
     QHash<QString, class QTimer*> m_scriptTimers;   // /timer instances by name
     int m_timerSeq = 0;
     QHash<QString, class PictureWindow*> m_pictureWindows;  // /window -p canvases

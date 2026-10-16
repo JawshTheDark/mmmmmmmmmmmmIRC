@@ -26,6 +26,8 @@ qt_add_executable(mmmmmmmmmmmmirc
     GuiScriptHost.h
     ScriptDialog.cpp
     ScriptDialog.h
+    DcxView.cpp
+    DcxView.h
     Theme.cpp
     Theme.h
     ToolbarIcons.h

@@ -1245,7 +1245,11 @@ void MainWindow::setupScripting() {
     // /dll + $dll: we never load native DLLs. Emulate mdx.dll — the ubiquitous
     // addon that builds ListView/TreeView dialog controls — so its scripts run.
     m_scriptHost.dllCallFn = [this](const QString& file, const QString& proc, const QString& data) -> QString {
-        const QString dll = QFileInfo(file).fileName().toLower();
+        // Windows scripts build DLL paths with backslashes; normalise so the
+        // filename is extracted on any platform (QFileInfo only splits on '/').
+        const QString dll = QFileInfo(QString(file).replace(QLatin1Char('\\'), QLatin1Char('/'))).fileName().toLower();
+        if (dll == QLatin1String("dcx.dll") || dll == QLatin1String("dcx"))
+            return dcxCall(proc, data);
         if (dll != QLatin1String("mdx.dll") && dll != QLatin1String("mdx")) return QString();
         const QString p = proc.toLower();
         if (p == QLatin1String("setcontrolmdx")) {
@@ -1369,6 +1373,43 @@ void MainWindow::runScript(const QString& line) {
     if (!m_msl) return;
     lurker::msl::Scope scope;
     m_msl->execute(line.toStdString(), scope);
+}
+
+// DCX (dcx.dll) verb dispatcher. The dcx_tools.mrc aliases funnel everything
+// here through /dll + $dll; phase 1 handles Version, Mark and /dcxml (loading an
+// XML layout into the host dialog), accepting the control verbs as no-ops so
+// scripts run while control manipulation/queries land in a later phase.
+QString MainWindow::dcxCall(const QString& proc, const QString& data) {
+    const QString p = proc.toLower();
+    if (p == QLatin1String("version")) return QStringLiteral("DCX 2.1 (emulated)");
+    if (p == QLatin1String("isunloadsafe")) return QStringLiteral("0");
+    // /dcx Mark <dialog> <eventalias>
+    if (p == QLatin1String("mark")) {
+        const QStringList t = data.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (t.size() >= 2) m_dcxEventAlias.insert(t[0], t[1]);
+        return QString();
+    }
+    // $dcxml(Loaded)
+    if (p == QLatin1String("_dcxml")) {
+        if (data.section(QLatin1Char(' '), 0, 0).compare(QLatin1String("loaded"), Qt::CaseInsensitive) == 0)
+            return m_dcxLastLoad ? QStringLiteral("1") : QStringLiteral("0");
+        return QString();
+    }
+    // /dcxml -dx <dialog> <xmlname> <file>
+    if (p == QLatin1String("dcxml")) {
+        QString d = data.trimmed();
+        if (d.startsWith(QLatin1Char('-'))) d = d.section(QLatin1Char(' '), 1);  // drop the -dx switch
+        const QString dlg = d.section(QLatin1Char(' '), 0, 0);
+        const QString xmlName = d.section(QLatin1Char(' '), 1, 1);
+        QString fileRest = d.section(QLatin1Char(' '), 2).trimmed();
+        if (fileRest.startsWith(QLatin1Char('"')) && fileRest.endsWith(QLatin1Char('"')))
+            fileRest = fileRest.mid(1, fileRest.size() - 2);
+        m_dcxLastLoad = false;
+        if (ScriptDialog* dlgw = m_dialogs.value(dlg)) m_dcxLastLoad = dlgw->loadDcxml(fileRest, xmlName);
+        return QString();
+    }
+    // xdid / _xdid / xdialog / _xpop / … — accepted; manipulation lands later.
+    return QString();
 }
 
 QString MainWindow::evalScriptText(const QString& text, const QString& nick, int net, const QString& chan) {

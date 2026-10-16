@@ -38,6 +38,11 @@ public:
     // a multi-column table). `styles` are the mdx style words (report grid ...).
     void applyMdxControl(int id, const QString& type, const QStringList& styles);
 
+    // dcx.dll /dcxml: take this (empty) dialog over with a DCX layout parsed
+    // from `xmlPath`'s <dialog name="dialogName">. Returns true on success.
+    bool loadDcxml(const QString& xmlPath, const QString& dialogName);
+    bool dcxLoaded() const;
+
 protected:
     void closeEvent(QCloseEvent* event) override;
 
@@ -45,6 +50,7 @@ private:
     QString m_instance;
     std::function<void(const QString&, int)> m_sink;
     QHash<int, QWidget*> m_byId;
+    class DcxView* m_dcx = nullptr;  // set once /dcxml takes the dialog over
     bool m_applyingDid = false;  // true while a /did sets a control's state (suppress sclick)
     bool m_closeFired = false;
 };
