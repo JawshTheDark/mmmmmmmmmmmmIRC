@@ -28,6 +28,8 @@ qt_add_executable(mmmmmmmmmmmmirc
     ScriptDialog.h
     DcxView.cpp
     DcxView.h
+    MtsTheme.cpp
+    MtsTheme.h
     Theme.cpp
     Theme.h
     ToolbarIcons.h

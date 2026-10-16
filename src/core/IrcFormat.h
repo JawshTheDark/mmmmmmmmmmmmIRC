@@ -8,6 +8,7 @@
 // palette (\x03) and hex (\x04) colour codes.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -57,9 +58,14 @@ std::vector<Span> parseFormatting(std::string_view input);
 // `input` with every formatting control code (and its colour arguments) removed.
 std::string stripFormatting(std::string_view input);
 
-// The classic 16-colour palette (indices 0..15). Indices 16..98 (the extended
+// The active 16-colour palette (indices 0..15). Indices 16..98 (the extended
 // palette) are not mapped yet, so they return nullopt and a renderer should
 // fall back to the default colour.
 std::optional<Rgb> paletteColor(int index);
+
+// Override the 16-colour palette (an MTS theme's RGBCOLORS) or restore the
+// built-in one. Affects how \x03 colour codes render everywhere.
+void setPalette(const std::array<Rgb, 16>& colors);
+void resetPalette();
 
 }  // namespace lurker

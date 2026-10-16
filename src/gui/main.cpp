@@ -23,6 +23,7 @@
 #include "gui/ChatView.h"
 #include "gui/ConnectDialog.h"
 #include "gui/MainWindow.h"
+#include "gui/MtsTheme.h"
 #include "gui/OptionsDialog.h"
 #include "gui/Theme.h"
 
@@ -178,6 +179,13 @@ int main(int argc, char* argv[]) {
         if (a.startsWith(QStringLiteral("--theme="))) themeId = a.section(QLatin1Char('='), 1);
     }
     lurker::gui::applyTheme(app, themeId);
+    // Re-install a saved MTS theme's colour palette and display settings so it
+    // survives restarts (the palette override is process-global, not persisted).
+    // --mts=<path> loads one for this run (dev/testing).
+    QString mtsPath = QSettings().value(QStringLiteral("mts/path")).toString();
+    for (const QString& a : args)
+        if (a.startsWith(QStringLiteral("--mts="))) mtsPath = a.section(QLatin1Char('='), 1);
+    if (!mtsPath.isEmpty()) lurker::gui::MtsTheme::parse(mtsPath).apply();
 
     lurker::gui::MainWindow window;
     window.show();

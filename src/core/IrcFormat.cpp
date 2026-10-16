@@ -135,27 +135,36 @@ std::string stripFormatting(std::string_view input) {
     return out;
 }
 
+namespace {
+constexpr std::array<Rgb, 16> kDefaultPalette{{
+    {0xFF, 0xFF, 0xFF},  //  0 white
+    {0x00, 0x00, 0x00},  //  1 black
+    {0x00, 0x00, 0x7F},  //  2 navy
+    {0x00, 0x93, 0x00},  //  3 green
+    {0xFF, 0x00, 0x00},  //  4 red
+    {0x7F, 0x00, 0x00},  //  5 maroon
+    {0x9C, 0x00, 0x9C},  //  6 purple
+    {0xFC, 0x7F, 0x00},  //  7 orange
+    {0xFF, 0xFF, 0x00},  //  8 yellow
+    {0x00, 0xFC, 0x00},  //  9 lime
+    {0x00, 0x93, 0x93},  // 10 teal
+    {0x00, 0xFF, 0xFF},  // 11 cyan
+    {0x00, 0x00, 0xFC},  // 12 blue
+    {0xFF, 0x00, 0xFF},  // 13 pink
+    {0x7F, 0x7F, 0x7F},  // 14 grey
+    {0xD2, 0xD2, 0xD2},  // 15 light grey
+}};
+// The active 16-colour palette: the built-in one until an MTS theme's RGBCOLORS
+// overrides it (setPalette), so coloured text re-paints in the theme's colours.
+std::array<Rgb, 16> g_palette = kDefaultPalette;
+}  // namespace
+
+void setPalette(const std::array<Rgb, 16>& colors) { g_palette = colors; }
+void resetPalette() { g_palette = kDefaultPalette; }
+
 std::optional<Rgb> paletteColor(int index) {
-    static constexpr std::array<Rgb, 16> kPalette{{
-        {0xFF, 0xFF, 0xFF},  //  0 white
-        {0x00, 0x00, 0x00},  //  1 black
-        {0x00, 0x00, 0x7F},  //  2 navy
-        {0x00, 0x93, 0x00},  //  3 green
-        {0xFF, 0x00, 0x00},  //  4 red
-        {0x7F, 0x00, 0x00},  //  5 maroon
-        {0x9C, 0x00, 0x9C},  //  6 purple
-        {0xFC, 0x7F, 0x00},  //  7 orange
-        {0xFF, 0xFF, 0x00},  //  8 yellow
-        {0x00, 0xFC, 0x00},  //  9 lime
-        {0x00, 0x93, 0x93},  // 10 teal
-        {0x00, 0xFF, 0xFF},  // 11 cyan
-        {0x00, 0x00, 0xFC},  // 12 blue
-        {0xFF, 0x00, 0xFF},  // 13 pink
-        {0x7F, 0x7F, 0x7F},  // 14 grey
-        {0xD2, 0xD2, 0xD2},  // 15 light grey
-    }};
-    if (index < 0 || index >= static_cast<int>(kPalette.size())) return std::nullopt;
-    return kPalette[static_cast<std::size_t>(index)];
+    if (index < 0 || index >= static_cast<int>(g_palette.size())) return std::nullopt;
+    return g_palette[static_cast<std::size_t>(index)];
 }
 
 }  // namespace lurker

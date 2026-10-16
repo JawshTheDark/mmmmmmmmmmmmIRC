@@ -62,6 +62,8 @@ public:
     void openLogsFolder();        // reveal the logging folder
     void showAbout();             // About box
     void promptLoadScript();      // file picker → loadScriptFile
+    void promptLoadMtsTheme();     // file picker → applyMtsThemeFile
+    void applyMtsThemeFile(const QString& path);  // parse + apply an .mts, refresh views
     void importMircFolder(const QString& dir);  // import a mIRC folder's config/scripts
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
     void useBackend(lurker::backend::ChatBackend* backend);

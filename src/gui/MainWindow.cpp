@@ -62,6 +62,7 @@
 #include "gui/PreviewService.h"
 #include "gui/ConnectDialog.h"
 #include "gui/FormattedText.h"
+#include "gui/MtsTheme.h"
 #include "gui/PictureWindow.h"
 #include "gui/ScriptDialog.h"
 #include "gui/OptionsDialog.h"
@@ -280,6 +281,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             QSettings().setValue(QStringLiteral("theme"), id);
         });
     }
+    themeMenu->addSeparator();
+    connect(themeMenu->addAction(tr("Load MTS theme (.mts)…")), &QAction::triggered, this,
+            [this] { promptLoadMtsTheme(); });
+    connect(themeMenu->addAction(tr("Clear MTS theme")), &QAction::triggered, this, [this] {
+        clearMtsTheme();
+        refreshColorSettings();
+        for (auto& b : m_buffers)
+            if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+        QSettings().remove(QStringLiteral("mts/path"));
+        statusBar()->showMessage(tr("MTS theme cleared"), 4000);
+    });
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
     m_helpMenu = helpMenu;
     helpMenu->addAction(tr("Check for &Updates..."), this, [this] {
@@ -616,6 +628,27 @@ void MainWindow::showOptions(const QString& page) {
             if (b.view) b.view->applyDisplaySettings();
         }
     }
+}
+
+void MainWindow::promptLoadMtsTheme() {
+    const QString path = QFileDialog::getOpenFileName(this, tr("Load MTS theme"), QString(),
+                                                      tr("MTS themes (*.mts);;All files (*)"));
+    if (!path.isEmpty()) applyMtsThemeFile(path);
+}
+
+void MainWindow::applyMtsThemeFile(const QString& path) {
+    MtsTheme theme = MtsTheme::parse(path);
+    if (!theme.apply()) {
+        statusBar()->showMessage(tr("Could not load MTS theme: %1").arg(QFileInfo(path).fileName()), 5000);
+        return;
+    }
+    QSettings().setValue(QStringLiteral("mts/path"), path);
+    // Push the new palette, background and font to every open conversation.
+    refreshColorSettings();
+    for (auto& b : m_buffers)
+        if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+    statusBar()->showMessage(
+        tr("Loaded MTS theme: %1").arg(theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name), 5000);
 }
 
 void MainWindow::promptLoadScript() {
