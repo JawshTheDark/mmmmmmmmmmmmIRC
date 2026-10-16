@@ -828,8 +828,12 @@ void Interpreter::runCommandLine(std::string_view line, Scope& scope) {
         if (!evaluated.empty() && evaluated != trimmed(s)) execute(evaluated, scope);
         return;
     }
-    // A genuinely unknown literal command goes to the server as-is, like mIRC.
-    m_host.sendRaw(m_host.activeTarget().networkId, evaluate(s, scope));
+    // A genuinely unknown command is a *local* error in mIRC — it is never
+    // forwarded to the server (that is what /raw and /quote are for). Forwarding
+    // it flooded the Lurker server with "Unknown command" replies (#20). Real
+    // IRC verbs are registered built-ins (mode/kick/whois/userhost/…), so only
+    // typos and unimplemented client commands land here.
+    m_host.scriptError("/" + firstWord(s) + ": unknown command");
 }
 
 void Interpreter::execute(std::string_view script, Scope& scope) {

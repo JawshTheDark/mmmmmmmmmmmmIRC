@@ -194,6 +194,19 @@ int main() {
         in.execute("$iif(1 == 1,echo -a computed-cmd-ran)", s);
         CHECK(!host.echoed.empty() && host.echoed.back() == std::string("computed-cmd-ran"));
         CHECK(host.raws.empty());
+
+        // An unknown command is a LOCAL error, never forwarded to the server
+        // (forwarding flooded Lurker with "Unknown command" — #20).
+        host.raws.clear();
+        host.errors.clear();
+        in.execute("swtichbar on", s);  // a script's typo for /switchbar
+        CHECK(host.raws.empty());
+        CHECK(!host.errors.empty() && host.errors.back() == std::string("/swtichbar: unknown command"));
+        // A real (but unwrapped) IRC verb is a registered built-in and still
+        // reaches the server.
+        host.raws.clear();
+        in.execute("userhost someone", s);
+        CHECK(!host.raws.empty() && host.raws.back() == std::string("USERHOST someone"));
     }
 
     // if / elseif / else.

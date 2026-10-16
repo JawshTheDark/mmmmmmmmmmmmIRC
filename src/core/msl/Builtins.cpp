@@ -1473,6 +1473,25 @@ void registerBuiltins(Interpreter& in) {
     in.registerCommand("list", rawCmd("LIST"));
     in.registerCommand("invite", rawCmd("INVITE"));
     in.registerCommand("knock", rawCmd("KNOCK"));
+    // Common server-query / services commands mIRC exposes as built-ins that
+    // just send to the server. Registered so they keep working now that an
+    // *unknown* command is a local error rather than being forwarded (#20).
+    in.registerCommand("userhost", rawCmd("USERHOST"));
+    in.registerCommand("ison", rawCmd("ISON"));
+    in.registerCommand("version", rawCmd("VERSION"));
+    in.registerCommand("time", rawCmd("TIME"));
+    in.registerCommand("motd", rawCmd("MOTD"));
+    in.registerCommand("lusers", rawCmd("LUSERS"));
+    in.registerCommand("links", rawCmd("LINKS"));
+    in.registerCommand("map", rawCmd("MAP"));
+    in.registerCommand("stats", rawCmd("STATS"));
+    in.registerCommand("admin", rawCmd("ADMIN"));
+    in.registerCommand("info", rawCmd("INFO"));
+    in.registerCommand("trace", rawCmd("TRACE"));
+    in.registerCommand("silence", rawCmd("SILENCE"));
+    in.registerCommand("wallops", rawCmd("WALLOPS"));
+    in.registerCommand("oper", rawCmd("OPER"));
+    in.registerCommand("squery", rawCmd("SQUERY"));
     in.registerCommand("part", [](Interpreter& i, S& sc, const std::string& a) {
         std::string args = i.evaluate(a, sc);
         if (args.empty()) args = i.host().activeTarget().window;  // /part with no arg parts here
