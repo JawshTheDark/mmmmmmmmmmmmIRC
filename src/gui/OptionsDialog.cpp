@@ -208,6 +208,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
         f->addRow(boundCheck(tr("Strip mIRC colours from messages"), QStringLiteral("display/stripColors"), false));
         f->addRow(boundCheck(tr("Colour nicknames"), QStringLiteral("display/colorNicks"), true));
         f->addRow(boundCheck(tr("Wrap long lines"), QStringLiteral("display/wrap"), true));
+        f->addRow(boundCheck(tr("Classic 2000s toolbar icons"), QStringLiteral("display/classicIcons"), false));
         f->addRow(boundCheck(tr("Inline link/media previews (via Lurker)"), QStringLiteral("display/inlinePreviews"),
                              true));
         f->addRow(tr("Background colour"), boundColorField(QStringLiteral("display/bgColor")));

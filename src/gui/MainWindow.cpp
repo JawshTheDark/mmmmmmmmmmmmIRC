@@ -347,19 +347,31 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 }
 
 void MainWindow::setupToolbar() {
-    m_toolbar = new QToolBar(tr("Toolbar"), this);
-    m_toolbar->setObjectName(QStringLiteral("maintoolbar"));
-    m_toolbar->setMovable(true);
-    m_toolbar->setIconSize(QSize(24, 24));
-    m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    addToolBar(Qt::TopToolBarArea, m_toolbar);
+    // Idempotent: re-running it (e.g. after the icon style changes in Options)
+    // rebuilds the buttons in place without stacking a second toolbar. Preserve
+    // the Disconnect button's enabled state across a rebuild.
+    const bool wasConnected = m_tbDisconnect && m_tbDisconnect->isEnabled();
+    if (!m_toolbar) {
+        m_toolbar = new QToolBar(tr("Toolbar"), this);
+        m_toolbar->setObjectName(QStringLiteral("maintoolbar"));
+        m_toolbar->setMovable(true);
+        m_toolbar->setIconSize(QSize(24, 24));
+        m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        addToolBar(Qt::TopToolBarArea, m_toolbar);
+    } else {
+        m_toolbar->clear();  // drops the old actions (m_tbDisconnect included)
+    }
 
     const QColor fg = palette().color(QPalette::ButtonText);
     QColor accent = palette().color(QPalette::Highlight);
     if (!accent.isValid() || accent.lightness() > 220) accent = QColor(60, 120, 210);
+    // Toolbar icons: flat Modern (palette-coloured) or glossy Classic 2000s.
+    const auto iconStyle = QSettings().value(QStringLiteral("display/classicIcons"), false).toBool()
+                               ? IconStyle::Classic
+                               : IconStyle::Modern;
 
     auto add = [&](Glyph g, const QString& text, auto slot) {
-        QAction* a = m_toolbar->addAction(makeGlyph(g, fg, accent), text);
+        QAction* a = m_toolbar->addAction(toolbarIcon(g, fg, accent, iconStyle), text);
         a->setToolTip(text);
         connect(a, &QAction::triggered, this, slot);
         return a;
@@ -369,7 +381,7 @@ void MainWindow::setupToolbar() {
     m_tbDisconnect = add(Glyph::Disconnect, tr("Disconnect"), [this] {
         if (m_backend) m_backend->disconnectAll();
     });
-    m_tbDisconnect->setEnabled(false);
+    m_tbDisconnect->setEnabled(wasConnected);
     m_toolbar->addSeparator();
     add(Glyph::Join, tr("Join a channel"), &MainWindow::showJoinDialog);
     add(Glyph::ChannelList, tr("Channels list"), &MainWindow::requestChannelList);
@@ -635,6 +647,7 @@ void MainWindow::showOptions(const QString& page) {
         refreshColorSettings();  // pick up Colors-page edits for new messages
         configurePreviews();     // the inline-previews toggle may have changed
         applyTreebarStyle();     // networks-tree background/colour
+        setupToolbar();          // the toolbar icon style may have changed
         // Push display changes (font, scrollback) to every open conversation.
         for (auto& b : m_buffers) {
             if (b.view) b.view->applyDisplaySettings();
