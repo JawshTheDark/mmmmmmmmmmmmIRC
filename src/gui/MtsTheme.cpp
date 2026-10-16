@@ -212,7 +212,7 @@ bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color
 QString MtsTheme::renderEvent(const QString& key, const QHash<QString, QString>& vars) const {
     const QString tmpl = directives.value(key.toUpper());
     if (tmpl.isEmpty()) return QString();
-    if (tmpl.startsWith(QLatin1String("!script"))) return QString();  // companion script: phase 3
+    if (tmpl.startsWith(QLatin1String("!script"))) return QString();  // handled via scriptBody()
     QString out = tmpl;
     out.replace(QLatin1String("<pre>"), directives.value(QStringLiteral("PREFIX")));
     out.replace(QLatin1String("<lt>"), QStringLiteral("<"));
@@ -223,6 +223,12 @@ QString MtsTheme::renderEvent(const QString& key, const QHash<QString, QString>&
     for (auto it = vars.constBegin(); it != vars.constEnd(); ++it)
         out.replace(QStringLiteral("<%1>").arg(it.key()), it.value());
     return out;
+}
+
+QString MtsTheme::scriptBody(const QString& key) const {
+    const QString tmpl = directives.value(key.toUpper());
+    if (!tmpl.startsWith(QLatin1String("!script"))) return QString();
+    return tmpl.mid(QStringLiteral("!script").size()).trimmed();  // the MSL after "!script"
 }
 
 void clearMtsTheme() {

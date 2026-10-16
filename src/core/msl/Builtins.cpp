@@ -1929,6 +1929,10 @@ void registerBuiltins(Interpreter& in) {
         for (const std::string& t : toks)
             if (!t.empty()) i.setGroup(t, false);
     });
+    // haltdef: MTS/KTE theme engines call this to halt the client's default event
+    // handling. Our MTS `!script` dispatch already renders in place of the built-in
+    // line, so it's a no-op here — but it must exist so themes don't hit an error.
+    in.registerCommand("haltdef", [](Interpreter&, S&, const std::string&) {});
     // /auser <levels> <nick|address>: add (or add levels to) a user-list entry.
     in.registerCommand("auser", [](Interpreter& i, S& s, const std::string& a) {
         const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');

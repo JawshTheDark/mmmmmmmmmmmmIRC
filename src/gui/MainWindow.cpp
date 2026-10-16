@@ -721,12 +721,36 @@ bool MainWindow::renderThemedEvent(Buffer* buf, const QString& key, const QHash<
     const lurker::gui::MtsTheme* theme = lurker::gui::activeMtsTheme();
     if (!theme || !buf || !buf->view) return false;
     const QString line = theme->renderEvent(key, vars);
-    if (line.isEmpty()) return false;
+    if (line.isEmpty()) {
+        // No static template — the theme may render this event through a companion
+        // script (`!script …`, KTE-style). Run its body with the event vars set.
+        const QString body = theme->scriptBody(key);
+        return body.isEmpty() ? false : dispatchThemeScript(buf, vars, body);
+    }
     // Prefer the theme's own timestamp (its format carries colour codes, so the
     // whole line renders through the formatter); otherwise keep our plain stamp.
     const QString mtsTs = theme->timestamp(QDateTime::currentDateTime());
     if (!mtsTs.isEmpty()) buf->view->addThemedLine(QString(), (mtsTs + QLatin1Char(' ') + line).toUtf8());
     else buf->view->addThemedLine(ts, line.toUtf8());
+    return true;
+}
+
+bool MainWindow::dispatchThemeScript(Buffer* buf, const QHash<QString, QString>& vars, const QString& body) {
+    if (!m_msl || !buf) return false;
+    // KTE convention: event fields are exposed as %::<name> globals and %:echo is
+    // the echo command, so a theme's `!script` lines (e.g. "%:echo <coloured>")
+    // render through them. Echo is pointed at this event's window for the call.
+    lurker::msl::Scope sc;
+    for (auto it = vars.constBegin(); it != vars.constEnd(); ++it)
+        m_msl->setVariable("::" + it.key().toStdString(), it.value().toStdString(), /*local=*/false, sc);
+    m_msl->setVariable(":echo", "echo", /*local=*/false, sc);  // %:echo <text> -> echo <text>
+    const bool wasInEvent = m_inEvent;
+    const lurker::msl::ScriptTarget savedCtx = m_eventContext;
+    m_inEvent = true;  // so a bare /echo in the body lands in this event's window
+    m_eventContext = {buf->networkId, buf->display.toStdString()};
+    m_msl->execute(body.toStdString(), sc);
+    m_inEvent = wasInEvent;
+    m_eventContext = savedCtx;
     return true;
 }
 

@@ -172,6 +172,9 @@ private:
     // true if a theme handled it, so the caller skips its built-in line.
     bool renderThemedEvent(Buffer* buf, const QString& key, const QHash<QString, QString>& vars,
                            const QString& ts);
+    // Run a theme's `!script` body (#27) with the event's %:: vars set and echo
+    // pointed at `buf`. Returns true (the event was handled by the theme script).
+    bool dispatchThemeScript(Buffer* buf, const QHash<QString, QString>& vars, const QString& body);
     QString timestampFor(const std::string& isoTime) const;
 
     QMdiArea* m_mdi = nullptr;

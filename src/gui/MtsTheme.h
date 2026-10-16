@@ -49,6 +49,11 @@ struct MtsTheme {
     // falls back to its built-in rendering.
     QString renderEvent(const QString& key, const QHash<QString, QString>& vars) const;
 
+    // When the template for `key` is `!script <body>`, the MSL to run in place of
+    // a static line (the body, with its `%::` vars and colour codes); empty for a
+    // static template or no template. The caller sets the theme vars and runs it.
+    QString scriptBody(const QString& key) const;
+
     // The TIMESTAMPFORMAT for `dt` (mIRC time tokens filled, colour codes kept),
     // or empty when the theme has timestamps off or no format.
     QString timestamp(const QDateTime& dt) const;

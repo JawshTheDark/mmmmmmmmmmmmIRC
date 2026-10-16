@@ -894,5 +894,19 @@ int main() {
         CHECK_EQ(eval(in, "$active"), std::string("#focus"));  // focused window, not activeTarget
     }
 
+    // MTS !script dispatch (#27): a theme's "%:echo <text>" line runs as echo with
+    // the %:echo command var and %::<field> vars expanded; haltdef is a no-op.
+    {
+        Scope s;
+        in.setVariable(":echo", "echo", false, s);    // %:echo -> echo command
+        in.setVariable("::nick", "bob", false, s);     // %::nick -> event nick
+        host.echoed.clear();
+        host.errors.clear();
+        in.execute("%:echo hello %::nick", s);
+        CHECK(!host.echoed.empty() && host.echoed.back() == std::string("hello bob"));
+        in.execute("haltdef", s);                      // registered no-op, not an error
+        CHECK(host.errors.empty());
+    }
+
     return check::summary();
 }
