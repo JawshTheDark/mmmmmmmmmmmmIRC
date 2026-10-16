@@ -32,6 +32,7 @@ public:
     std::function<lurker::msl::ScriptTarget()> activeFn;
     std::function<QString(int)> meFn;
     std::function<void(const QString&)> errorFn;
+    std::function<void(const QString&)> usersChangedFn;  // persist the user access list (#30)
     std::function<void(const QString&, const lurker::msl::DialogTable&, bool)> openDialogFn;
     std::function<void(const QString&)> closeDialogFn;
     std::function<void(const QString&, int, const QString&, const QString&)> didCommandFn;
@@ -142,6 +143,9 @@ public:
     }
     void scriptError(const std::string& text) override {
         if (errorFn) errorFn(QString::fromStdString(text));
+    }
+    void usersChanged(const std::string& serialized) override {
+        if (usersChangedFn) usersChangedFn(QString::fromStdString(serialized));
     }
     std::string inputDialog(const std::string& prompt, bool masked) override {
         bool ok = false;

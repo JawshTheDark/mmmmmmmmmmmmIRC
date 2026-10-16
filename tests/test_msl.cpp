@@ -54,6 +54,12 @@ struct FakeHost : Host {
     }
     void stopTimer(const std::string&) override {}
     void scriptError(const std::string& t) override { errors.push_back(t); }
+    std::string usersSaved;  // last serialized user list from /auser or /ruser (#30)
+    bool usersChangedCalled = false;
+    void usersChanged(const std::string& s) override {
+        usersSaved = s;
+        usersChangedCalled = true;
+    }
     std::string lastPrompt;
     std::string inputAnswer = "answer";  // what $?/$input returns
     std::string inputDialog(const std::string& prompt, bool) override {
@@ -821,6 +827,48 @@ int main() {
         host.echoed.clear();
         g.raiseEvent("text", "hi", s);
         CHECK_EQ(host.echoed.size(), 1u);  // re-enabled → fires
+    }
+
+    // User access list (#30): /auser, /ruser, $level, loadUsers, serialize.
+    {
+        Interpreter u(host);
+
+        // loadUsers parses `<levels>:<mask>` lines (comments/blanks skipped) and
+        // $level matches an address against the stored masks.
+        u.loadUsers("; Users\n100:*!*@trusted.org\nop,voice:bob!*@*\n");
+        CHECK_EQ(eval(u, "$level(alice!a@trusted.org)"), std::string("100"));
+        CHECK_EQ(eval(u, "$level(bob!x@anywhere.net)"), std::string("op,voice"));
+        CHECK_EQ(eval(u, "$level(nobody!n@elsewhere.net)"), std::string());  // no match
+
+        // /auser adds; a bare nick widens to nick!*@*, and the list is persisted.
+        Scope s;
+        host.usersChangedCalled = false;
+        u.execute("auser 50 carol", s);
+        CHECK(host.usersChangedCalled);
+        CHECK_EQ(eval(u, "$level(carol!c@host)"), std::string("50"));
+
+        // /auser on an existing mask merges levels (union, no dups).
+        u.execute("auser 50 carol", s);
+        u.execute("auser 75 carol", s);
+        CHECK_EQ(eval(u, "$level(carol!c@host)"), std::string("50,75"));
+
+        // /ruser removes the entry.
+        host.usersChangedCalled = false;
+        u.execute("ruser carol", s);
+        CHECK(host.usersChangedCalled);
+        CHECK_EQ(eval(u, "$level(carol!c@host)"), std::string());
+
+        // serializeUsers round-trips through loadUsers.
+        const std::string dump = u.serializeUsers();
+        Interpreter u2(host);
+        u2.loadUsers(dump);
+        CHECK_EQ(eval(u2, "$level(alice!a@trusted.org)"), std::string("100"));
+        CHECK_EQ(u2.users().size(), 2u);  // the two seeded masks, carol removed
+
+        // The access list survives clearScripts() (users are data, not code).
+        u.loadScript("alias foo { echo hi }");
+        u.clearScripts();
+        CHECK_EQ(eval(u, "$level(bob!x@h)"), std::string("op,voice"));
     }
 
     return check::summary();

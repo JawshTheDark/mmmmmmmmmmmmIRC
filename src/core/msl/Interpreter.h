@@ -59,6 +59,14 @@ struct MenuItem {
     bool separator = false;
 };
 
+// One user-access-list entry: an address mask and the levels granted to it.
+// Stored in the Users section as `<levels>:<mask>` (mIRC format), e.g.
+// `100:*!*@trusted.org` or `op,voice:bob!*@*`.
+struct UserEntry {
+    std::string levels;  // comma-separated level tokens, as written (e.g. "100,op")
+    std::string mask;    // address wildcard tested against nick!user@host
+};
+
 // One `on <level>:<EVENT>:<match>:<target>:{ body }` remote definition.
 struct EventHandler {
     std::string level = "*";
@@ -88,6 +96,17 @@ public:
     // Replaces nothing — definitions accumulate (later ones win by name/append).
     void loadScript(std::string_view text);
     void clearScripts();  // forget loaded aliases and events (for /unload or reload)
+
+    // User access list (#30): entries of `<levels>:<address-mask>`, edited with
+    // /auser and /ruser or the Users section and queried with $level. Kept apart
+    // from the script code, so clearScripts()/reloads leave the user list intact.
+    void loadUsers(std::string_view text);  // replace the whole list from Users-section text
+    void clearUsers();
+    void addUser(const std::string& levels, const std::string& maskOrNick);  // add or merge one entry
+    void removeUser(const std::string& maskOrNick);                          // drop the matching entry
+    std::string userLevels(const std::string& addressOrNick) const;          // levels of the first match
+    const std::vector<UserEntry>& users() const { return m_users; }
+    std::string serializeUsers() const;  // back to `<levels>:<mask>` lines
 
     // Script groups (#name on/off ... #name end): /enable, /disable toggle them;
     // events in a disabled group don't fire. `nameWild` may be a wildcard.
@@ -190,6 +209,7 @@ private:
     std::map<std::string, DialogTable, CiLess> m_dialogs;             // dialog tables by name
     std::map<std::string, std::vector<MenuItem>, CiLess> m_menus;     // popup menus by type
     std::vector<std::pair<std::string, bool>> m_groups;              // #group -> enabled, in order
+    std::vector<UserEntry> m_users;                                  // user access list (#30)
     std::map<std::string, std::string, CiLess> m_aliasDir;           // alias -> source dir ($scriptdir)
     std::map<std::string, std::string, CiLess> m_dialogDir;          // dialog -> source dir
     std::string m_currentScriptDir;                                  // source dir of the code running now

@@ -391,6 +391,13 @@ void registerBuiltins(Interpreter& in) {
         if (prop == "state") return state;
         return byNumber ? name : state;  // $group(N)=name; $group(#name)=state (mIRC idiom)
     });
+    // $level(nick|address): the access levels of the matching user-list entry,
+    // or empty when no mask matches. Pass a full nick!user@host for a mask like
+    // *!*@host to match; a bare nick matches a `nick!*@*` style entry.
+    in.registerIdent("level", [](Interpreter& in2, S&, const A& a, const std::string&) {
+        if (a.empty()) return std::string();
+        return in2.userLevels(a[0]);
+    });
     // Event context: set while an on-handler runs.
     // $nick (event nick) or $nick(#chan,N): N=0 → count, N≥1 → Nth nick.
     in.registerIdent("newnick", [](Interpreter&, S& s, const A&, const std::string&) { return s.newnick; });
@@ -1914,6 +1921,26 @@ void registerBuiltins(Interpreter& in) {
         if (toks.empty()) { i.setGroup("#*", false); return; }
         for (const std::string& t : toks)
             if (!t.empty()) i.setGroup(t, false);
+    });
+    // /auser <levels> <nick|address>: add (or add levels to) a user-list entry.
+    in.registerCommand("auser", [](Interpreter& i, S& s, const std::string& a) {
+        const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.size() < 2 || toks[0].empty() || toks[1].empty()) {
+            i.host().scriptError("/auser: insufficient parameters");
+            return;
+        }
+        i.addUser(toks[0], toks[1]);
+        i.host().usersChanged(i.serializeUsers());
+    });
+    // /ruser <nick|address>: remove the matching user-list entry.
+    in.registerCommand("ruser", [](Interpreter& i, S& s, const std::string& a) {
+        const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.empty() || toks[0].empty()) {
+            i.host().scriptError("/ruser: insufficient parameters");
+            return;
+        }
+        i.removeUser(toks[0]);
+        i.host().usersChanged(i.serializeUsers());
     });
     in.registerCommand("dialog", [](Interpreter& i, S& s, const std::string& a) {
         std::string args = i.evaluate(a, s);

@@ -909,6 +909,108 @@ void Interpreter::clearScripts() {
     m_currentScriptDir.clear();
 }
 
+// Normalise a /auser or /ruser argument to an address mask: a bare nick (no '!'
+// and no '@') becomes `nick!*@*`, the way mIRC widens a nick into a mask.
+static std::string userMaskOf(const std::string& maskOrNick) {
+    if (maskOrNick.find('!') != std::string::npos || maskOrNick.find('@') != std::string::npos)
+        return maskOrNick;
+    return maskOrNick + "!*@*";
+}
+
+// Union two comma-separated level lists, preserving order and dropping dups
+// (case-insensitive), so /auser on an existing mask adds levels like mIRC does.
+static std::string unionLevels(const std::string& have, const std::string& add) {
+    std::vector<std::string> out;
+    auto push = [&out](const std::string& list) {
+        std::size_t i = 0;
+        while (i < list.size()) {
+            std::size_t c = list.find(',', i);
+            if (c == std::string::npos) c = list.size();
+            std::string tok = list.substr(i, c - i);
+            while (!tok.empty() && tok.front() == ' ') tok.erase(tok.begin());
+            while (!tok.empty() && tok.back() == ' ') tok.pop_back();
+            if (!tok.empty()) {
+                bool seen = false;
+                for (const auto& e : out)
+                    if (toLowerAscii(e) == toLowerAscii(tok)) { seen = true; break; }
+                if (!seen) out.push_back(tok);
+            }
+            i = c + 1;
+        }
+    };
+    push(have);
+    push(add);
+    std::string joined;
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        if (i) joined += ',';
+        joined += out[i];
+    }
+    return joined;
+}
+
+void Interpreter::clearUsers() { m_users.clear(); }
+
+void Interpreter::loadUsers(std::string_view text) {
+    m_users.clear();
+    std::size_t i = 0;
+    while (i < text.size()) {
+        std::size_t nl = text.find('\n', i);
+        if (nl == std::string_view::npos) nl = text.size();
+        std::string_view raw = text.substr(i, nl - i);
+        i = nl + 1;
+        // Trim surrounding whitespace / CR.
+        while (!raw.empty() && (raw.front() == ' ' || raw.front() == '\t')) raw.remove_prefix(1);
+        while (!raw.empty() && (raw.back() == '\r' || raw.back() == ' ' || raw.back() == '\t')) raw.remove_suffix(1);
+        if (raw.empty() || raw.front() == ';') continue;  // blank or comment
+        // `<levels>:<mask>` — split on the first ':' so IPv6 masks survive.
+        std::size_t colon = raw.find(':');
+        if (colon == std::string_view::npos || colon == 0 || colon + 1 >= raw.size()) continue;
+        UserEntry e;
+        e.levels = std::string(raw.substr(0, colon));
+        e.mask = std::string(raw.substr(colon + 1));
+        if (!e.mask.empty()) m_users.push_back(std::move(e));
+    }
+}
+
+void Interpreter::addUser(const std::string& levels, const std::string& maskOrNick) {
+    const std::string mask = userMaskOf(maskOrNick);
+    for (auto& e : m_users) {
+        if (toLowerAscii(e.mask) == toLowerAscii(mask)) {
+            e.levels = unionLevels(e.levels, levels);
+            return;
+        }
+    }
+    m_users.push_back({levels, mask});
+}
+
+void Interpreter::removeUser(const std::string& maskOrNick) {
+    const std::string mask = userMaskOf(maskOrNick);
+    for (auto it = m_users.begin(); it != m_users.end();) {
+        if (toLowerAscii(it->mask) == toLowerAscii(mask))
+            it = m_users.erase(it);
+        else
+            ++it;
+    }
+}
+
+std::string Interpreter::userLevels(const std::string& addressOrNick) const {
+    const std::string subject = userMaskOf(addressOrNick);  // widen a bare nick to nick!*@*
+    for (const auto& e : m_users)
+        if (matchWild(e.mask, subject) || matchWild(e.mask, addressOrNick)) return e.levels;
+    return {};
+}
+
+std::string Interpreter::serializeUsers() const {
+    std::string out;
+    for (const auto& e : m_users) {
+        out += e.levels;
+        out += ':';
+        out += e.mask;
+        out += '\n';
+    }
+    return out;
+}
+
 void Interpreter::setGroup(const std::string& nameWild, bool on) {
     for (auto& g : m_groups)
         if (matchWild(nameWild, g.first)) g.second = on;

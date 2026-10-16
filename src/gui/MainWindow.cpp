@@ -1330,6 +1330,15 @@ void MainWindow::setupScripting() {
     m_scriptHost.errorFn = [this](const QString& text) {
         if (Buffer* b = activeBuffer()) b->view->addSystemLine(QByteArray("* ") + text.toUtf8());
     };
+    // /auser and /ruser edited the access list: write it back to the Users
+    // section (header + entries) so it survives a restart, like mIRC's users.ini.
+    m_scriptHost.usersChangedFn = [](const QString& serialized) {
+        const QString path = ScriptEditor::sectionFiles().value(3);  // users.mrc
+        if (path.isEmpty()) return;
+        QFile f(path);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            f.write(QByteArray("; Users\n") + serialized.toUtf8());
+    };
     // Scripts' relative file paths resolve under a per-user data directory.
     m_scriptHost.baseDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(m_scriptHost.baseDir);
@@ -1679,7 +1688,13 @@ void MainWindow::reloadScripts() {
         QFile f(file);
         if (!f.open(QIODevice::ReadOnly)) continue;
         m_scriptHost.baseDir = QFileInfo(file).absolutePath();  // so $scriptdir tags are correct (#32)
-        m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+        const QByteArray body = f.readAll();
+        // The Users section is the access list, not MSL code: parse it as
+        // `<levels>:<mask>` entries so /auser and $level see them (#30).
+        if (QFileInfo(file).fileName().compare(QStringLiteral("users.mrc"), Qt::CaseInsensitive) == 0)
+            m_msl->loadUsers(QString::fromUtf8(body).toStdString());
+        else
+            m_msl->loadScript(QString::fromUtf8(body).toStdString());
     }
     rebuildScriptMenus();
     onStatusText(tr("Reloaded scripts — %1").arg(scriptSummary()));
@@ -1762,7 +1777,11 @@ void MainWindow::ensureSectionScripts() {
             QFile f(files[i]);
             if (f.open(QIODevice::ReadOnly) && m_msl) {
                 m_scriptHost.baseDir = QFileInfo(files[i]).absolutePath();  // correct $scriptdir tag (#32)
-                m_msl->loadScript(QString::fromUtf8(f.readAll()).toStdString());
+                const QByteArray body = f.readAll();
+                if (i == 3)  // the Users section → access list, not MSL code (#30)
+                    m_msl->loadUsers(QString::fromUtf8(body).toStdString());
+                else
+                    m_msl->loadScript(QString::fromUtf8(body).toStdString());
                 m_scriptFiles << files[i];
                 loadedAny = true;
             }

@@ -100,6 +100,10 @@ public:
     // A line the engine wants surfaced to the user as an error (* /cmd: ...).
     virtual void scriptError(const std::string& text) = 0;
 
+    // The user access list changed via /auser or /ruser; persist it (the GUI
+    // writes the serialized list back to the Users section). Default: no-op.
+    virtual void usersChanged(const std::string& serialized) { (void)serialized; }
+
     // Modal input prompt for $? / $$? / $input. Returns the entered text (empty
     // if cancelled). `masked` hides the input (passwords). Default: empty.
     virtual std::string inputDialog(const std::string& prompt, bool masked) {
