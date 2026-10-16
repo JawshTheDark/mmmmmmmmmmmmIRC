@@ -188,7 +188,10 @@ bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color
     const QString clineKey = QStringLiteral("CLINE") + rank;
     const QString charKey = QStringLiteral("CLINECHAR") + rank;
     if (!directives.contains(clineKey) && !directives.contains(charKey)) return false;
-    glyph = directives.value(charKey);  // themed prefix glyph (@, +, ., %, …)
+    // Themed prefix glyph (@, +, ., %, …). When the theme only sets CLINE colours
+    // and no CLINECHAR for this rank, keep the real IRC sigil instead of blanking
+    // it — otherwise an op's "@" disappears and only the colour survives.
+    glyph = directives.contains(charKey) ? directives.value(charKey) : sigil;
     // The CLINE value carries a palette index (e.g. "\x037"); resolve via the
     // theme palette, else leave the colour invalid (caller keeps the default).
     const QString cv = directives.value(clineKey);

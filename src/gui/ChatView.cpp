@@ -693,15 +693,19 @@ void ChatView::setMembers(const QStringList& sigils, const QStringList& nicks) {
     const lurker::gui::MtsTheme* theme = lurker::gui::activeMtsTheme();
     for (int i = 0; i < nicks.size(); ++i) {
         const QString sigil = i < sigils.size() ? sigils[i] : QString();
+        // The nick itself can arrive with mIRC colour codes (e.g. Lurker colours a
+        // member "\x037Nick"); a list item can't render them, so the \x03 vanishes
+        // and the colour digit shows as a stray "7". Strip the nick everywhere.
+        const QString nick = stripFormattingQt(nicks[i].toUtf8());
         QString glyph;
         QColor color;
         if (theme && theme->nicklistDecor(sigil, glyph, color)) {
             // The glyph may carry a colour code; strip it (lists can't render
             // codes) and apply the colour via the item's foreground instead.
-            auto* item = new QListWidgetItem(stripFormattingQt(glyph.toUtf8()) + nicks[i], m_nicklist);
+            auto* item = new QListWidgetItem(stripFormattingQt(glyph.toUtf8()) + nick, m_nicklist);
             if (color.isValid()) item->setForeground(color);
         } else {
-            m_nicklist->addItem(sigil + nicks[i]);
+            m_nicklist->addItem(sigil + nick);
         }
     }
 }
