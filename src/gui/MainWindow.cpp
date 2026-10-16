@@ -2426,18 +2426,38 @@ void MainWindow::onEvent(const IrcEvent& event) {
                 const QString plain = stripFormattingQt(text);
                 bool hl = event.highlight;
                 if (!hl && !event.self) hl = highlightMatch(net, plain);
-                // Reply context (a dim quote above the line) and any reactions
-                // already standing on it (IRCv3 replies/reactions, #5).
-                const QString replyNick =
-                    event.replyParent.valid ? QString::fromStdString(event.replyParent.nick) : QString();
-                const QString replyText =
-                    event.replyParent.valid
-                        ? stripFormattingQt(QByteArray::fromStdString(event.replyParent.text))
-                        : QString();
-                buf->view->addMessage(ts, nick, text, act, event.self, hl, event.id, replyNick, replyText);
-                for (const auto& r : event.reactions)
-                    buf->view->applyReaction(event.id, QString::fromStdString(r.nick),
-                                             QString::fromStdString(r.value), r.self, false);
+                // With an MTS theme active, render the line through its message
+                // template (TEXT/ACTION × CHAN/QUERY × SELF). URL-catching,
+                // highlight and logging below still run; reactions/reply quotes
+                // are dropped under a theme (its line format owns the row).
+                bool themed = false;
+                if (lurker::gui::activeMtsTheme()) {
+                    const bool query = buf->kind == ChatView::Kind::Query;
+                    const QString key = QStringLiteral("%1%2%3")
+                                            .arg(act ? QStringLiteral("ACTION") : QStringLiteral("TEXT"),
+                                                 query ? QStringLiteral("QUERY") : QStringLiteral("CHAN"),
+                                                 event.self ? QStringLiteral("SELF") : QString());
+                    const QHash<QString, QString> v{{QStringLiteral("nick"), nick},
+                                                    {QStringLiteral("me"), m_networkNicks.value(net)},
+                                                    {QStringLiteral("text"), QString::fromUtf8(text)},
+                                                    {QStringLiteral("chan"), target},
+                                                    {QStringLiteral("cmode"), QString()}};
+                    themed = renderThemedEvent(buf, key, v, ts);
+                }
+                if (!themed) {
+                    // Reply context (a dim quote above the line) and any reactions
+                    // already standing on it (IRCv3 replies/reactions, #5).
+                    const QString replyNick =
+                        event.replyParent.valid ? QString::fromStdString(event.replyParent.nick) : QString();
+                    const QString replyText =
+                        event.replyParent.valid
+                            ? stripFormattingQt(QByteArray::fromStdString(event.replyParent.text))
+                            : QString();
+                    buf->view->addMessage(ts, nick, text, act, event.self, hl, event.id, replyNick, replyText);
+                    for (const auto& r : event.reactions)
+                        buf->view->applyReaction(event.id, QString::fromStdString(r.nick),
+                                                 QString::fromStdString(r.value), r.self, false);
+                }
                 noteMessage(buf, event.id);
                 catchUrls(nick, buf->display, plain);
                 logLine(buf, act ? QStringLiteral("* %1 %2").arg(nick, plain)
