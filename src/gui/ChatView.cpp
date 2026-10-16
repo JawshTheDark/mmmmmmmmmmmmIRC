@@ -639,6 +639,10 @@ void ChatView::addThemedLine(const QString& timestamp, const QByteArray& utf8) {
                     {eventColor(m_settingsScope, QStringLiteral("message"), pal.color(QPalette::Text)),
                      pal.color(QPalette::Base)});
     if (atBottom) m_messages->verticalScrollBar()->setValue(m_messages->verticalScrollBar()->maximum());
+    // Inline link/media previews are attached to every render path (see addMessage
+    // and addNotice); with an MTS theme active, message lines come through here, so
+    // request them here too or themed buffers would silently lose their previews.
+    requestPreviews(stripFormattingQt(utf8));
 }
 
 void ChatView::clearMessages() {
