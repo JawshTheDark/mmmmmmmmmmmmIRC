@@ -276,14 +276,31 @@ void DcxView::xdid(const QString& sw, int id, const QString& args) {
     // -h hide / -s show (wizard-style panels).
     if (sw.contains(QLatin1Char('h'))) { w->hide(); return; }
     if (sw.contains(QLatin1Char('s'))) { w->show(); return; }
+    // -Z scroll a multiline edit / list to the bottom (common for log windows).
+    if (sw.contains(QLatin1Char('Z'))) {
+        if (auto* te = qobject_cast<QPlainTextEdit*>(w)) {
+            te->moveCursor(QTextCursor::End);
+            te->ensureCursorVisible();
+        } else if (auto* lw = qobject_cast<QListWidget*>(w)) {
+            lw->scrollToBottom();
+        } else if (auto* tw = qobject_cast<QTreeWidget*>(w)) {
+            tw->scrollToBottom();
+        }
+        return;
+    }
     // -r reset/clear a list or tree.
     if (sw.contains(QLatin1Char('r'))) {
         if (auto* lw = qobject_cast<QListWidget*>(w)) lw->clear();
         else if (auto* tw = qobject_cast<QTreeWidget*>(w)) tw->clear();
         return;
     }
-    // -a / -A add an item. DCX args are "N [+flags] text"; take the trailing text.
+    // -a / -A add an item. A multiline edit appends the text as-is (no position);
+    // a list/tree takes DCX's "N [+flags] text" and keeps the trailing text.
     if (sw.contains(QLatin1Char('a'), Qt::CaseInsensitive)) {
+        if (auto* te = qobject_cast<QPlainTextEdit*>(w)) {
+            te->appendPlainText(args);
+            return;
+        }
         QString text = a.section(QLatin1Char(' '), 1);  // drop the leading position N
         if (text.startsWith(QLatin1Char('+')))          // drop optional +flags token
             text = text.section(QLatin1Char(' '), 1);
