@@ -1609,7 +1609,23 @@ QString MainWindow::dcxCall(const QString& proc, const QString& data) {
         if (fileRest.startsWith(QLatin1Char('"')) && fileRest.endsWith(QLatin1Char('"')))
             fileRest = fileRest.mid(1, fileRest.size() - 2);
         m_dcxLastLoad = false;
-        if (ScriptDialog* dlgw = m_dialogs.value(dlg)) m_dcxLastLoad = dlgw->loadDcxml(fileRest, xmlName);
+        if (ScriptDialog* dlgw = m_dialogs.value(dlg)) {
+            m_dcxLastLoad = dlgw->loadDcxml(fileRest, xmlName);
+            // Route the DCX controls' events to the dialog's marked alias (#19
+            // phase 2): a click/selection calls `<alias> <dialog> <event> <id> <arg>`.
+            if (m_dcxLastLoad && dlgw->dcxView()) {
+                DcxView* v = dlgw->dcxView();
+                disconnect(v, &DcxView::controlEvent, this, nullptr);  // don't stack on re-init
+                connect(v, &DcxView::controlEvent, this, [this, dlg](int id, const QString& ev, const QString& arg) {
+                    const QString alias = m_dcxEventAlias.value(dlg);
+                    if (alias.isEmpty() || !m_msl) return;
+                    std::vector<std::string> params{dlg.toStdString(), ev.toStdString(),
+                                                    QString::number(id).toStdString()};
+                    if (!arg.isEmpty()) params.push_back(arg.toStdString());
+                    m_msl->callAlias(alias.toStdString(), params);
+                });
+            }
+        }
         return QString();
     }
     // /xdid <-switch> <dialog> <id[,id,…]> <args>  (the alias sends it reordered as

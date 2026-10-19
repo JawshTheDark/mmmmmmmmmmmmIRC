@@ -4,6 +4,7 @@
 
 #include "gui/DcxView.h"
 
+#include <QAbstractButton>
 #include <QBoxLayout>
 #include <QCheckBox>
 #include <QFile>
@@ -191,6 +192,7 @@ QWidget* DcxView::build(const Node& n, QWidget* parent) {
         for (const Node& c : n.children)
             tabs->addTab(buildContainer(c), c.caption.isEmpty() ? QStringLiteral("Tab") : c.caption);
         if (n.id > 0) m_byId.insert(n.id, tabs);
+        connectControlEvents(tabs, n.id);
         return tabs;
     }
     const bool container = (n.type == QLatin1String("pane") || n.type == QLatin1String("panel") ||
@@ -263,6 +265,7 @@ QWidget* DcxView::build(const Node& n, QWidget* parent) {
         w = ph;
     }
     if (w && n.id > 0) m_byId.insert(n.id, w);
+    connectControlEvents(w, n.id);
     return w;
 }
 
@@ -308,6 +311,26 @@ void DcxView::xdid(const QString& sw, int id, const QString& args) {
         else if (auto* pb = qobject_cast<QProgressBar*>(w)) pb->setValue(a.toInt());
         else if (auto* b = qobject_cast<QPushButton*>(w)) b->setText(args);
         return;
+    }
+}
+
+void DcxView::connectControlEvents(QWidget* w, int id) {
+    if (!w || id <= 0) return;
+    if (auto* b = qobject_cast<QAbstractButton*>(w)) {  // button / check / radio → sclick
+        connect(b, &QAbstractButton::clicked, this,
+                [this, id] { emit controlEvent(id, QStringLiteral("sclick"), QString()); });
+    } else if (auto* lw = qobject_cast<QListWidget*>(w)) {  // list selection → selchange (1-based row)
+        connect(lw, &QListWidget::currentRowChanged, this, [this, id](int r) {
+            emit controlEvent(id, QStringLiteral("selchange"), r >= 0 ? QString::number(r + 1) : QString());
+        });
+    } else if (auto* tv = qobject_cast<QTreeWidget*>(w)) {  // tree/listview selection → selchange
+        connect(tv, &QTreeWidget::currentItemChanged, this, [this, id, tv](QTreeWidgetItem* cur, QTreeWidgetItem*) {
+            emit controlEvent(id, QStringLiteral("selchange"),
+                              cur ? QString::number(tv->indexOfTopLevelItem(cur) + 1) : QString());
+        });
+    } else if (auto* tabs = qobject_cast<QTabWidget*>(w)) {  // tab change → selchange (1-based tab)
+        connect(tabs, &QTabWidget::currentChanged, this,
+                [this, id](int i) { emit controlEvent(id, QStringLiteral("selchange"), QString::number(i + 1)); });
     }
 }
 

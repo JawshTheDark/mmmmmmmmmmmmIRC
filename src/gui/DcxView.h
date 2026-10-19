@@ -52,7 +52,17 @@ public:
     // The text of a control, for `$xdid(dialog,id).text` (edit/label); empty else.
     QString controlText(int id) const;
 
+signals:
+    // An interactive control fired a DCX event (#19 phase 2): `event` is the DCX
+    // event name ("sclick", "selchange", …), `id` the control, `arg` any extra
+    // (e.g. a 1-based selected row for selchange). The owner routes it to the
+    // dialog's marked event alias (dcx Mark).
+    void controlEvent(int id, const QString& event, const QString& arg);
+
 private:
+    void connectControlEvents(QWidget* w, int id);  // wire a control's Qt signals to controlEvent
+
+
     // One parsed node of the DCX tree: a container (pane/panel with children),
     // a leaf control, an empty <pane/> spacer, or an <item>.
     struct Node {
