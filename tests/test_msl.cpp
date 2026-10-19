@@ -952,5 +952,16 @@ int main() {
         CHECK(!has("NUM") && has("ANY") && !has("OP"));
     }
 
+    // /returnex: the identifier-alias idiom `if ($isid) returnex …` (used by DCX's
+    // $xdid/$dcx, mdx, …) must return a value, including through nested $alias().
+    {
+        Interpreter r(host);
+        r.loadScript("alias myid { if ($isid) returnex id- $+ $1 | echo cmd }");
+        CHECK_EQ(eval(r, "$myid(x)"), std::string("id-x"));
+        // Nested identifier aliases resolve (the $xdid -> $dcx -> $dll chain shape).
+        r.loadScript("alias inner { returnex IN- $+ $1 }\nalias outer { returnex $inner($1) }");
+        CHECK_EQ(eval(r, "$outer(z)"), std::string("IN-z"));
+    }
+
     return check::summary();
 }

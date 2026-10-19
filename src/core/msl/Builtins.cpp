@@ -1702,6 +1702,15 @@ void registerBuiltins(Interpreter& in) {
         s.returnValue = i.evaluate(args, s);
         s.returned = true;
     });
+    // /returnex is /return whose value is final (mIRC: not re-evaluated by the
+    // caller). This engine already never re-evaluates a return value, so it
+    // behaves like /return — but it MUST exist: the standard identifier-alias
+    // idiom `if ($isid) returnex $foo(...)` (used by DCX's $xdid/$dcx, mdx, …)
+    // silently returned nothing while it was an unknown command.
+    in.registerCommand("returnex", [](Interpreter& i, S& s, const std::string& args) {
+        s.returnValue = i.evaluate(args, s);
+        s.returned = true;
+    });
     in.registerCommand("halt", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
     in.registerCommand("haltdef", [](Interpreter&, S& s, const std::string&) { s.halted = true; });
     in.registerCommand("break", [](Interpreter&, S& s, const std::string&) { s.breakLoop = true; });
@@ -1929,10 +1938,6 @@ void registerBuiltins(Interpreter& in) {
         for (const std::string& t : toks)
             if (!t.empty()) i.setGroup(t, false);
     });
-    // haltdef: MTS/KTE theme engines call this to halt the client's default event
-    // handling. Our MTS `!script` dispatch already renders in place of the built-in
-    // line, so it's a no-op here — but it must exist so themes don't hit an error.
-    in.registerCommand("haltdef", [](Interpreter&, S&, const std::string&) {});
     // /auser <levels> <nick|address>: add (or add levels to) a user-list entry.
     in.registerCommand("auser", [](Interpreter& i, S& s, const std::string& a) {
         const std::vector<std::string> toks = splitTokens(i.evaluate(a, s), ' ');
