@@ -42,6 +42,7 @@ public:
     // from `xmlPath`'s <dialog name="dialogName">. Returns true on success.
     bool loadDcxml(const QString& xmlPath, const QString& dialogName);
     bool dcxLoaded() const;
+    class DcxView* dcxView() const { return m_dcx; }  // for /xdid + $xdid control ops (#19)
 
 protected:
     void closeEvent(QCloseEvent* event) override;

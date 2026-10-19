@@ -131,6 +131,13 @@ QSize DcxView::load(const QString& xmlPath, const QString& dialogName) {
     }
     if (!found || xml.hasError()) return QSize();
 
+    // Reset any previous build so load() is idempotent: a re-init (dialog loaded
+    // again) must not stack a second layout on this DcxView or leave m_byId
+    // pointing at orphaned, invisible widgets.
+    m_byId.clear();
+    qDeleteAll(findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly));
+    delete layout();
+
     // Build the widget tree: this DcxView is the root container.
     QWidget* body = buildContainer(root);
     auto* outer = new QVBoxLayout(this);
@@ -257,6 +264,60 @@ QWidget* DcxView::build(const Node& n, QWidget* parent) {
     }
     if (w && n.id > 0) m_byId.insert(n.id, w);
     return w;
+}
+
+void DcxView::xdid(const QString& sw, int id, const QString& args) {
+    QWidget* w = m_byId.value(id);
+    if (!w) return;
+    const QString a = args.trimmed();
+    // -h hide / -s show (wizard-style panels).
+    if (sw.contains(QLatin1Char('h'))) { w->hide(); return; }
+    if (sw.contains(QLatin1Char('s'))) { w->show(); return; }
+    // -r reset/clear a list or tree.
+    if (sw.contains(QLatin1Char('r'))) {
+        if (auto* lw = qobject_cast<QListWidget*>(w)) lw->clear();
+        else if (auto* tw = qobject_cast<QTreeWidget*>(w)) tw->clear();
+        return;
+    }
+    // -a / -A add an item. DCX args are "N [+flags] text"; take the trailing text.
+    if (sw.contains(QLatin1Char('a'), Qt::CaseInsensitive)) {
+        QString text = a.section(QLatin1Char(' '), 1);  // drop the leading position N
+        if (text.startsWith(QLatin1Char('+')))          // drop optional +flags token
+            text = text.section(QLatin1Char(' '), 1);
+        if (text.isEmpty()) text = a;
+        if (auto* lw = qobject_cast<QListWidget*>(w)) lw->addItem(text);
+        else if (auto* tw = qobject_cast<QTreeWidget*>(w)) new QTreeWidgetItem(tw, QStringList(text));
+        return;
+    }
+    // -c check/select.
+    if (sw.contains(QLatin1Char('c'))) {
+        const bool on = a != QLatin1String("0");
+        if (auto* cb = qobject_cast<QCheckBox*>(w)) cb->setChecked(on);
+        else if (auto* rb = qobject_cast<QRadioButton*>(w)) rb->setChecked(on);
+        else if (auto* lw = qobject_cast<QListWidget*>(w)) {
+            const int n = a.section(QLatin1Char(' '), 0, 0).toInt();
+            if (n >= 1 && n <= lw->count()) lw->setCurrentRow(n - 1);
+        }
+        return;
+    }
+    // -v set text / value.
+    if (sw.contains(QLatin1Char('v'))) {
+        if (auto* e = qobject_cast<QLineEdit*>(w)) e->setText(args);
+        else if (auto* te = qobject_cast<QPlainTextEdit*>(w)) te->setPlainText(args);
+        else if (auto* l = qobject_cast<QLabel*>(w)) l->setText(args);
+        else if (auto* pb = qobject_cast<QProgressBar*>(w)) pb->setValue(a.toInt());
+        else if (auto* b = qobject_cast<QPushButton*>(w)) b->setText(args);
+        return;
+    }
+}
+
+QString DcxView::controlText(int id) const {
+    QWidget* w = m_byId.value(id);
+    if (auto* e = qobject_cast<QLineEdit*>(w)) return e->text();
+    if (auto* te = qobject_cast<QPlainTextEdit*>(w)) return te->toPlainText();
+    if (auto* l = qobject_cast<QLabel*>(w)) return l->text();
+    if (auto* b = qobject_cast<QPushButton*>(w)) return b->text();
+    return QString();
 }
 
 }  // namespace lurker::gui

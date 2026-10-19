@@ -44,6 +44,14 @@ public:
     // A control widget by its DCX id (0 if none). Used by /xdid and $xdid.
     QWidget* control(int id) const { return m_byId.value(id); }
 
+    // Apply an /xdid control op (#19 phase 1b). `sw` is the switch token ("-v",
+    // "-a", "-r", …); `args` the text after it. Handles the common ops:
+    //   -v set text/value, -a add an item, -r clear, -c check, -h hide, -s show.
+    void xdid(const QString& sw, int id, const QString& args);
+
+    // The text of a control, for `$xdid(dialog,id).text` (edit/label); empty else.
+    QString controlText(int id) const;
+
 private:
     // One parsed node of the DCX tree: a container (pane/panel with children),
     // a leaf control, an empty <pane/> spacer, or an <item>.

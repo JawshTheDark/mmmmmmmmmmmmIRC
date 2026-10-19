@@ -64,6 +64,7 @@
 #include "gui/FormattedText.h"
 #include "gui/MtsTheme.h"
 #include "gui/PictureWindow.h"
+#include "gui/DcxView.h"
 #include "gui/ScriptDialog.h"
 #include "gui/OptionsDialog.h"
 #include "gui/ScriptEditor.h"
@@ -1581,7 +1582,9 @@ void MainWindow::runScript(const QString& line) {
 // XML layout into the host dialog), accepting the control verbs as no-ops so
 // scripts run while control manipulation/queries land in a later phase.
 QString MainWindow::dcxCall(const QString& proc, const QString& data) {
-    const QString p = proc.toLower();
+    // The identifier form ($dcx/$xdid → $dll) passes the proc with surrounding
+    // whitespace from mIRC's comma arg-splitting, so trim before matching.
+    const QString p = proc.trimmed().toLower();
     if (p == QLatin1String("version")) return QStringLiteral("DCX 2.1 (emulated)");
     if (p == QLatin1String("isunloadsafe")) return QStringLiteral("0");
     // /dcx Mark <dialog> <eventalias>
@@ -1609,7 +1612,35 @@ QString MainWindow::dcxCall(const QString& proc, const QString& data) {
         if (ScriptDialog* dlgw = m_dialogs.value(dlg)) m_dcxLastLoad = dlgw->loadDcxml(fileRest, xmlName);
         return QString();
     }
-    // xdid / _xdid / xdialog / _xpop / … — accepted; manipulation lands later.
+    // /xdid <-switch> <dialog> <id[,id,…]> <args>  (the alias sends it reordered as
+    // "<dialog> <id> <-switch> <args>"): apply a control op to each listed id (#19).
+    if (p == QLatin1String("xdid")) {
+        const QStringList t = data.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (t.size() < 3) return QString();
+        ScriptDialog* dlg = m_dialogs.value(t[0]);
+        if (!dlg || !dlg->dcxView()) return QString();
+        const QString sw = t[2];
+        const QString args = t.mid(3).join(QLatin1Char(' '));
+        for (const QString& idStr : t[1].split(QRegularExpression(QStringLiteral("[, ]")), Qt::SkipEmptyParts))
+            dlg->dcxView()->xdid(sw, idStr.toInt(), args);
+        return QString();
+    }
+    // $xdid(dialog, id).prop -> "dialog id prop …": resolve the common properties
+    // (.id/.pid = the id when the control exists, .text = its text).
+    if (p == QLatin1String("_xdid")) {
+        const QStringList t = data.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (t.size() < 2) return QString();
+        ScriptDialog* dlg = m_dialogs.value(t[0]);
+        if (!dlg || !dlg->dcxView()) return QString();
+        const int id = t[1].toInt();
+        const QString prop = t.size() >= 3 ? t[2].toLower() : QString();
+        const bool exists = dlg->dcxView()->control(id) != nullptr;
+        if (prop == QLatin1String("pid") || prop == QLatin1String("id"))
+            return exists ? QString::number(id) : QString();
+        if (prop == QLatin1String("text")) return dlg->dcxView()->controlText(id);
+        return QString();
+    }
+    // xdialog / _xpop / … — accepted; manipulation lands in a later phase.
     return QString();
 }
 
