@@ -59,6 +59,16 @@ build/test on every push/PR) and **Releases** (tag `v*` → AppImage + Windows z
 Validated: [NeonScript](https://github.com/jawshthedark/neonscript) loads fully (1024 aliases, 457
 handlers); jirc's Anope/abaexp/ppfserv scripts parse correctly.
 
+**DCX addon (#19), through phase 2** (as of v0.1.75): the `dcx.dll` emulation renders DCX XML layouts
+(`DcxView`: nested pane/panel box-model + the common controls), and scripts can drive them —
+`/xdid -v` (set), `-a` (add item / append to a multiline edit), `-r` (clear), `-c` (check/select),
+`-h`/`-s` (hide/show), `-Z` (scroll to bottom), across a list of ids; `$xdid(dialog,id).id/.pid/.text`
+read control state; and controls are **interactive** — a button click or list/tree/tab selection fires
+the dialog's `dcx Mark`'d alias as `<alias> <dialog> <event> <id> [arg]` (sclick / selchange). This was
+unblocked by implementing **`/returnex`** (the `alias x { if ($isid) returnex … }` identifier idiom —
+which fixes *every* custom `$identifier` alias, not just DCX) and trimming the identifier-form proc.
+Also shipped alongside: the editbox now follows the active theme's colours.
+
 ## Next (priority order)
 
 1. **DCC through Lurker** (owner requirement): `soju.im/FILEHOST` + `/api/dcc` — see DESIGN.md. The
@@ -71,6 +81,15 @@ handlers); jirc's Anope/abaexp/ppfserv scripts parse correctly.
    nicks, background, logging are already live.)
 5. **Per-channel** theming (background/font overrides keyed by net+channel) — Phase 3.6; global is done.
 6. Run the oracle (tools/oracle) to pin evaluation edge cases.
+7. **DCX long-tail** (#19 phase 2 remainder, *lower priority — paused deliberately*): `xdialog`
+   dialog-level ops and `$xdialog(dialog, name).id` control-by-name (needs parsing control `name=`
+   attributes, which `DcxView::Node` doesn't keep yet); `xdid -t` (listview columns) and `-m`
+   (colorcombo fill) — **caution:** DCX overloads these switches per control type and the exact arg
+   formats are ambiguous, so verify each against `scratchpad/dcx_zip/` (demo + `dcx_tools.mrc`) and skip
+   anything that can't be pinned down; and upgrade the placeholder controls (toolbar, colorcombo,
+   richedit, updown, embedded `@window`) from labelled boxes to real widgets. The event plumbing
+   (`DcxView::controlEvent` → marked alias) is in place, so new interactive controls just need to call
+   `connectControlEvents`.
 
 ## Gotchas
 
