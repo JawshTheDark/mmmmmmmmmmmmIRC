@@ -185,15 +185,26 @@ QString MtsTheme::timestamp(const QDateTime& dt) const {
 
 bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color) const {
     const QChar s = sigil.isEmpty() ? QChar() : sigil.at(0);
+    // mIRC's MTS nicklist has no separate "admin" level, so admin (&) is its own
+    // rank here with the owner's COLOUR as a fallback — but never the owner's
+    // glyph. The .mts (e.g. anova) sets CLINECHAROWNER to "." for ~; folding & into
+    // OWNER made a BotServ/services admin show "." instead of its real "&". With no
+    // CLINECHARADMIN the glyph falls through to the real sigil below.
     QString rank;
-    if (s == QLatin1Char('~') || s == QLatin1Char('&')) rank = QStringLiteral("OWNER");
+    QString colorFallbackRank;
+    if (s == QLatin1Char('~')) rank = QStringLiteral("OWNER");
+    else if (s == QLatin1Char('&')) { rank = QStringLiteral("ADMIN"); colorFallbackRank = QStringLiteral("OWNER"); }
     else if (s == QLatin1Char('@')) rank = QStringLiteral("OP");
     else if (s == QLatin1Char('%')) rank = QStringLiteral("HOP");
     else if (s == QLatin1Char('+')) rank = QStringLiteral("VOICE");
     else rank = QStringLiteral("REGULAR");
     const QString clineKey = QStringLiteral("CLINE") + rank;
     const QString charKey = QStringLiteral("CLINECHAR") + rank;
-    if (!directives.contains(clineKey) && !directives.contains(charKey)) return false;
+    const QString clineFallbackKey =
+        colorFallbackRank.isEmpty() ? QString() : QStringLiteral("CLINE") + colorFallbackRank;
+    const bool hasCline =
+        directives.contains(clineKey) || (!clineFallbackKey.isEmpty() && directives.contains(clineFallbackKey));
+    if (!hasCline && !directives.contains(charKey)) return false;
     // Themed prefix glyph (@, +, ., %, …). When the theme only sets CLINE colours
     // and no CLINECHAR for this rank, keep the real IRC sigil instead of blanking
     // it — otherwise an op's "@" disappears and only the colour survives.
@@ -217,7 +228,8 @@ bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color
     }
     // The CLINE value carries a palette index (e.g. "\x037" or "7"); resolve via the
     // theme palette, falling back to any colour packed into CLINECHAR above.
-    const QString cv = directives.value(clineKey);
+    QString cv = directives.value(clineKey);
+    if (cv.isEmpty() && !clineFallbackKey.isEmpty()) cv = directives.value(clineFallbackKey);  // admin → owner
     QString digits;
     for (const QChar c : cv) {
         if (c.isDigit()) digits += c;

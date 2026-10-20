@@ -147,6 +147,31 @@ int main() {
         CHECK(h.last(IrcEventType::NamesUpdated));
     }
 
+    // Self's own owner prefix — from NAMES and from a later MODE — plus admin (&).
+    {
+        Harness h(config());
+        registerSession(h);
+        h.feed(":jawsh!j@host JOIN #svc");
+        // Owner (~) on self and admin (&) on a services bot, straight from NAMES.
+        h.feed(":srv 353 jawsh = #svc :~jawsh &botserv @scribe fred");
+        h.feed(":srv 366 jawsh #svc :End of /NAMES list");
+        const ChannelState* chan = h.session->channel("#svc");
+        CHECK(chan != nullptr);
+        CHECK_EQ(chan->members.at("jawsh").prefixModes, std::string("q"));    // self owner ~
+        CHECK_EQ(chan->members.at("botserv").prefixModes, std::string("a"));  // admin &
+        CHECK_EQ(chan->members.at("scribe").prefixModes, std::string("o"));   // op @
+        CHECK(chan->members.at("fred").prefixModes.empty());                  // regular
+        // Owner granted to self AFTER joining, via a channel MODE.
+        Harness h2(config());
+        registerSession(h2);
+        h2.feed(":jawsh!j@host JOIN #svc");
+        h2.feed(":srv 353 jawsh = #svc :jawsh fred");
+        h2.feed(":srv 366 jawsh #svc :End of /NAMES list");
+        CHECK(h2.session->channel("#svc")->members.at("jawsh").prefixModes.empty());
+        h2.feed(":ChanServ!s@services MODE #svc +q jawsh");
+        CHECK_EQ(h2.session->channel("#svc")->members.at("jawsh").prefixModes, std::string("q"));
+    }
+
     // Join/part/quit/nick/kick bookkeeping.
     {
         Harness h(config());
