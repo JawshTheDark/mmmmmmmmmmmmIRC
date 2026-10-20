@@ -105,6 +105,10 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         m_topicBar = new QLabel(this);
         m_topicBar->setTextFormat(Qt::PlainText);
         m_topicBar->setWordWrap(false);
+        // A long topic must not force a wide minimum on the whole window: let the
+        // label clip (full text stays in its tooltip) so the window can shrink and
+        // the message area re-wraps. Ignored ignores the text width for sizing.
+        m_topicBar->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         m_topicBar->setContentsMargins(6, 3, 6, 3);
         m_topicBar->setTextInteractionFlags(Qt::TextSelectableByMouse);
         m_topicBar->setStyleSheet(QStringLiteral("QLabel { background: palette(alternate-base); }"));
@@ -130,11 +134,11 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
 
     if (kind == Kind::Channel) {
         auto* split = new QSplitter(Qt::Horizontal, this);
-        m_messages->setMinimumWidth(120);  // chat pane always stays usable
+        m_messages->setMinimumWidth(60);  // keep the chat pane usable but let it get small
         split->addWidget(m_messages);
         m_nicklist = new QListWidget(split);
         m_nicklist->setFont(configuredChatFont());
-        m_nicklist->setMinimumWidth(90);   // nicklist stays readable, independent of content
+        m_nicklist->setMinimumWidth(60);   // nicklist stays usable but lets the window shrink
         m_nicklist->setMaximumWidth(220);
         m_nicklist->setUniformItemSizes(true);
         split->addWidget(m_nicklist);

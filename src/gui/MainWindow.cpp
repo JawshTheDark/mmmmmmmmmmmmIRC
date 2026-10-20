@@ -113,9 +113,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_treeDock = treeDock;
     m_treebar = new QTreeWidget(treeDock);
     m_treebar->setHeaderHidden(true);
-    // The buffer list must stay readable: never let a layout pass (e.g. Cascade/Tile
-    // asking the MDI area for more room) squeeze the dock below a legible width.
-    m_treebar->setMinimumWidth(140);
+    // Keep the buffer list legible but don't let it floor the whole window — a
+    // small minimum lets the user shrink the window right down (the dock is also
+    // resizable and closable). Cascade/Tile still won't squeeze it to nothing.
+    m_treebar->setMinimumWidth(80);
     treeDock->setWidget(m_treebar);
     addDockWidget(Qt::LeftDockWidgetArea, treeDock);
     // Single click switches to a window (mIRC behaviour); itemActivated also
