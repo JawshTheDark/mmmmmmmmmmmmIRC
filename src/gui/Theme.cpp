@@ -44,6 +44,16 @@ QPalette darkPalette(const QColor& base, const QColor& window, const QColor& tex
     p.setColor(QPalette::Disabled, QPalette::Text, text.darker(170));
     return p;
 }
+
+// Re-creating the style at runtime deletes the old QStyle and re-polishes every
+// widget — which leaves QMdiSubWindow title-bar buttons (min/restore/close)
+// rendering as black squares until their next repaint. Fusion is set once at
+// startup and never changes, so only swap when something else is somehow active;
+// the palette change below still repolishes for the new colours.
+void ensureFusionStyle(QApplication& app) {
+    if (app.style()->name().compare(QLatin1String("fusion"), Qt::CaseInsensitive) != 0)
+        app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+}
 }  // namespace
 
 void applyTheme(QApplication& app, const QString& id) {
@@ -70,7 +80,7 @@ void applyTheme(QApplication& app, const QString& id) {
         isDark = false;
     }
     if (isDark) {
-        app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+        ensureFusionStyle(app);
         app.setPalette(darkPalette(skin.base, skin.window, skin.text, skin.accent));
         // Item views (the treebar, nicklists) and dock titles don't always
         // repaint from a palette change alone — especially when switching themes
@@ -90,7 +100,7 @@ void applyTheme(QApplication& app, const QString& id) {
 
     if (id == QStringLiteral("beos")) {
         // BeOS: light grey chrome, yellow active window tabs, flat bevels.
-        app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+        ensureFusionStyle(app);
         QPalette p;
         const QColor grey(0xD8, 0xD8, 0xD8), light(0xEC, 0xEC, 0xEC), yellow(0xFF, 0xD8, 0x00);
         p.setColor(QPalette::Window, grey);
@@ -125,7 +135,7 @@ void applyTheme(QApplication& app, const QString& id) {
     }
 
     // Default: the platform's native light look.
-    app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+    ensureFusionStyle(app);
     app.setPalette(app.style()->standardPalette());
 }
 

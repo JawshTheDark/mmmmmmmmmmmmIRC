@@ -12,6 +12,7 @@
 #include <QRegularExpression>
 #include <QSettings>
 #include <QStringList>
+#include <QStyle>
 #include <QStyleFactory>
 #include <QTextStream>
 
@@ -110,7 +111,12 @@ bool MtsTheme::apply() const {
     // views need to actually repaint on Windows — the same treatment the built-in
     // themes use. "Clear MTS theme" restores the app theme.
     if (background.isValid() && text.isValid()) {
-        QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+        // Only swap the style if it isn't already Fusion: re-creating it at
+        // runtime re-polishes every widget and leaves MDI title-bar buttons
+        // rendering black. Fusion is set once at startup; the palette change
+        // below repolishes for the new colours without that glitch.
+        if (qApp->style()->name().compare(QLatin1String("fusion"), Qt::CaseInsensitive) != 0)
+            QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
         const bool dark = background.lightness() < 128;
         const QColor accent = hasPalette ? QColor(palette[12].r, palette[12].g, palette[12].b)
                                          : QColor(0x3D, 0x7E, 0xFF);

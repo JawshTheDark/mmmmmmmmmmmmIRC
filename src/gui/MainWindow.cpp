@@ -285,9 +285,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         a->setChecked(t.id == current);
         themeGroup->addAction(a);
         const QString id = t.id;
-        connect(a, &QAction::triggered, this, [id] {
+        connect(a, &QAction::triggered, this, [this, id] {
             applyTheme(*qApp, id);
             QSettings().setValue(QStringLiteral("theme"), id);
+            repaintWindowChrome();
         });
     }
     themeMenu->addSeparator();
@@ -722,6 +723,20 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
     } else {
         statusBar()->showMessage(tr("Loaded MTS theme: %1").arg(themeName), 5000);
     }
+    repaintWindowChrome();
+}
+
+void MainWindow::repaintWindowChrome() {
+    // A theme change repolishes the chrome; defer an explicit repaint to the next
+    // event-loop pass (after Qt finishes processing the palette/style change) so the
+    // MDI subwindow title-bar buttons don't keep a stale, black backing store.
+    QTimer::singleShot(0, this, [this] {
+        if (m_closing) return;
+        menuBar()->update();  // maximized subwindows host their controls in the menubar corner
+        if (m_mdi)
+            for (QMdiSubWindow* s : m_mdi->subWindowList())
+                if (s) s->update();  // tiled/cascaded subwindows carry their own title bars
+    });
 }
 
 void MainWindow::reRenderConversations() {
@@ -2598,13 +2613,25 @@ void MainWindow::resizeEvent(QResizeEvent* event) {
     // When the active window is clearly smaller than the workspace, re-apply
     // maximise so it refills. The tolerance avoids firing on frame-pixel diffs.
     if (m_windowsMaximized && m_mdi) {
-        if (QMdiSubWindow* w = m_mdi->activeSubWindow()) {
-            const QSize area = m_mdi->viewport()->size();
-            if (w->isMaximized() && (w->width() + 8 < area.width() || w->height() + 8 < area.height())) {
-                w->showNormal();
-                w->showMaximized();
-            }
+        // Debounce: re-fit once after resizing settles, not on every intermediate
+        // resize event. Toggling showNormal/showMaximized repeatedly during a drag
+        // rebuilds the subwindow title bar each time, which makes its control
+        // buttons flicker black on Windows.
+        if (!m_refitTimer) {
+            m_refitTimer = new QTimer(this);
+            m_refitTimer->setSingleShot(true);
+            connect(m_refitTimer, &QTimer::timeout, this, [this] {
+                if (m_closing || !m_windowsMaximized || !m_mdi) return;
+                QMdiSubWindow* w = m_mdi->activeSubWindow();
+                if (!w || !w->isMaximized()) return;
+                const QSize area = m_mdi->viewport()->size();
+                if (w->width() + 8 < area.width() || w->height() + 8 < area.height()) {
+                    w->showNormal();
+                    w->showMaximized();
+                }
+            });
         }
+        m_refitTimer->start(60);
     }
 }
 

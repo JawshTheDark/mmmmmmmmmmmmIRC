@@ -64,6 +64,7 @@ public:
     void promptLoadScript();      // file picker → loadScriptFile
     void promptLoadMtsTheme();     // file picker → applyMtsThemeFile
     void applyMtsThemeFile(const QString& path);  // parse + apply an .mts, refresh views
+    void repaintWindowChrome();    // force a repaint of the menubar + MDI title bars after a theme change
     void reRenderConversations();  // clear + re-fetch history so lines redraw in the new palette
     void importMircFolder(const QString& dir);  // import a mIRC folder's config/scripts
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
@@ -238,6 +239,7 @@ private:
     QStringList m_notifyList;                          // nicks being watched
     QSet<QString> m_notifyOnline;                      // which notify nicks are currently online
     class QTimer* m_notifyTimer = nullptr;             // ISON poll timer
+    class QTimer* m_refitTimer = nullptr;              // debounces the maximized-MDI re-fit on resize (Windows)
     bool isIgnored(const lurker::IrcEvent& event) const;  // true if the source matches an ignore mask
     void pollNotify();                                 // (re)load the notify list and send an ISON
     class UrlCatcherWindow* m_urlCatcher = nullptr;    // URL Catcher window
