@@ -212,8 +212,13 @@ void LurkerChatBackend::replaceMembers(int net, const QString& target, const QJs
 }
 
 // Apply a single updated member object (nick + optional away/modes) to the live
-// set. Returns true if that member existed and anything changed.
-bool LurkerChatBackend::applyMemberUpdate(int net, const QString& target, const QJsonObject& m) {
+// set. Returns true if that member existed and anything changed. `applyModes`
+// gates the mode letters: a member-update for an away/account/host change (which
+// is NOT a mode change) can carry an empty "modes" array that would otherwise
+// wipe a real owner/op — e.g. an away-notify for your own +q nick on connect
+// dropped Jawsh from [qo] to []. Only a genuine MODE event is authoritative for
+// modes, so this is false for member-update events and true for mode events.
+bool LurkerChatBackend::applyMemberUpdate(int net, const QString& target, const QJsonObject& m, bool applyModes) {
     auto mapIt = m_members.find(key(net, target));
     if (mapIt == m_members.end()) return false;
     auto it = mapIt->find(m.value("nick").toString().toLower());
@@ -223,7 +228,7 @@ bool LurkerChatBackend::applyMemberUpdate(int net, const QString& target, const 
         const bool a = m.value("away").toBool(it->away);
         if (a != it->away) { it->away = a; changed = true; }
     }
-    if (m.contains("modes")) {
+    if (applyModes && m.contains("modes")) {
         QString modes;
         for (const QJsonValue& v : m.value("modes").toArray()) modes += v.toString();
         modes = sortModes(net, modes);
@@ -345,7 +350,9 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
         return;
     }
     if (typeStr == "member-update") {
-        if (applyMemberUpdate(net, target, ev.value("member").toObject())) emitMembers(net, target);
+        // away/account/host change — never authoritative for channel modes.
+        if (applyMemberUpdate(net, target, ev.value("member").toObject(), /*applyModes=*/false))
+            emitMembers(net, target);
         return;
     }
     // A mode change updates nicklist prefixes. Lurker may deliver the result as
@@ -355,7 +362,8 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
         if (ev.value("members").isArray()) {
             replaceMembers(net, target, ev.value("members").toArray(), net);
         } else if (ev.value("member").isObject()) {
-            if (applyMemberUpdate(net, target, ev.value("member").toObject())) emitMembers(net, target);
+            if (applyMemberUpdate(net, target, ev.value("member").toObject(), /*applyModes=*/true))
+                emitMembers(net, target);
         } else if (applyModeString(net, target, ev.value("modes").toString(), ev.value("args").toArray())) {
             emitMembers(net, target);
         }

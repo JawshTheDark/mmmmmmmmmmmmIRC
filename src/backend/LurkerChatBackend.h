@@ -96,7 +96,7 @@ private:
     void replaceMembers(int net, const QString& target, const QJsonArray& members, int networkForPrefix);
     // Live nicklist upkeep for mode changes (#21): update one member's modes/away,
     // or apply a raw mode string; order a member's modes highest-rank first.
-    bool applyMemberUpdate(int net, const QString& target, const QJsonObject& member);
+    bool applyMemberUpdate(int net, const QString& target, const QJsonObject& member, bool applyModes);
     bool applyModeString(int net, const QString& target, const QString& modeStr, const QJsonArray& args);
     QString sortModes(int net, QString modes) const;
     QChar sigilFor(int net, const QString& modes) const;
