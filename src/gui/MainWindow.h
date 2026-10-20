@@ -136,7 +136,10 @@ private:
     void applyTreebarStyle();    // user background colour/image + text colour for the networks tree
     Buffer* activeBuffer();
     void echoToWindow(int net, const QString& window, const QString& text);
-    void dispatchScriptEvent(const lurker::IrcEvent& event);
+    // Fire the MSL remote event (on TEXT/JOIN/…) for this IRC event; returns true
+    // if a handler halted default processing (the caller then skips the built-in
+    // display). Must run before rendering so /halt can suppress it (mIRC order).
+    bool dispatchScriptEvent(const lurker::IrcEvent& event);
     void onInput(Buffer* buffer, const QString& text);
     void handleNickAction(int net, const QString& key, const QString& nick, const QString& action);
     void logLine(const Buffer* buffer, const QString& plainLine);  // append to the log file if enabled

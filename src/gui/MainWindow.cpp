@@ -2125,8 +2125,8 @@ void MainWindow::dccDemo() {
     w->setTransfers(list);
 }
 
-void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
-    if (!m_msl) return;
+bool MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
+    if (!m_msl) return false;
     QString name;
     QString subject = QString::fromStdString(event.text);
     const QString target = QString::fromStdString(event.target);
@@ -2141,9 +2141,9 @@ void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
         case IrcEventType::NickChange: name = QStringLiteral("NICK"); subject = QString::fromStdString(event.arg); break;
         case IrcEventType::Mode: name = QStringLiteral("MODE"); subject = target; break;
         case IrcEventType::Topic: name = QStringLiteral("TOPIC"); subject = target; break;
-        default: return;
+        default: return false;
     }
-    if (event.self || !m_msl->hasEvent(name.toStdString())) return;
+    if (event.self || !m_msl->hasEvent(name.toStdString())) return false;
 
     lurker::msl::Scope scope;
     scope.nick = event.nick;
@@ -2160,6 +2160,7 @@ void MainWindow::dispatchScriptEvent(const lurker::IrcEvent& event) {
     m_inEvent = true;
     m_msl->raiseEvent(name.toStdString(), subject.toStdString(), scope);
     m_inEvent = false;
+    return scope.halted;  // a handler's /halt (or /haltdef) suppresses the default display
 }
 
 MainWindow::~MainWindow() {
@@ -2673,6 +2674,9 @@ MainWindow::Buffer* MainWindow::routeTarget(int net, const QString& rawTarget, C
 }
 
 void MainWindow::onEvent(const IrcEvent& event) {
+    // Fire MSL remote events (on TEXT/JOIN/…) before rendering: a handler's /halt
+    // suppresses the client's default display of this event (mIRC semantics).
+    if (dispatchScriptEvent(event)) return;
     const int net = event.networkId;
     const QString ts = timestampFor(event.time);
     const QString nick = QString::fromStdString(event.nick);
@@ -2960,9 +2964,6 @@ void MainWindow::onEvent(const IrcEvent& event) {
         default:
             break;
     }
-
-    // Fire MSL remote events (on TEXT / ACTION / JOIN / ...) after rendering.
-    dispatchScriptEvent(event);
 }
 
 void MainWindow::onMembersReplaced(int net, const QString& target, const QList<DisplayMember>& members) {
