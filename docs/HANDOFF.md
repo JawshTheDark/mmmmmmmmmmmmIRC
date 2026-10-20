@@ -73,9 +73,12 @@ Also shipped alongside: the editbox now follows the active theme's colours.
 
 1. **DCC through Lurker** (owner requirement): `soju.im/FILEHOST` + `/api/dcc` — see DESIGN.md. The
    toolbar DCC buttons + Options ▸ DCC page are in; the server-side bridge is the remaining work.
-2. IRC-state identifiers that need the session wired into the MSL Host: `$nick(#,N)`, `$nickcount`,
-   `$ial`/`$ialchan`, `$comchan`, `$onotice`, `$level`; `on`-event `$halt` of default processing.
-3. `$regsubex`, `$hfind`, more of the identifier tail (see PARITY.md `planned`, ordered by corpus use).
+2. IRC-state identifiers still needing Host wiring: `$ial`/`$ialchan` (**blocked on Lurker** — its WS
+   events carry no user@host; works only on direct-IRC/bouncer, so low priority), `$nickcount`,
+   `/onotice`. *(Done: `$nick(#,N)`, `$comchan`, `$level` (#30), and `on`-event `/halt` of default
+   processing (v0.1.76) — a handler's /halt now suppresses the client's default display.)*
+3. More of the identifier tail (see PARITY.md `planned`, ordered by corpus use). *(Done: `$regsubex`,
+   `$regsub`, `$hfind`, `$regml`.)*
 4. Wire the remaining Options consumers: highlight words → highlight styling, flood protection on
    send, join/part/quit display toggle, reconnect options. (Timestamp format, scrollback, strip/colour
    nicks, background, logging are already live.)
