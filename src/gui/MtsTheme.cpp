@@ -192,20 +192,35 @@ bool MtsTheme::nicklistDecor(const QString& sigil, QString& glyph, QColor& color
     // and no CLINECHAR for this rank, keep the real IRC sigil instead of blanking
     // it — otherwise an op's "@" disappears and only the colour survives.
     glyph = directives.contains(charKey) ? directives.value(charKey) : sigil;
-    // The CLINE value carries a palette index (e.g. "\x037"); resolve via the
-    // theme palette, else leave the colour invalid (caller keeps the default).
+    // Some themes pack a mIRC colour code into CLINECHAR itself (e.g. "0@" = colour
+    // 0 + the glyph "@"). Peel a leading <fg>[,<bg>] off so only the prefix char
+    // shows — otherwise the digit renders literally (an op reads "0@nick"). Use the
+    // peeled fg as the rank colour when the CLINE directive didn't give one.
+    int packedColor = -1;
+    if (!glyph.isEmpty() && glyph.at(0).isDigit()) {
+        int p = 0;
+        QString fg;
+        while (p < glyph.size() && glyph.at(p).isDigit() && fg.size() < 2) fg += glyph.at(p++);
+        packedColor = fg.toInt();
+        if (p < glyph.size() && glyph.at(p) == QLatin1Char(',')) {  // optional ,<bg>
+            ++p;
+            int b = 0;
+            while (p < glyph.size() && glyph.at(p).isDigit() && b < 2) { ++p; ++b; }
+        }
+        glyph = glyph.mid(p);
+    }
+    // The CLINE value carries a palette index (e.g. "\x037" or "7"); resolve via the
+    // theme palette, falling back to any colour packed into CLINECHAR above.
     const QString cv = directives.value(clineKey);
     QString digits;
     for (const QChar c : cv) {
         if (c.isDigit()) digits += c;
         else if (!digits.isEmpty()) break;
     }
-    if (!digits.isEmpty() && hasPalette) {
-        const int idx = digits.toInt();
-        if (idx >= 0 && idx < 16)
-            color = QColor(palette[static_cast<std::size_t>(idx)].r, palette[static_cast<std::size_t>(idx)].g,
-                           palette[static_cast<std::size_t>(idx)].b);
-    }
+    const int idx = !digits.isEmpty() ? digits.toInt() : packedColor;
+    if (idx >= 0 && idx < 16 && hasPalette)
+        color = QColor(palette[static_cast<std::size_t>(idx)].r, palette[static_cast<std::size_t>(idx)].g,
+                       palette[static_cast<std::size_t>(idx)].b);
     return true;
 }
 
