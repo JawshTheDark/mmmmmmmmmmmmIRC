@@ -164,6 +164,24 @@ void LurkerChatBackend::emitMembers(int net, const QString& target) {
         const QChar s = sigilFor(net, m.modes);
         out.append({s.isNull() ? QString() : QString(s), m.nick, m.away});
     }
+
+    // Diagnostic (set LURKER_DEBUG_MEMBERS=1): dump the prefix map and every
+    // member's raw mode letters to the status window, to see whether Lurker
+    // delivers self's own channel modes and whether owner (q) is in the map.
+    if (qEnvironmentVariableIsSet("LURKER_DEBUG_MEMBERS")) {
+        QString dbg = QStringLiteral("[members-dbg] %1 prefix.order=\"%2\" sigils=").arg(target, prefix.order);
+        for (auto it = prefix.sigil.constBegin(); it != prefix.sigil.constEnd(); ++it)
+            dbg += QStringLiteral("%1>%2 ").arg(it.key()).arg(it.value());
+        dbg += QStringLiteral("| members: ");
+        for (const Member& m : list)
+            dbg += QStringLiteral("%1[%2] ").arg(m.nick, m.modes.isEmpty() ? QStringLiteral("-") : m.modes);
+        IrcEvent dbgEv;
+        dbgEv.type = IrcEventType::ServerText;
+        dbgEv.networkId = net;
+        dbgEv.text = dbg.toStdString();
+        emit event(dbgEv);
+    }
+
     emit membersReplaced(net, target, out);
 }
 
