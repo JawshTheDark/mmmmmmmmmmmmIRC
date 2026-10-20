@@ -737,6 +737,32 @@ void MainWindow::repaintWindowChrome() {
             for (QMdiSubWindow* s : m_mdi->subWindowList())
                 if (s) s->update();  // tiled/cascaded subwindows carry their own title bars
     });
+    pruneOrphanedWindowControls();
+}
+
+void MainWindow::pruneOrphanedWindowControls() {
+    // When a subwindow is maximized, Qt parents its menu-label (window-icon button)
+    // and its min/restore/close controller to the menu bar as the corner widgets.
+    // Switching between maximized subwindows is supposed to hand those corners over
+    // to the new one and detach the old — but on Windows the old menu-label can be
+    // left behind, visible, as an empty button frame next to the real controls.
+    // Defer to after Qt finishes the hand-over, then hide any MDI control widget in
+    // the menu bar that isn't its current corner widget. Qt re-shows the live ones
+    // as needed, so this is a no-op when nothing is orphaned.
+    QTimer::singleShot(0, this, [this] {
+        if (m_closing) return;
+        QMenuBar* mb = menuBar();
+        QWidget* liveLeft = mb->cornerWidget(Qt::TopLeftCorner);
+        QWidget* liveRight = mb->cornerWidget(Qt::TopRightCorner);
+        const auto kids = mb->children();
+        for (QObject* o : kids) {
+            QWidget* w = qobject_cast<QWidget*>(o);
+            if (!w || w == liveLeft || w == liveRight) continue;
+            const QByteArray cls = w->metaObject()->className();
+            if (cls == "QMdi::ControlLabel" || cls == "QMdi::ControllerWidget")
+                w->hide();
+        }
+    });
 }
 
 void MainWindow::reRenderConversations() {
@@ -2628,6 +2654,7 @@ void MainWindow::resizeEvent(QResizeEvent* event) {
                 if (w->width() + 8 < area.width() || w->height() + 8 < area.height()) {
                     w->showNormal();
                     w->showMaximized();
+                    pruneOrphanedWindowControls();  // the toggle can strand a stale menu-label
                 }
             });
         }
@@ -2640,9 +2667,17 @@ void MainWindow::activateBuffer(Buffer* buffer) {
     if (!buffer->sub->isVisible()) buffer->sub->show();
     // Match the current workspace mode: maximized (mIRC default — one window fills
     // the area and switching swaps it) or free-floating after a Tile/Cascade.
-    if (m_windowsMaximized) buffer->sub->showMaximized();
-    else if (buffer->sub->isMinimized()) buffer->sub->showNormal();
+    // Don't re-maximize an already-maximized subwindow: on Windows re-running
+    // showMaximized() on every switch leaves the previous subwindow's menu-label
+    // parented to the menu bar, which shows up as empty button frames beside the
+    // real min/restore/close. Just activate it; QMdiArea keeps it filling the area.
+    if (m_windowsMaximized) {
+        if (!buffer->sub->isMaximized()) buffer->sub->showMaximized();
+    } else if (buffer->sub->isMinimized()) {
+        buffer->sub->showNormal();
+    }
     m_mdi->setActiveSubWindow(buffer->sub);
+    pruneOrphanedWindowControls();  // sweep any stale control widgets the switch left behind
     m_activeKey = buffer->key;  // the conversation $active / echo -a should resolve to
     buffer->view->focusInput();
     hydrateBuffer(buffer);

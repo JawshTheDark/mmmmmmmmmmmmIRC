@@ -65,6 +65,7 @@ public:
     void promptLoadMtsTheme();     // file picker → applyMtsThemeFile
     void applyMtsThemeFile(const QString& path);  // parse + apply an .mts, refresh views
     void repaintWindowChrome();    // force a repaint of the menubar + MDI title bars after a theme change
+    void pruneOrphanedWindowControls();  // hide stale maximized-MDI control widgets left in the menubar (Windows)
     void reRenderConversations();  // clear + re-fetch history so lines redraw in the new palette
     void importMircFolder(const QString& dir);  // import a mIRC folder's config/scripts
     // Adopts a backend (ownership transferred), wires it, and starts rendering.
