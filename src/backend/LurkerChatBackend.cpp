@@ -197,17 +197,26 @@ QString LurkerChatBackend::sortModes(int net, QString modes) const {
 }
 
 void LurkerChatBackend::replaceMembers(int net, const QString& target, const QJsonArray& members, int) {
+    const QString k = key(net, target);
+    const QMap<QString, Member> prev = m_members.value(k);  // to keep modes a refresh omits
     QMap<QString, Member> map;
     for (const QJsonValue& v : members) {
         const QJsonObject o = v.toObject();
         Member m;
         m.nick = o.value("nick").toString();
-        for (const QJsonValue& mode : o.value("modes").toArray()) m.modes += mode.toString();
-        m.modes = sortModes(net, m.modes);
+        if (o.contains("modes")) {
+            for (const QJsonValue& mode : o.value("modes").toArray()) m.modes += mode.toString();
+            m.modes = sortModes(net, m.modes);
+        } else if (const auto it = prev.constFind(m.nick.toLower()); it != prev.constEnd()) {
+            // A roster refresh with no "modes" field for this nick means "unchanged",
+            // not "no modes" — keep what we already knew (Lurker omits self's own
+            // modes on a re-sync, which was dropping a +q owner to no prefix).
+            m.modes = it->modes;
+        }
         m.away = o.value("away").toBool();
         if (!m.nick.isEmpty()) map.insert(m.nick.toLower(), m);
     }
-    m_members.insert(key(net, target), map);
+    m_members.insert(k, map);
     emitMembers(net, target);
 }
 
@@ -334,6 +343,34 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
     const IrcEventType type = typeFromString(typeStr);
     const int net = ev.value("networkId").toInt(-1);
     const QString target = ev.value("target").toString();
+
+    // Diagnostic: log the raw member payload of any event that can rewrite the
+    // roster, so we can see which one drops a member's modes (and whether the
+    // modes field is empty vs absent). Set LURKER_DEBUG_MEMBERS=1.
+    if (qEnvironmentVariableIsSet("LURKER_DEBUG_MEMBERS") &&
+        (typeStr == QLatin1String("names") || typeStr == QLatin1String("member-update") ||
+         type == IrcEventType::Mode)) {
+        auto fmtMember = [](const QJsonObject& mo) {
+            QString md;
+            for (const QJsonValue& x : mo.value("modes").toArray()) md += x.toString();
+            return QStringLiteral("%1[%2]%3")
+                .arg(mo.value("nick").toString(), md,
+                     mo.contains("modes") ? QString() : QStringLiteral("(no-modes-field)"));
+        };
+        QString d = QStringLiteral("[evt-dbg] type=%1 target=%2").arg(typeStr, target);
+        if (ev.value("members").isArray()) {
+            d += QStringLiteral(" members:");
+            for (const QJsonValue& mv : ev.value("members").toArray()) d += QLatin1Char(' ') + fmtMember(mv.toObject());
+        }
+        if (ev.value("member").isObject()) d += QStringLiteral(" member: ") + fmtMember(ev.value("member").toObject());
+        if (ev.contains("modes") && ev.value("modes").isString())
+            d += QStringLiteral(" modeStr=\"%1\" args=%2").arg(ev.value("modes").toString()).arg(ev.value("args").toArray().size());
+        IrcEvent dbgEv;
+        dbgEv.type = IrcEventType::ServerText;
+        dbgEv.networkId = net;
+        dbgEv.text = d.toStdString();
+        emit event(dbgEv);
+    }
 
     // /LIST progress markers (chanlist-start/-progress/-end). The rows live in
     // the server-side cache; when the refresh ends we page it out (below).
