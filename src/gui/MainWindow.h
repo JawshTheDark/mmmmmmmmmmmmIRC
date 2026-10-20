@@ -122,6 +122,7 @@ private:
     void onBufferOpened(int net, const QString& target, int kind);
     void onEvent(const lurker::IrcEvent& event);
     void onMembersReplaced(int net, const QString& target, const QList<lurker::backend::DisplayMember>& members);
+    void refreshNicklists();  // re-apply stored members to every channel nicklist (after a theme load/clear)
     void onTopicChanged(int net, const QString& target, const QByteArray& topic);
     void onReadStateChanged(int net, const QString& target, int unread, int highlights);
     void updateBufferLabel(Buffer* buffer);

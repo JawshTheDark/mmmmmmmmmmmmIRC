@@ -305,6 +305,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         applyTreebarStyle();
         for (auto& b : m_buffers)
             if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+        refreshNicklists();  // re-run setMembers so nick prefixes drop the theme's CLINECHAR glyphs
         reRenderConversations();
         QSettings().remove(QStringLiteral("mts/path"));
         statusBar()->showMessage(tr("MTS theme cleared"), 4000);
@@ -709,6 +710,7 @@ void MainWindow::applyMtsThemeFile(const QString& path) {
         palette().color(QPalette::Window).lightness() < 128 ? 130 : 105)));
     for (auto& b : m_buffers)
         if (b.view) { b.view->applyDisplaySettings(); b.view->update(); }
+    refreshNicklists();  // re-run setMembers so nick prefixes pick up the theme's CLINECHAR glyphs
     reRenderConversations();  // redraw history with the new palette (baked colours)
     const QString themeName = theme.name.isEmpty() ? QFileInfo(path).fileName() : theme.name;
     if (companionMissing) {
@@ -3059,6 +3061,16 @@ void MainWindow::onMembersReplaced(int net, const QString& target, const QList<D
     buf->memberSigils = sigils;  // parallel to memberNicks, for access-level gating
     buf->view->setMembers(sigils, nicks);
     buf->sub->setWindowTitle(QStringLiteral("%1 (%2)").arg(buf->display).arg(nicks.size()));
+}
+
+void MainWindow::refreshNicklists() {
+    // Re-populate every channel nicklist from its stored members so prefix glyphs
+    // re-resolve against the current theme (loading or clearing an MTS theme
+    // changes CLINECHAR mapping, but the nicklist is otherwise only rebuilt on the
+    // next membership change — a quiet channel would keep stale glyphs).
+    for (auto& b : m_buffers)
+        if (b.view && b.kind == ChatView::Kind::Channel)
+            b.view->setMembers(b.memberSigils, b.memberNicks);
 }
 
 void MainWindow::onTopicChanged(int net, const QString& target, const QByteArray& topic) {
