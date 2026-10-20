@@ -2584,9 +2584,27 @@ void MainWindow::maximizeWindows() {
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
     QMainWindow::resizeEvent(event);
-    // Re-tile so the grid tracks the window size (maximized windows refit on their
-    // own; cascaded/free ones keep their positions, like mIRC).
-    if (m_tiled && !m_closing) arrangeWindows(true);
+    if (m_closing) return;
+    // Re-tile so the grid tracks the window size; cascaded/free windows keep their
+    // positions, like mIRC.
+    if (m_tiled) {
+        arrangeWindows(true);
+        return;
+    }
+    // A maximized MDI subwindow is supposed to follow the workspace (and does on
+    // Linux), but on Windows it doesn't grow when the main window is enlarged —
+    // leaving the channel and its nicklist boxed in the top-left with dead space.
+    // When the active window is clearly smaller than the workspace, re-apply
+    // maximise so it refills. The tolerance avoids firing on frame-pixel diffs.
+    if (m_windowsMaximized && m_mdi) {
+        if (QMdiSubWindow* w = m_mdi->activeSubWindow()) {
+            const QSize area = m_mdi->viewport()->size();
+            if (w->isMaximized() && (w->width() + 8 < area.width() || w->height() + 8 < area.height())) {
+                w->showNormal();
+                w->showMaximized();
+            }
+        }
+    }
 }
 
 void MainWindow::activateBuffer(Buffer* buffer) {
