@@ -445,6 +445,22 @@ int main() {
         in.execute("write -c log.txt only line", s);
         CHECK_EQ(eval(in, "$lines(log.txt)"), std::string("1"));
 
+        // A "quoted" filename must be stripped so a quoted write and an unquoted
+        // read hit the same file (BlackList addon lost its entries otherwise, #35).
+        in.execute("write \"bl.txt\" baduser Ads", s);
+        in.execute("write \"bl.txt\" troll Harass", s);
+        CHECK_EQ(eval(in, "$lines(bl.txt)"), std::string("2"));  // not "bl.txt"-with-quotes
+        CHECK_EQ(eval(in, "$read(bl.txt,s,troll)"), std::string("troll Harass"));
+        // -ds<text>: delete the first line that begins with text.
+        in.execute("write -dstroll \"bl.txt\"", s);
+        CHECK_EQ(eval(in, "$lines(bl.txt)"), std::string("1"));
+        CHECK_EQ(eval(in, "$read(bl.txt,1)"), std::string("baduser Ads"));
+        // -dl<N>: delete line N.
+        in.execute("write bl.txt second", s);
+        in.execute("write -dl1 bl.txt", s);
+        CHECK_EQ(eval(in, "$lines(bl.txt)"), std::string("1"));
+        CHECK_EQ(eval(in, "$read(bl.txt,1)"), std::string("second"));
+
         in.execute("writeini cfg.ini Settings nick jawsh", s);
         in.execute("writeini cfg.ini Settings theme neon", s);
         in.execute("writeini cfg.ini Window width 800", s);

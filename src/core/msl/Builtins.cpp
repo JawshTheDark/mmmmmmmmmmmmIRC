@@ -1802,17 +1802,83 @@ void registerBuiltins(Interpreter& in) {
 
     // Files and INI.
     in.registerCommand("write", [](Interpreter& i, S& s, const std::string& a) {
-        // /write [-c] <file> <text>   (append a line; -c clears first)
+        // /write [-c | -d[l|s|w]<target>] <filename> [text]
+        // Append a line (-c clears first), or delete one: -d<N>/-dl<N> by line
+        // number (bare -d deletes the last line), -ds<text> by begins-with, -dw<wild>
+        // by wildcard — the target rides in the switch. The filename may be "quoted"
+        // to allow spaces; mIRC strips the quotes and so must we. The append path
+        // previously didn't, so an addon that wrote a quoted path and read it back
+        // unquoted lost every line (the BlackList addon's entries, #35).
         std::string args = i.evaluate(a, s);
-        bool clear = false;
+        std::string sw;
         if (!args.empty() && args[0] == '-') {
-            clear = args.find('c') != std::string::npos;
-            args = args.substr(std::min(args.find(' ') + 1, args.size()));
+            const std::size_t sp0 = args.find(' ');
+            sw = args.substr(1, (sp0 == std::string::npos ? args.size() : sp0) - 1);
+            args = sp0 == std::string::npos ? std::string() : args.substr(sp0 + 1);
         }
-        std::size_t sp = args.find(' ');
-        if (sp == std::string::npos) return;
-        const std::string file = args.substr(0, sp);
-        const std::string text = args.substr(sp + 1);
+        std::string file, text;
+        if (!args.empty() && args.front() == '"') {
+            const std::size_t close = args.find('"', 1);
+            if (close == std::string::npos) return;
+            file = args.substr(1, close - 1);
+            const std::size_t t = args.find_first_not_of(' ', close + 1);
+            if (t != std::string::npos) text = args.substr(t);
+        } else {
+            const std::size_t sp = args.find(' ');
+            file = sp == std::string::npos ? args : args.substr(0, sp);
+            if (sp != std::string::npos) text = args.substr(sp + 1);
+        }
+        if (file.empty()) return;
+
+        if (!sw.empty() && sw[0] == 'd') {  // -d: delete a line, rather than append
+            std::string tgt = sw.substr(1);
+            char mode = 'n';  // n = by line number; s = begins-with; w = wildcard
+            if (!tgt.empty() && (tgt[0] == 'l' || tgt[0] == 's' || tgt[0] == 'w')) {
+                mode = tgt[0] == 'l' ? 'n' : tgt[0];
+                tgt = tgt.substr(1);
+            }
+            std::vector<std::string> lines;
+            std::string cur;
+            for (const char c : i.host().fileRead(file)) {
+                if (c == '\n') { lines.push_back(cur); cur.clear(); }
+                else if (c != '\r') cur += c;
+            }
+            if (!cur.empty()) lines.push_back(cur);
+            int idx = -1;
+            if (mode == 's' || mode == 'w') {
+                std::string needle = tgt;
+                std::transform(needle.begin(), needle.end(), needle.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                for (std::size_t n = 0; n < lines.size(); ++n) {
+                    std::string low = lines[n];
+                    std::transform(low.begin(), low.end(), low.begin(),
+                                   [](unsigned char c) { return std::tolower(c); });
+                    if (mode == 's' ? low.rfind(needle, 0) == 0 : matchWild(needle, low)) {
+                        idx = static_cast<int>(n);
+                        break;
+                    }
+                }
+            } else {
+                int ln = 0;
+                bool digits = !tgt.empty();
+                for (const char c : tgt) {
+                    if (c < '0' || c > '9') { digits = false; break; }
+                    ln = ln * 10 + (c - '0');
+                }
+                if (tgt.empty()) ln = static_cast<int>(lines.size());  // bare -d: last line
+                else if (!digits) ln = 0;
+                if (ln >= 1 && ln <= static_cast<int>(lines.size())) idx = ln - 1;
+            }
+            if (idx >= 0) {
+                lines.erase(lines.begin() + idx);
+                std::string out;
+                for (const std::string& l : lines) out += l + "\n";
+                i.host().fileWrite(file, out);
+            }
+            return;
+        }
+
+        const bool clear = sw.find('c') != std::string::npos;
         std::string content = clear ? std::string() : i.host().fileRead(file);
         if (!content.empty() && content.back() != '\n') content += '\n';
         content += text + "\n";
