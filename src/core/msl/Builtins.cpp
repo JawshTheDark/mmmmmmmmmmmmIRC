@@ -1201,6 +1201,23 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("atan", math1(std::atan));
     in.registerIdent("exp", math1(std::exp));
     in.registerIdent("log", math1(std::log));  // natural logarithm (mIRC $log)
+    in.registerIdent("ln", math1(std::log));   // natural logarithm (explicit alias)
+    in.registerIdent("log10", math1(std::log10));
+    in.registerIdent("sinh", math1(std::sinh));
+    in.registerIdent("cosh", math1(std::cosh));
+    in.registerIdent("tanh", math1(std::tanh));
+    in.registerIdent("cbrt", math1(std::cbrt));
+    auto math2 = [](double (*fn)(double, double)) {
+        return [fn](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+            try {
+                return fmtNum(fn(std::stod(arg(a, 0)), std::stod(arg(a, 1))));
+            } catch (...) {
+                return std::string();
+            }
+        };
+    };
+    in.registerIdent("atan2", math2(std::atan2));  // $atan2(y,x)
+    in.registerIdent("hypot", math2(std::hypot));  // $hypot(x,y) = sqrt(x²+y²)
     in.registerIdent("pi", [](Interpreter&, S&, const A&, const std::string&) {
         return std::string("3.141592653589793");
     });
@@ -1241,6 +1258,20 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("sha1", [](Interpreter&, S&, const A& a, const std::string&) { return sha1Hex(arg(a, 0)); });
     in.registerIdent("sha256",
                      [](Interpreter&, S&, const A& a, const std::string&) { return sha256Hex(arg(a, 0)); });
+    in.registerIdent("crc", [](Interpreter& i, S&, const A& a, const std::string&) -> std::string {
+        // $crc(input, [type]) — CRC-32 as 8 lowercase hex chars. type 1 = input is
+        // a filename (hash its bytes), default 0 = input is literal text.
+        const std::string data = argInt(a, 1, 0) == 1 ? i.host().fileRead(arg(a, 0)) : arg(a, 0);
+        unsigned int crc = 0xFFFFFFFFu;
+        for (const unsigned char ch : data) {
+            crc ^= ch;
+            for (int k = 0; k < 8; ++k) crc = (crc & 1u) ? ((crc >> 1) ^ 0xEDB88320u) : (crc >> 1);
+        }
+        crc ^= 0xFFFFFFFFu;
+        char buf[9];
+        std::snprintf(buf, sizeof(buf), "%08x", crc);
+        return std::string(buf);
+    });
     in.registerIdent("base", [](Interpreter&, S&, const A& a, const std::string&) {
         // $base(value, fromBase, toBase, [zeropad])
         try {

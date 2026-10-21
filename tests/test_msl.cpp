@@ -136,6 +136,15 @@ int main() {
     CHECK_EQ(eval(in, "$abs(-7)"), std::string("7"));
     CHECK_EQ(eval(in, "$int(7.9)"), std::string("7"));
     CHECK_EQ(eval(in, "$round(3.14159,2)"), std::string("3.14"));
+    // Added math identifiers (Phase 2.3).
+    CHECK_EQ(eval(in, "$cbrt(27)"), std::string("3"));
+    CHECK_EQ(eval(in, "$hypot(3,4)"), std::string("5"));
+    CHECK_EQ(eval(in, "$round($atan2(1,1),4)"), std::string("0.7854"));  // π/4
+    CHECK_EQ(eval(in, "$round($ln($exp(2)),6)"), std::string("2"));
+    CHECK_EQ(eval(in, "$log10(1000)"), std::string("3"));
+    CHECK_EQ(eval(in, "$round($cosh(0),4)"), std::string("1"));
+    CHECK_EQ(eval(in, "$round($sinh(0),4)"), std::string("0"));
+    CHECK_EQ(eval(in, "$round($tanh(0),4)"), std::string("0"));
 
     // Tokens.
     CHECK_EQ(eval(in, "$gettok(a.b.c,2,46)"), std::string("b"));
@@ -411,6 +420,7 @@ int main() {
     CHECK_EQ(eval(in, "$sha1(hello)"), std::string("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"));
     CHECK_EQ(eval(in, "$sha256(hello)"),
              std::string("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"));
+    CHECK_EQ(eval(in, "$crc(123456789)"), std::string("cbf43926"));  // CRC-32 standard check value
     CHECK_EQ(eval(in, "$gettok(a b c,0,32)"), std::string("3"));  // N=0 => token count
     CHECK_EQ(eval(in, "$calc(2 ^ 3 ^ 2)"), std::string("64"));    // ^ is left-associative
     CHECK_EQ(eval(in, "$calc(17 // 5)"), std::string("3"));    // // is floored integer division

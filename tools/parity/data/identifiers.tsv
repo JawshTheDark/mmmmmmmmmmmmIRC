@@ -22,7 +22,7 @@ $asc	done		text_number_identifiers.html	10	test_msl
 $asctime	done		time_date_identifiers.html	50	test_msl	
 $asin	planned		text_number_identifiers.html	0		
 $atan	planned		text_number_identifiers.html	0		
-$atan2	planned		text_number_identifiers.html	0		
+$atan2	done		text_number_identifiers.html	0	test_msl	
 $avoice	planned		control.html	0		
 $away	planned		other_identifiers.html	35		
 $awaymsg	planned		other_identifiers.html	2		
@@ -40,7 +40,7 @@ $bytes	done		text_number_identifiers.html	2	test_msl
 $calc	done		text_number_identifiers.html	1709	test_msl	
 $caller	planned		other_identifiers.html	0		
 $cb	planned		other_identifiers.html	0		
-$cbrt	planned		text_number_identifiers.html	0		
+$cbrt	done		text_number_identifiers.html	0	test_msl	
 $cd	planned		on_chatoserv.html	0		
 $ceil	done		text_number_identifiers.html	0	test_msl	
 $chan	done		remote_identifiers.html	1300	test_msl	
@@ -65,10 +65,10 @@ $compact	planned		window_identifiers.html	0
 $compress	planned		text_number_identifiers.html	0		
 $comval	not-possible		com_objects.html	0		COM/ActiveX
 $cos	planned		text_number_identifiers.html	0		
-$cosh	planned		text_number_identifiers.html	0		
+$cosh	done		text_number_identifiers.html	0	test_msl	
 $count	done		text_number_identifiers.html	53	test_msl	
 $cr	planned		other_identifiers.html	20		
-$crc	planned		file_directory_identifiers.html	0		
+$crc	done		file_directory_identifiers.html	0	test_msl	
 $crc64	planned		file_directory_identifiers.html	0		
 $creq	planned		other_identifiers.html	0		
 $crlf	planned		other_identifiers.html	58		
@@ -158,7 +158,7 @@ $host	planned		other_identifiers.html	4
 $hotline	planned		on_hotlink.html	0		
 $hotlinepos	planned		on_hotlink.html	0		
 $hotp	planned		other_identifiers.html	0		
-$hypot	planned		text_number_identifiers.html	0		
+$hypot	done		text_number_identifiers.html	0	test_msl	
 $ial	planned		nick_address_identifiers.html	0		
 $ialchan	planned		nick_address_identifiers.html	25		
 $ialmark	planned		internal_address_list.html	0		
@@ -216,7 +216,7 @@ $link	planned		nick_address_identifiers.html	0
 $lock	planned		other_identifiers.html	7		
 $locked	planned		other_identifiers.html	0		
 $log	planned		text_number_identifiers.html	0		
-$log10	planned		text_number_identifiers.html	0		
+$log10	done		text_number_identifiers.html	0	test_msl	
 $log2	planned		text_number_identifiers.html	0		
 $logdir	planned		file_directory_identifiers.html	2		
 $logstamp	planned		time_date_identifiers.html	0		
@@ -376,7 +376,7 @@ $submenu	planned		popups.html	0
 $switchbar	planned		mirc_commands.html	0		
 $sysdir	planned		file_directory_identifiers.html	0		substitute: XDG directories in place of Windows system folders
 $tan	planned		text_number_identifiers.html	0		
-$tanh	planned		text_number_identifiers.html	0		
+$tanh	done		text_number_identifiers.html	0	test_msl	
 $target	done		remote_identifiers.html	2	test_msl	
 $tempfn	planned		file_directory_identifiers.html	0		
 $ticks	done		time_date_identifiers.html	17	test_msl	
