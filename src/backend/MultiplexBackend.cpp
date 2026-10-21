@@ -48,6 +48,10 @@ void MultiplexBackend::addChild(ChatBackend* child) {
                         bool self, bool remove) {
                 emit reactionUpdated(globalNet(idx, net), target, id, nick, value, self, remove);
             });
+    connect(child, &ChatBackend::typingChanged, this,
+            [this, idx](int net, const QString& target, const QString& nick, const QString& state, bool self) {
+                emit typingChanged(globalNet(idx, net), target, nick, state, self);
+            });
     connect(child, &ChatBackend::networkUpdated, this, [this, idx](const NetworkInfo& info) {
         NetworkInfo g = info;
         g.id = globalNet(idx, info.id);
@@ -175,6 +179,16 @@ void MultiplexBackend::startDccChat(int net, const QString& nick) {
 void MultiplexBackend::sendFile(int net, const QString& target, const QString& localPath) {
     int ln;
     if (ChatBackend* c = childForNet(net, ln)) c->sendFile(ln, target, localPath);
+}
+
+bool MultiplexBackend::supportsTyping() const {
+    for (ChatBackend* c : m_children)
+        if (c->supportsTyping()) return true;
+    return false;
+}
+void MultiplexBackend::sendTyping(int net, const QString& target, const QString& state) {
+    int ln;
+    if (ChatBackend* c = childForNet(net, ln)) c->sendTyping(ln, target, state);
 }
 
 void MultiplexBackend::disconnectAll() {

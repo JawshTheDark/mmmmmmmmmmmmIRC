@@ -136,6 +136,15 @@ public:
         (void)localPath;
     }
 
+    // IRCv3 typing notifications (+typing). `state` is "active", "paused" or
+    // "done". Ephemeral — never persisted. Default: unsupported (no-op).
+    virtual bool supportsTyping() const { return false; }
+    virtual void sendTyping(int net, const QString& target, const QString& state) {
+        (void)net;
+        (void)target;
+        (void)state;
+    }
+
 signals:
     void statusText(const QString& text);
     void networkUpdated(const lurker::backend::NetworkInfo& net);
@@ -147,6 +156,9 @@ signals:
     // One IRCv3 reaction was added (or, with remove, taken back) on a stored line.
     void reactionUpdated(int net, const QString& target, qlonglong messageId, const QString& nick,
                          const QString& value, bool self, bool remove);
+    // Someone's typing state changed on a target. `state` is "active"/"paused"/"done";
+    // `self` is true when it's our own notification echoed back (callers ignore it).
+    void typingChanged(int net, const QString& target, const QString& nick, const QString& state, bool self);
     void readyChanged();
     void closed();
     // DCC: the full list (initial load) and single-row live updates.

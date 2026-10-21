@@ -77,6 +77,8 @@ public:
     void sendFile(int net, const QString& target, const QString& localPath) override;
     bool supportsReactions() const override;
     void react(qlonglong messageId, const QString& value, bool remove) override;
+    bool supportsTyping() const override;
+    void sendTyping(int net, const QString& target, const QString& state) override;
 
 private:
     static constexpr int kStride = 1000000;  // network-id slice per child

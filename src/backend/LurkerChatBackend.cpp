@@ -104,6 +104,11 @@ LurkerChatBackend::LurkerChatBackend(QObject* parent) : ChatBackend(parent) {
                                          static_cast<qlonglong>(frame.value("messageId").toDouble()),
                                          frame.value("nick").toString(), frame.value("value").toString(),
                                          frame.value("self").toBool(), frame.value("remove").toBool());
+                } else if (kind == QStringLiteral("typing")) {
+                    // Ephemeral +typing fan-out: <nick> is active/paused/done on target.
+                    emit typingChanged(frame.value("networkId").toInt(-1), frame.value("target").toString(),
+                                       frame.value("nick").toString(), frame.value("state").toString(),
+                                       frame.value("self").toBool());
                 }
             });
     connect(&m_client, &LurkerClient::readState, this, [this](const QJsonObject& f) {
@@ -528,6 +533,11 @@ void LurkerChatBackend::react(qlonglong messageId, const QString& value, bool re
     QJsonObject v{{"type", "react"}, {"messageId", static_cast<qint64>(messageId)}, {"value", value}};
     if (remove) v.insert("remove", true);
     m_client.sendVerb(v);
+}
+
+void LurkerChatBackend::sendTyping(int net, const QString& target, const QString& state) {
+    if (net < 0 || target.isEmpty()) return;
+    m_client.sendVerb({{"type", "typing"}, {"networkId", net}, {"target", target}, {"state", state}});
 }
 
 // --- channel list --------------------------------------------------------

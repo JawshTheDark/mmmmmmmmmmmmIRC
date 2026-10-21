@@ -69,6 +69,9 @@ public:
     int lineCount() const;          // $line(window,0)
     QString lineAt(int oneBased) const;  // $line(window,N)
     void setTopic(const QByteArray& utf8Topic);
+    // A remote member's +typing state changed ("active"/"paused"/"done"). Shows or
+    // clears the "<nick> is typing…" indicator above the editbox.
+    void showTyping(const QString& nick, const QString& state);
     QString currentTopic() const;  // the raw topic text (for Channel Central)
     // Members as display strings already sorted by rank then name; `sigils`
     // holds the leading prefix glyph ("@", "+", "") parallel to `nicks`.
@@ -109,6 +112,9 @@ public:
 signals:
     void lineEntered(const QString& text);
     void nickActivated(const QString& nick);  // double-click in the nicklist
+    // Local editbox typing state for +typing ("active"/"paused"/"done"). The owner
+    // forwards it to the backend (gated by the send-typing setting).
+    void typingStateChanged(const QString& state);
     // A file or image was dropped on, or pasted into, this window — the owner
     // uploads it through Lurker and shares the link in this conversation.
     void shareFiles(const QStringList& paths);
@@ -174,6 +180,14 @@ private:
     QTextBrowser* m_messages = nullptr;
     QListWidget* m_nicklist = nullptr;
     QLineEdit* m_input = nullptr;
+    QLabel* m_typingBar = nullptr;  // "<nick> is typing…" above the editbox
+
+    void onInputTyping(const QString& text);     // editbox → local +typing state (debounced)
+    void emitTyping(const QString& state);        // send a local state once (dedup + bookkeeping)
+    void refreshTypingBar();                      // rebuild the indicator from m_typingExpiry
+    QString m_localTyping;                         // last local state emitted ("" / active / paused / done)
+    class QTimer* m_typingPauseTimer = nullptr;    // fires "paused" after the editbox goes idle
+    QHash<QString, class QTimer*> m_typingExpiry;  // remote nicks typing now → auto-clear timer
 
     std::function<QStringList()> m_nickProvider;
     std::function<void(class QMenu*, const QString&)> m_nickPopupProvider;

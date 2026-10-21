@@ -2390,6 +2390,13 @@ MainWindow::Buffer& MainWindow::ensureBuffer(int net, ChatView::Kind kind, const
     connect(b.view, &ChatView::lineEntered, this, [this, key_](const QString& text) {
         if (Buffer* buf = findBuffer(key_)) onInput(buf, text);
     });
+    connect(b.view, &ChatView::typingStateChanged, this, [this, key_](const QString& state) {
+        if (!QSettings().value(QStringLiteral("chat/sendTyping"), true).toBool()) return;
+        if (!m_backend || !m_backend->isReady() || !m_backend->supportsTyping()) return;
+        Buffer* buf = findBuffer(key_);
+        if (!buf || buf->kind == ChatView::Kind::Status) return;
+        m_backend->sendTyping(buf->networkId, buf->display, state);
+    });
     connect(b.view, &ChatView::nickActivated, this, [this, net](const QString& nick) {
         activateBuffer(&ensureBuffer(net, ChatView::Kind::Query, nick, keyFor(net, nick)));
     });
@@ -2441,6 +2448,11 @@ void MainWindow::useBackend(ChatBackend* backend) {
                        const QString& value, bool self, bool remove) {
                     if (Buffer* b = findBuffer(keyFor(net, target)))
                         b->view->applyReaction(messageId, nick, value, self, remove);
+                });
+        connect(m_mux, &ChatBackend::typingChanged, this,
+                [this](int net, const QString& target, const QString& nick, const QString& state, bool self) {
+                    if (self) return;  // our own notification echoed back
+                    if (Buffer* b = findBuffer(keyFor(net, target))) b->view->showTyping(nick, state);
                 });
         connect(m_mux, &ChatBackend::readyChanged, this, [this] {
             const bool ready = m_backend && m_backend->isReady();
@@ -2849,6 +2861,7 @@ void MainWindow::onEvent(const IrcEvent& event) {
             if (isIgnored(event)) break;  // Address Book ignore list: drop silently
             Buffer* buf = routeTarget(net, target.isEmpty() ? nick : target, ChatView::Kind::Query);
             if (buf) {
+                if (!event.self) buf->view->showTyping(nick, QStringLiteral("done"));  // their line arrived
                 const bool act = event.type == IrcEventType::Action;
                 const QString plain = stripFormattingQt(text);
                 bool hl = event.highlight;

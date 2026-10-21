@@ -57,6 +57,8 @@ public:
         m_client.sendFile(net, target, localPath);
     }
     bool supportsReactions() const override { return true; }
+    bool supportsTyping() const override { return true; }
+    void sendTyping(int net, const QString& target, const QString& state) override;
     void react(qlonglong messageId, const QString& value, bool remove) override;
 
 private:

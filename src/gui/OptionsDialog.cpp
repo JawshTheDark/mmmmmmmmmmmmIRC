@@ -127,6 +127,7 @@ OptionsDialog::OptionsDialog(QWidget* parent) : QDialog(parent) {
                     f->addRow(boundCheck(tr("Show own messages in query"), QStringLiteral("msg/echoSelf"), true));
                     f->addRow(boundCheck(tr("Beep on private message"), QStringLiteral("msg/beep"), false));
                     f->addRow(boundCheck(tr("Whois on query open"), QStringLiteral("msg/whoisOnQuery"), false));
+                    f->addRow(boundCheck(tr("Send typing notifications"), QStringLiteral("chat/sendTyping"), true));
                     // mIRC-style message routing: where each category is shown.
                     f->addRow(tr("User notices"),
                               boundCombo(QStringLiteral("route/notice"),

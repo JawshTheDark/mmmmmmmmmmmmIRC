@@ -18,6 +18,7 @@
 #include <QRegularExpression>
 #include <QSettings>
 #include <QLabel>
+#include <QTimer>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QScrollBar>
@@ -200,6 +201,13 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         outer->addWidget(m_messages, 1);
     }
 
+    // "<nick> is typing…" indicator, just above the editbox (channels/queries).
+    m_typingBar = new QLabel(this);
+    m_typingBar->setObjectName(QStringLiteral("typingBar"));
+    m_typingBar->setContentsMargins(6, 0, 6, 1);
+    m_typingBar->hide();
+    outer->addWidget(m_typingBar);
+
     m_input = new QLineEdit(this);
     m_input->setFont(configuredChatFont());
     m_input->setClearButtonEnabled(false);
@@ -207,6 +215,16 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
                                                      : tr("Message, or /command"));
     outer->addWidget(m_input);
     m_input->installEventFilter(this);
+
+    // Local +typing: emit "active" as the user types, "paused" once the editbox
+    // goes idle, "done" on send/clear. Only for real conversations, and never for
+    // a /command being composed. The owner gates the actual send on the setting.
+    if (kind != Kind::Status) {
+        m_typingPauseTimer = new QTimer(this);
+        m_typingPauseTimer->setSingleShot(true);
+        connect(m_typingPauseTimer, &QTimer::timeout, this, [this] { emitTyping(QStringLiteral("paused")); });
+        connect(m_input, &QLineEdit::textEdited, this, &ChatView::onInputTyping);
+    }
     // Drag a file/image onto the window (or the editbox), or paste one, to share
     // it via Lurker's upload. Accept drops on the view, and filter the editbox so
     // a file drop there uploads rather than pasting its path as text.
@@ -219,6 +237,7 @@ ChatView::ChatView(Kind kind, QWidget* parent) : QWidget(parent), m_kind(kind) {
         m_historyIndex = -1;
         m_compIndex = -1;
         m_input->clear();
+        emitTyping(QStringLiteral("done"));  // stopped composing — this line is sent
         emit lineEntered(text);
     });
 
@@ -743,6 +762,72 @@ void ChatView::setTopic(const QByteArray& utf8Topic) {
     const QString topic = QString::fromUtf8(utf8Topic);
     m_topicBar->setText(topic.isEmpty() ? tr("(no topic set)") : stripFormattingQt(utf8Topic));
     m_topicBar->setToolTip(topic);
+}
+
+void ChatView::onInputTyping(const QString& text) {
+    // A leading / is a command being composed, not a message — don't advertise it.
+    if (text.isEmpty() || text.startsWith(QLatin1Char('/'))) {
+        emitTyping(QStringLiteral("done"));
+        return;
+    }
+    emitTyping(QStringLiteral("active"));
+}
+
+void ChatView::emitTyping(const QString& state) {
+    if (state == QLatin1String("active")) {
+        if (m_typingPauseTimer) m_typingPauseTimer->start(4000);  // → "paused" after idle
+        if (m_localTyping == QLatin1String("active")) return;     // already advertised
+    } else {
+        if (m_typingPauseTimer) m_typingPauseTimer->stop();
+        // Nothing to retract if we never started (or already stopped).
+        if (m_localTyping.isEmpty() || m_localTyping == QLatin1String("done")) {
+            m_localTyping = QStringLiteral("done");
+            return;
+        }
+        if (state == m_localTyping) return;
+    }
+    m_localTyping = state;
+    emit typingStateChanged(state);
+}
+
+void ChatView::showTyping(const QString& nick, const QString& state) {
+    if (nick.isEmpty()) return;
+    if (state == QLatin1String("active")) {
+        QTimer*& t = m_typingExpiry[nick];
+        if (!t) {
+            t = new QTimer(this);
+            t->setSingleShot(true);
+            const QString n = nick;
+            connect(t, &QTimer::timeout, this, [this, n] {
+                if (QTimer* tt = m_typingExpiry.take(n)) tt->deleteLater();
+                refreshTypingBar();
+            });
+        }
+        t->start(6000);  // auto-clear if no "done"/"paused" or next line arrives
+    } else if (QTimer* t = m_typingExpiry.take(nick)) {
+        t->deleteLater();
+    }
+    refreshTypingBar();
+}
+
+void ChatView::refreshTypingBar() {
+    if (!m_typingBar) return;
+    QStringList nicks;
+    for (auto it = m_typingExpiry.constBegin(); it != m_typingExpiry.constEnd(); ++it) nicks << it.key();
+    if (nicks.isEmpty()) {
+        m_typingBar->clear();
+        m_typingBar->hide();
+        return;
+    }
+    std::sort(nicks.begin(), nicks.end(), [](const QString& a, const QString& b) {
+        return a.compare(b, Qt::CaseInsensitive) < 0;
+    });
+    QString text;
+    if (nicks.size() == 1) text = tr("%1 is typing…").arg(nicks.first());
+    else if (nicks.size() == 2) text = tr("%1 and %2 are typing…").arg(nicks.first(), nicks.at(1));
+    else text = tr("Several people are typing…");
+    m_typingBar->setText(text);
+    m_typingBar->show();
 }
 
 void ChatView::chooseFont() {
