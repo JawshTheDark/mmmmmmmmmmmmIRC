@@ -165,6 +165,17 @@ void Updater::applyUpdate(const QString& downloadedPath, const QString& version)
         QMessageBox::warning(m_parent, tr("Updates"), tr("Could not extract the update."));
         return;
     }
+    // Relaunch the exe the new package actually contains, not the running exe's
+    // name: across a rename the package ships a differently-named exe, so the old
+    // name is never overwritten and relaunching it re-runs the stale binary
+    // forever (#12). If our current name is still in the package, keep it.
+    QString relaunchExe = exeName;
+    const QStringList pkgExes = QDir(staging).entryList({QStringLiteral("*.exe")}, QDir::Files);
+    if (!pkgExes.contains(exeName, Qt::CaseInsensitive) && !pkgExes.isEmpty()) {
+        relaunchExe = pkgExes.first();
+        for (const QString& e : pkgExes)
+            if (e.contains(QStringLiteral("mmmmmmmmmmmmirc"), Qt::CaseInsensitive)) { relaunchExe = e; break; }
+    }
     const QString bat = QFileInfo(downloadedPath).absolutePath() + QStringLiteral("/apply_update.bat");
     QFile f(bat);
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -174,7 +185,7 @@ void Updater::applyUpdate(const QString& downloadedPath, const QString& version)
         s += QStringLiteral("tasklist /FI \"PID eq %1\" 2>NUL | find \"%1\" >NUL\r\n").arg(pid);
         s += QStringLiteral("if not errorlevel 1 ( timeout /t 1 /nobreak >NUL & goto w )\r\n");
         s += QStringLiteral("xcopy /E /Y /I \"%1\\*\" \"%2\\\" >NUL\r\n").arg(QDir::toNativeSeparators(staging), QDir::toNativeSeparators(installDir));
-        s += QStringLiteral("start \"\" \"%1\\%2\"\r\n").arg(QDir::toNativeSeparators(installDir), exeName);
+        s += QStringLiteral("start \"\" \"%1\\%2\"\r\n").arg(QDir::toNativeSeparators(installDir), relaunchExe);
         s += QStringLiteral("del \"%~f0\"\r\n");
         f.write(s.toUtf8());
         f.close();

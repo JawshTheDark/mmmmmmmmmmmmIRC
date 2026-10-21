@@ -411,6 +411,10 @@ void LurkerChatBackend::translateEvent(const QJsonObject& ev, bool /*live*/) {
     out.type = type;
     out.networkId = net;
     out.id = static_cast<long long>(ev.value("id").toDouble());
+    // Carry the server numeric when Lurker provides one, so whois/server replies
+    // can honour the "active window" routing instead of always landing in Status
+    // (#34). Absent → 0, which routes as plain server text, exactly as before.
+    out.numeric = ev.value("numeric").toInt(ev.value("num").toInt(0));
     out.nick = ev.value("nick").toString().toStdString();
     out.target = target.toStdString();
     out.text = ev.value("text").toString().toStdString();
