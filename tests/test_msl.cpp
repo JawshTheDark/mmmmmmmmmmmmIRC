@@ -517,6 +517,12 @@ int main() {
     CHECK(!eval(in, "$time").empty());
     CHECK(!eval(in, "$date").empty());
     CHECK(eval(in, "$asctime(0)").find(":") != std::string::npos);  // formatted (year is tz-dependent)
+    CHECK(eval(in, "$fulldate").find(":") != std::string::npos);    // current date/time, formatted
+    CHECK(!eval(in, "$day").empty());                               // a weekday name (tz-dependent value)
+    {
+        const std::string dl = eval(in, "$daylight");
+        CHECK(dl == "0" || dl == "1");
+    }
 
     // Binary variables.
     {

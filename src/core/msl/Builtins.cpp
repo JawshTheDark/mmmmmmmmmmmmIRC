@@ -1486,6 +1486,19 @@ void registerBuiltins(Interpreter& in) {
         try { t = std::stoll(arg(a, 0)); } catch (...) {}
         return fmtTime(t, "%a %b %d %H:%M:%S %Y");
     });
+    in.registerIdent("day", [fmtTime](Interpreter& i, S&, const A& a, const std::string&) {
+        long long t = i.host().unixTime();  // weekday name; optional ctime arg
+        if (!a.empty()) { try { t = std::stoll(a[0]); } catch (...) {} }
+        return fmtTime(t, "%A");
+    });
+    in.registerIdent("fulldate", [fmtTime](Interpreter& i, S&, const A&, const std::string&) {
+        return fmtTime(i.host().unixTime(), "%a %b %d %H:%M:%S %Y");  // current local date/time
+    });
+    in.registerIdent("daylight", [](Interpreter& i, S&, const A&, const std::string&) {
+        std::time_t tt = static_cast<std::time_t>(i.host().unixTime());
+        const std::tm* lt = std::localtime(&tt);
+        return std::string(lt && lt->tm_isdst > 0 ? "1" : "0");  // DST currently in effect?
+    });
 
     // --- files and INI ---
     in.registerIdent("exists", [](Interpreter& i, S&, const A& a, const std::string&) {

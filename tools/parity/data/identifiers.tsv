@@ -77,8 +77,8 @@ $ctimer	planned		time_date_identifiers.html	0
 $ctrlenter	planned		on_input.html	0		
 $darkmode	planned	7.79	versions.txt	0		dark mode state
 $date	done		time_date_identifiers.html	18	test_msl	
-$day	planned		time_date_identifiers.html	0		
-$daylight	planned		time_date_identifiers.html	0		
+$day	done		time_date_identifiers.html	0	test_msl	
+$daylight	done		time_date_identifiers.html	0	test_msl	
 $dbuh	planned		dialogs.html	0		
 $dbuw	planned		dialogs.html	0		
 $dccignore	planned		other_identifiers.html	0		
@@ -136,7 +136,7 @@ $fread	planned		file_handling.html	0
 $fromeditbox	planned		other_identifiers.html	0		
 $fserve	planned		window_identifiers.html	0		
 $fulladdress	planned		remote_identifiers.html	4		
-$fulldate	planned		time_date_identifiers.html	0		
+$fulldate	done		time_date_identifiers.html	0	test_msl	
 $fullname	planned		other_identifiers.html	0		
 $fullscreen	planned		window_identifiers.html	0		
 $gcd	done		text_number_identifiers.html	0	test_msl	
