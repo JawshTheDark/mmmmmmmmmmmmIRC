@@ -868,6 +868,84 @@ void registerBuiltins(Interpreter& in) {
         }
         return which == 0 ? std::to_string(seen) : std::string();
     });
+    in.registerIdent("wildtokcs", [](Interpreter&, S&, const A& a, const std::string&) {
+        const char sep = static_cast<char>(argInt(a, 3, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string wc = arg(a, 1);
+        const int which = argInt(a, 2, 1);
+        int seen = 0;
+        for (const auto& t : toks)
+            if (matchWild(wc, t, /*caseInsensitive=*/false)) {
+                ++seen;
+                if (which != 0 && seen == which) return t;
+            }
+        return which == 0 ? std::to_string(seen) : std::string();
+    });
+    // $matchtok(text,string,N,C): Nth token CONTAINING string (substring), or the
+    // count when N is 0. matchtokcs is case-sensitive.
+    auto matchTok = [](const A& a, bool ci) -> std::string {
+        const char sep = static_cast<char>(argInt(a, 3, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        std::string needle = arg(a, 1);
+        if (ci) needle = toLowerAscii(needle);
+        const int which = argInt(a, 2, 1);
+        int seen = 0;
+        for (const auto& t : toks)
+            if ((ci ? toLowerAscii(t) : t).find(needle) != std::string::npos) {
+                ++seen;
+                if (which != 0 && seen == which) return t;
+            }
+        return which == 0 ? std::to_string(seen) : std::string();
+    };
+    in.registerIdent("matchtok",
+                     [matchTok](Interpreter&, S&, const A& a, const std::string&) { return matchTok(a, true); });
+    in.registerIdent("matchtokcs",
+                     [matchTok](Interpreter&, S&, const A& a, const std::string&) { return matchTok(a, false); });
+    // Case-sensitive variants of the token helpers above (exact compares).
+    in.registerIdent("istokcs", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        auto toks = splitTokens(arg(a, 0), sepChar(a, 2));
+        const std::string& find = arg(a, 1);
+        for (const auto& t : toks)
+            if (t == find) return std::string("$true");
+        return std::string("$false");
+    });
+    in.registerIdent("findtokcs", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        auto toks = splitTokens(arg(a, 0), sepChar(a, 3));
+        const std::string find = arg(a, 1);
+        int which = argInt(a, 2, 1);
+        if (which == 0) which = 1;
+        int seen = 0;
+        for (std::size_t k = 0; k < toks.size(); ++k)
+            if (toks[k] == find && ++seen == which) return std::to_string(k + 1);
+        return std::string("0");
+    });
+    in.registerIdent("addtokcs", [sepChar](Interpreter&, S&, const A& a, const std::string&) {
+        char sep = sepChar(a, 2);
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string& add = arg(a, 1);
+        for (const auto& t : toks)
+            if (t == add) return arg(a, 0);
+        std::string out = arg(a, 0);
+        if (!out.empty()) out += sep;
+        out += add;
+        return out;
+    });
+    in.registerIdent("reptokcs", [](Interpreter&, S&, const A& a, const std::string&) {
+        const bool hasN = a.size() >= 5;
+        const char sep = static_cast<char>(argInt(a, hasN ? 4 : 3, 32));
+        auto toks = splitTokens(arg(a, 0), sep);
+        const std::string find = arg(a, 1), repl = arg(a, 2);
+        const int which = hasN ? argInt(a, 3, 1) : 1;
+        int seen = 0;
+        for (auto& t : toks)
+            if (t == find && ++seen == which) {
+                t = repl;
+                break;
+            }
+        std::string out;
+        for (std::size_t k = 0; k < toks.size(); ++k) out += (k ? std::string(1, sep) : std::string()) + toks[k];
+        return out;
+    });
     // $reptok(text,token,new,N,C) replaces the Nth matching token; the 4-arg
     // form $reptok(text,token,new,C) replaces the first match.
     in.registerIdent("reptok", [](Interpreter&, S&, const A& a, const std::string&) {

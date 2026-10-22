@@ -459,7 +459,7 @@ bool compare(const std::string& a, const std::string& op, const std::string& b) 
     if (op == "isin") return toLowerAscii(b).find(toLowerAscii(a)) != std::string::npos;
     if (op == "isincs") return b.find(a) != std::string::npos;
     if (op == "iswm") return matchWild(a, b);
-    if (op == "iswmcs") return matchWild(a, b);  // (cs variant; fold not applied — close enough for v1)
+    if (op == "iswmcs") return matchWild(a, b, /*caseInsensitive=*/false);
     if (op == "isalpha" || op == "isalnum" || op == "isletter") {
         if (a.empty()) return false;  // mIRC: empty is not alpha/alnum/letter
         auto isAlpha = [](unsigned char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
@@ -878,9 +878,11 @@ std::string Interpreter::currentScriptDir() const {
 
 // --- wildcard + remote scripts ------------------------------------------
 
-bool matchWild(std::string_view pat, std::string_view str) {
+bool matchWild(std::string_view pat, std::string_view str, bool caseInsensitive) {
     std::size_t p = 0, s = 0, star = std::string::npos, mark = 0;
-    auto lc = [](char c) { return (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c; };
+    auto lc = [caseInsensitive](char c) {
+        return (caseInsensitive && c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c;
+    };
     while (s < str.size()) {
         if (p < pat.size() && (pat[p] == '?' || lc(pat[p]) == lc(str[s]))) {
             ++p;

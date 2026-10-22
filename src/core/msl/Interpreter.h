@@ -229,7 +229,7 @@ private:
 };
 
 // Case-insensitive '*'/'?' wildcard match (mIRC iswm), shared across the engine.
-bool matchWild(std::string_view pattern, std::string_view text);
+bool matchWild(std::string_view pattern, std::string_view text, bool caseInsensitive = true);
 
 // Registers the standard identifier and command set (Builtins.cpp).
 void registerBuiltins(Interpreter&);

@@ -439,6 +439,17 @@ int main() {
     CHECK_EQ(eval(in, "$deltok(a.b.c.d,2,46)"), std::string("a.c.d"));
     CHECK_EQ(eval(in, "$sorttok(c.a.b,46)"), std::string("a.b.c"));
     CHECK_EQ(eval(in, "$sorttok(3.1.2,46,n)"), std::string("1.2.3"));
+    // Token identifiers added in Phase 2.3.
+    CHECK_EQ(eval(in, "$matchtok(one two three,o,1,32)"), std::string("one"));
+    CHECK_EQ(eval(in, "$matchtok(one two three,o,2,32)"), std::string("two"));
+    CHECK_EQ(eval(in, "$matchtok(one two three,o,0,32)"), std::string("2"));  // count
+    CHECK_EQ(eval(in, "$matchtokcs(One two,o,1,32)"), std::string("two"));    // case-sensitive
+    CHECK_EQ(eval(in, "$istok(a B c,b,32)"), std::string("$true"));
+    CHECK_EQ(eval(in, "$istokcs(a B c,b,32)"), std::string("$false"));
+    CHECK_EQ(eval(in, "$addtokcs(a b,A,32)"), std::string("a b A"));  // A != a, so added
+    CHECK_EQ(eval(in, "$findtokcs(a B a,a,2,32)"), std::string("3"));
+    CHECK_EQ(eval(in, "$reptokcs(a B a,a,X,2,32)"), std::string("a B X"));
+    CHECK_EQ(eval(in, "$wildtokcs(Abc abc,a*,1,32)"), std::string("abc"));  // cs: skips "Abc"
     CHECK_EQ(eval(in, "$nopath(/home/jawsh/file.mrc)"), std::string("file.mrc"));
     CHECK_EQ(eval(in, "$nofile(/home/jawsh/file.mrc)"), std::string("/home/jawsh/"));
     CHECK_EQ(eval(in, "$mask(nick!user@host.com,2)"), std::string("*!*@host.com"));

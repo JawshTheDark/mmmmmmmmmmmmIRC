@@ -228,7 +228,7 @@ $ltimer	planned		mirc_commands.html	0
 $maddress	planned		remote_identifiers.html	0		
 $mask	done		nick_address_identifiers.html	22	test_msl	
 $matchkey	planned		remote_identifiers.html	0		
-$matchtok	planned		token_identifiers.html	0		
+$matchtok	done		token_identifiers.html	0	test_msl	
 $max	done		text_number_identifiers.html	21	test_msl	
 $maxlenl	planned		other_identifiers.html	0		
 $maxlenm	planned		other_identifiers.html	0		
