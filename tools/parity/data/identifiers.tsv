@@ -139,7 +139,7 @@ $fulladdress	planned		remote_identifiers.html	4
 $fulldate	planned		time_date_identifiers.html	0		
 $fullname	planned		other_identifiers.html	0		
 $fullscreen	planned		window_identifiers.html	0		
-$gcd	planned		text_number_identifiers.html	0		
+$gcd	done		text_number_identifiers.html	0	test_msl	
 $get	planned		window_identifiers.html	5		
 $getdir	planned		file_directory_identifiers.html	0		
 $getdot	planned		picture_windows.html	12		
@@ -202,7 +202,7 @@ $knick	planned		on_kick.html	19
 $lactive	planned		window_identifiers.html	1		
 $lactivecid	planned		multimserver.html	0		
 $lactivewid	planned		window_identifiers.html	0		
-$lcm	planned		text_number_identifiers.html	0		
+$lcm	done		text_number_identifiers.html	0	test_msl	
 $left	done		text_number_identifiers.html	1099	test_msl	
 $leftwin	planned		picture_windows.html	0		
 $leftwincid	planned		picture_windows.html	0		
@@ -217,7 +217,7 @@ $lock	planned		other_identifiers.html	7
 $locked	planned		other_identifiers.html	0		
 $log	planned		text_number_identifiers.html	0		
 $log10	done		text_number_identifiers.html	0	test_msl	
-$log2	planned		text_number_identifiers.html	0		
+$log2	done		text_number_identifiers.html	0	test_msl	
 $logdir	planned		file_directory_identifiers.html	2		
 $logstamp	planned		time_date_identifiers.html	0		
 $logstampfmt	planned		time_date_identifiers.html	0		
@@ -254,7 +254,7 @@ $mode	planned		remote_identifiers.html	0
 $modefirst	planned		on_opodeop.html	0		
 $modelast	planned		on_opodeop.html	0		
 $modespl	planned		other_identifiers.html	0		
-$modinv	planned		text_number_identifiers.html	0		
+$modinv	done		text_number_identifiers.html	0	test_msl	
 $mouse	planned		picture_windows.html	80		
 $msfile	planned		file_directory_identifiers.html	0		
 $msgstamp	planned		other_identifiers.html	0		
@@ -294,7 +294,7 @@ $port	planned		other_identifiers.html	6
 $portable	planned		other_identifiers.html	0		
 $portfree	planned		sockets.html	1		
 $pos	done		text_number_identifiers.html	68	test_msl	
-$powmod	planned		text_number_identifiers.html	0		
+$powmod	done		text_number_identifiers.html	0	test_msl	
 $prefix	planned		other_identifiers.html	0		
 $prop	done		aliases.html	4	test_msl	
 $protect	planned		control.html	0		

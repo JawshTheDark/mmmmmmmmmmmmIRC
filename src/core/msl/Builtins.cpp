@@ -1218,6 +1218,79 @@ void registerBuiltins(Interpreter& in) {
     };
     in.registerIdent("atan2", math2(std::atan2));  // $atan2(y,x)
     in.registerIdent("hypot", math2(std::hypot));  // $hypot(x,y) = sqrt(x²+y²)
+    in.registerIdent("log2", math1(std::log2));
+    // $gcd(a,b,…) / $lcm(a,b,…): greatest common divisor / least common multiple.
+    in.registerIdent("gcd", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {
+            long long g = 0;
+            for (std::size_t n = 0; n < a.size(); ++n) {
+                long long v = std::llabs(std::stoll(arg(a, n))), x = g;
+                while (v) { long long t = x % v; x = v; v = t; }
+                g = x;
+            }
+            return g == 0 ? std::string() : std::to_string(g);
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("lcm", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {
+            long long l = 1;
+            for (std::size_t n = 0; n < a.size(); ++n) {
+                long long v = std::llabs(std::stoll(arg(a, n)));
+                if (v == 0) return std::string("0");
+                long long x = l, y = v;
+                while (y) { long long t = x % y; x = y; y = t; }  // gcd(l,v)
+                l = l / x * v;
+            }
+            return std::to_string(l);
+        } catch (...) { return std::string(); }
+    });
+    // Overflow-safe (a*b) mod m without __int128 (MSVC has none): binary multiply.
+    auto mulmod = [](long long x, long long y, long long m) -> long long {
+        x %= m;
+        y %= m;
+        long long r = 0;
+        while (y > 0) {
+            if (y & 1) r = (r + x) % m;
+            x = (x * 2) % m;
+            y >>= 1;
+        }
+        return r;
+    };
+    in.registerIdent("powmod", [mulmod](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {  // $powmod(base, exp, mod) = (base^exp) mod mod
+            long long base = std::stoll(arg(a, 0)), e = std::stoll(arg(a, 1)), m = std::stoll(arg(a, 2));
+            if (m <= 0 || e < 0) return std::string();
+            long long r = 1 % m;
+            base %= m;
+            if (base < 0) base += m;
+            while (e > 0) {
+                if (e & 1) r = mulmod(r, base, m);
+                base = mulmod(base, base, m);
+                e >>= 1;
+            }
+            return std::to_string(r);
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("modinv", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {  // $modinv(a, m): a⁻¹ mod m via extended Euclid; empty if none exists
+            long long aa = std::stoll(arg(a, 0)), m = std::stoll(arg(a, 1));
+            if (m <= 0) return std::string();
+            long long g = aa % m;
+            if (g < 0) g += m;
+            long long r0 = m, r1 = g, s0 = 0, s1 = 1;
+            while (r1 != 0) {
+                long long q = r0 / r1;
+                long long t = r0 - q * r1;
+                r0 = r1;
+                r1 = t;
+                t = s0 - q * s1;
+                s0 = s1;
+                s1 = t;
+            }
+            if (r0 != 1) return std::string();  // not invertible
+            return std::to_string(((s0 % m) + m) % m);
+        } catch (...) { return std::string(); }
+    });
     in.registerIdent("pi", [](Interpreter&, S&, const A&, const std::string&) {
         return std::string("3.141592653589793");
     });

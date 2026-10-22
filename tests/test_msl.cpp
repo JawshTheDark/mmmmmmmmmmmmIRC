@@ -145,6 +145,12 @@ int main() {
     CHECK_EQ(eval(in, "$round($cosh(0),4)"), std::string("1"));
     CHECK_EQ(eval(in, "$round($sinh(0),4)"), std::string("0"));
     CHECK_EQ(eval(in, "$round($tanh(0),4)"), std::string("0"));
+    CHECK_EQ(eval(in, "$log2(8)"), std::string("3"));
+    CHECK_EQ(eval(in, "$gcd(12,18,8)"), std::string("2"));
+    CHECK_EQ(eval(in, "$lcm(3,4,5)"), std::string("60"));
+    CHECK_EQ(eval(in, "$powmod(2,10,1000)"), std::string("24"));  // 1024 mod 1000
+    CHECK_EQ(eval(in, "$modinv(3,11)"), std::string("4"));        // 3·4 = 12 ≡ 1 (mod 11)
+    CHECK_EQ(eval(in, "$modinv(2,4)"), std::string(""));          // gcd≠1 → no inverse
 
     // Tokens.
     CHECK_EQ(eval(in, "$gettok(a.b.c,2,46)"), std::string("b"));
