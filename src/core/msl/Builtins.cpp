@@ -2132,6 +2132,55 @@ void registerBuiltins(Interpreter& in) {
             if (!t.empty()) i.binUnset(t);
         }
     });
+    in.registerCommand("bcopy", [](Interpreter& i, S& s, const std::string& a) {
+        // /bcopy [-z] &dest dpos &source spos N   (positions 1-based; N=-1 → to end)
+        std::string args = i.evaluate(a, s);
+        if (!args.empty() && args[0] == '-') args = args.substr(std::min(args.find(' ') + 1, args.size()));
+        auto toks = splitTokens(args, ' ');
+        if (toks.size() < 5) return;
+        int dpos, spos, n;
+        try {
+            dpos = std::stoi(toks[1]);
+            spos = std::stoi(toks[3]);
+            n = std::stoi(toks[4]);
+        } catch (...) { return; }
+        const auto* sv = i.binVarGet(toks[2]);
+        if (!sv || dpos < 1 || spos < 1) return;
+        const std::vector<unsigned char> src = *sv;  // copy up front: dest may alias source
+        if (n < 0) n = static_cast<int>(src.size()) - (spos - 1);
+        auto& dv = i.binVar(toks[0]);
+        for (int k = 0; k < n; ++k) {
+            const std::size_t si = static_cast<std::size_t>(spos - 1 + k), di = static_cast<std::size_t>(dpos - 1 + k);
+            if (si >= src.size()) break;
+            if (di >= dv.size()) dv.resize(di + 1, 0);
+            dv[di] = src[si];
+        }
+    });
+    in.registerCommand("breplace", [](Interpreter& i, S& s, const std::string& a) {
+        // /breplace &var <search1> <replace1> [<search2> <replace2> …]  (byte values)
+        auto toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.size() < 3) return;
+        unsigned char map[256];
+        for (int k = 0; k < 256; ++k) map[k] = static_cast<unsigned char>(k);
+        for (std::size_t k = 1; k + 1 < toks.size(); k += 2) {
+            try {
+                map[std::stoi(toks[k]) & 0xFF] = static_cast<unsigned char>(std::stoi(toks[k + 1]) & 0xFF);
+            } catch (...) {}
+        }
+        auto& v = i.binVar(toks[0]);
+        for (auto& b : v) b = map[b];  // single simultaneous pass, like mIRC
+    });
+    in.registerCommand("btrunc", [](Interpreter& i, S& s, const std::string& a) {
+        // /btrunc <filename> <N>   — file becomes exactly N bytes (truncate or zero-pad)
+        auto toks = splitTokens(i.evaluate(a, s), ' ');
+        if (toks.size() < 2) return;
+        int n;
+        try { n = std::stoi(toks[1]); } catch (...) { return; }
+        if (n < 0) return;
+        std::string data = i.host().fileRead(toks[0]);
+        data.resize(static_cast<std::size_t>(n), '\0');
+        i.host().fileWrite(toks[0], data);
+    });
 
     // Custom windows.
     in.registerCommand("window", [](Interpreter& i, S& s, const std::string& a) {

@@ -13,15 +13,15 @@ name	status	since	help_page	corpus_uses	test	notes
 /away	done		basic_irc_commands.html	13	test_msl	
 /background	planned		mirc_commands.html	33		
 /ban	planned		mirc_commands.html	43		
-/bcopy	planned		binary_files.html	0		
+/bcopy	done		binary_files.html	0	test_msl	
 /beep	planned		mirc_commands.html	50		
 /bigfloat	planned		variables.html	0		
 /bindip	planned		sockets.html	0		
 /bread	planned		binary_files.html	2		
 /break	done		aliases.html	0	test_msl	
-/breplace	planned		binary_files.html	0		
+/breplace	done		binary_files.html	0	test_msl	
 /bset	done		binary_files.html	0	test_msl	
-/btrunc	planned		binary_files.html	0		
+/btrunc	done		binary_files.html	0	test_msl	
 /bunset	done		binary_files.html	0	test_msl	
 /bwrite	planned		binary_files.html	3		
 /channel	planned		mirc_commands.html	23		

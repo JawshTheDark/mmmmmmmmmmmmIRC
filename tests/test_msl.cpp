@@ -535,6 +535,19 @@ int main() {
         CHECK_EQ(eval(in, "$bvar(&b,1)"), std::string("74"));
         in.execute("bunset &b", s);
         CHECK_EQ(eval(in, "$bvar(&b).len"), std::string("0"));
+
+        // /breplace (byte-value map), /bcopy (between binvars), /btrunc (file).
+        in.execute("bset -t &r 1 Hello", s);       // 72 101 108 108 111
+        in.execute("breplace &r 108 120", s);      // 'l'(108) -> 'x'(120)
+        CHECK_EQ(eval(in, "$bvar(&r,1-5)"), std::string("72 101 120 120 111"));
+        in.execute("bset -t &src 1 ABCD", s);      // 65 66 67 68
+        in.execute("bcopy &dst 1 &src 2 2", s);    // copy bytes 2-3 (B,C) to dst
+        CHECK_EQ(eval(in, "$bvar(&dst,1-2)"), std::string("66 67"));
+        in.execute("bcopy &dst 3 &src 1 -1", s);   // -1 → to end of src (A B C D)
+        CHECK_EQ(eval(in, "$bvar(&dst).len"), std::string("6"));
+        in.execute("write -c bt.bin abcdef", s);
+        in.execute("btrunc bt.bin 3", s);
+        CHECK_EQ(eval(in, "$read(bt.bin,1)"), std::string("abc"));
     }
 
     // /signal fires on SIGNAL:<name> with params and $signal.
