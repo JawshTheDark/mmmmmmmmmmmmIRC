@@ -242,7 +242,7 @@ name	status	since	help_page	corpus_uses	test	notes
 /ulist	planned		remote_commands.html	0		
 /unload	planned		mirc_commands.html	25		
 /unset	done		variables.html	943	test_msl	
-/unsetall	planned		variables.html	0		
+/unsetall	done		variables.html	0	test_msl	
 /updatenl	planned		mirc_commands.html	0		
 /url	planned		mirc_commands.html	14		
 /uwho	planned		address_book.html	0		

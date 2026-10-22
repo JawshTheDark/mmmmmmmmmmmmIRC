@@ -204,6 +204,15 @@ int main() {
         CHECK_EQ(in.evaluate("%n", s), std::string("4"));
         in.execute("unset %n", s);
         CHECK_EQ(in.evaluate("%n", s), std::string(""));
+        // Wildcard /unset and /unsetall.
+        in.execute("set %foo.a 1 | set %foo.b 2 | set %bar 3", s);
+        in.execute("unset %foo.*", s);
+        CHECK_EQ(in.evaluate("%foo.a", s), std::string(""));
+        CHECK_EQ(in.evaluate("%foo.b", s), std::string(""));
+        CHECK_EQ(in.evaluate("%bar", s), std::string("3"));  // non-matching survives
+        in.execute("unsetall", s);
+        CHECK_EQ(in.evaluate("%bar", s), std::string(""));
+        CHECK_EQ(in.evaluate("%greeting", s), std::string(""));
     }
 
     // /echo and /say reach the host.

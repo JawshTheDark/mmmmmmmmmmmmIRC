@@ -1888,9 +1888,19 @@ void registerBuiltins(Interpreter& in) {
         for (const auto& t : splitTokens(args, ' ')) {
             std::string name = t;
             if (!name.empty() && name[0] == '%') name = name.substr(1);
-            if (!name.empty()) i.unsetVariable(name, s);
+            if (name.empty()) continue;
+            if (name.find('*') != std::string::npos || name.find('?') != std::string::npos) {
+                // Wildcard mask: unset every matching global (e.g. /unset %foo.*).
+                std::vector<std::string> matches;
+                for (const auto& [k, v] : i.globals())
+                    if (matchWild(name, k)) matches.push_back(k);
+                for (const auto& m : matches) i.unsetVariable(m, s);
+            } else {
+                i.unsetVariable(name, s);
+            }
         }
     });
+    in.registerCommand("unsetall", [](Interpreter& i, S&, const std::string&) { i.clearGlobals(); });
 
     // control
     in.registerCommand("return", [](Interpreter& i, S& s, const std::string& args) {

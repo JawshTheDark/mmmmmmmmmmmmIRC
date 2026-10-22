@@ -189,6 +189,7 @@ public:
     void setVariable(const std::string& name, const std::string& value, bool local, Scope& scope);
     void unsetVariable(const std::string& name, Scope& scope);
     const std::map<std::string, std::string, CiLess>& globals() const { return m_globals; }
+    void clearGlobals() { m_globals.clear(); }  // /unsetall
 
 private:
     friend void registerBuiltins(Interpreter&);
