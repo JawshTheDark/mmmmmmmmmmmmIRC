@@ -155,7 +155,12 @@ int main() {
     CHECK_EQ(eval(in, "$lcm(3,4,5)"), std::string("60"));
     CHECK_EQ(eval(in, "$powmod(2,10,1000)"), std::string("24"));  // 1024 mod 1000
     CHECK_EQ(eval(in, "$modinv(3,11)"), std::string("4"));        // 3·4 = 12 ≡ 1 (mod 11)
-    CHECK_EQ(eval(in, "$modinv(2,4)"), std::string(""));          // gcd≠1 → no inverse
+    CHECK_EQ(eval(in, "$modinv(2,4)"), std::string("-1"));         // no inverse → -1 (mIRC)
+    CHECK_EQ(eval(in, "$ord(1)"), std::string("1st"));   // oracle-verified ordinals
+    CHECK_EQ(eval(in, "$ord(11)"), std::string("11th"));
+    CHECK_EQ(eval(in, "$ord(22)"), std::string("22nd"));
+    CHECK_EQ(eval(in, "$not(5)"), std::string("4294967290"));  // 32-bit unsigned NOT (mIRC)
+    CHECK_EQ(eval(in, "$not(0)"), std::string("4294967295"));
 
     // Tokens.
     CHECK_EQ(eval(in, "$gettok(a.b.c,2,46)"), std::string("b"));
@@ -440,7 +445,7 @@ int main() {
     CHECK_EQ(eval(in, "$sha1(hello)"), std::string("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"));
     CHECK_EQ(eval(in, "$sha256(hello)"),
              std::string("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"));
-    CHECK_EQ(eval(in, "$crc(123456789)"), std::string("cbf43926"));  // CRC-32 standard check value
+    CHECK_EQ(eval(in, "$crc(123456789,0)"), std::string("CBF43926"));  // text mode; default is file (mIRC)
     CHECK_EQ(eval(in, "$gettok(a b c,0,32)"), std::string("3"));  // N=0 => token count
     CHECK_EQ(eval(in, "$calc(2 ^ 3 ^ 2)"), std::string("64"));    // ^ is left-associative
     CHECK_EQ(eval(in, "$calc(17 // 5)"), std::string("3"));    // // is floored integer division

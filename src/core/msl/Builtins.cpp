@@ -1406,8 +1406,23 @@ void registerBuiltins(Interpreter& in) {
                 s0 = s1;
                 s1 = t;
             }
-            if (r0 != 1) return std::string();  // not invertible
+            if (r0 != 1) return std::string("-1");  // not invertible (mIRC returns -1)
             return std::to_string(((s0 % m) + m) % m);
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("ord", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {  // $ord(N): N with its English ordinal suffix (1st, 2nd, 3rd, 11th, 21st…)
+            const long long n = std::stoll(arg(a, 0));
+            const long long m100 = std::llabs(n) % 100, m10 = std::llabs(n) % 10;
+            const char* suf = "th";
+            if (m100 < 11 || m100 > 13) suf = m10 == 1 ? "st" : m10 == 2 ? "nd" : m10 == 3 ? "rd" : "th";
+            return std::to_string(n) + suf;
+        } catch (...) { return std::string(); }
+    });
+    in.registerIdent("not", [](Interpreter&, S&, const A& a, const std::string&) -> std::string {
+        try {  // $not(N): 32-bit unsigned bitwise NOT ($not(5)=4294967290), per the oracle
+            const unsigned int v = static_cast<unsigned int>(std::stoll(arg(a, 0)) & 0xFFFFFFFF);
+            return std::to_string(static_cast<unsigned long long>(~v & 0xFFFFFFFFu));
         } catch (...) { return std::string(); }
     });
     in.registerIdent("pi", [](Interpreter&, S&, const A&, const std::string&) {
@@ -1451,9 +1466,10 @@ void registerBuiltins(Interpreter& in) {
     in.registerIdent("sha256",
                      [](Interpreter&, S&, const A& a, const std::string&) { return sha256Hex(arg(a, 0)); });
     in.registerIdent("crc", [](Interpreter& i, S&, const A& a, const std::string&) -> std::string {
-        // $crc(input, [type]) — CRC-32 as 8 lowercase hex chars. type 1 = input is
-        // a filename (hash its bytes), default 0 = input is literal text.
-        const std::string data = argInt(a, 1, 0) == 1 ? i.host().fileRead(arg(a, 0)) : arg(a, 0);
+        // $crc(input, [type]) — CRC-32 as 8 lowercase hex chars. type 0 = input is
+        // literal text; default (and type 1) = input is a filename (a missing file
+        // hashes to 00000000, matching mIRC, verified by the oracle).
+        const std::string data = argInt(a, 1, 1) == 0 ? arg(a, 0) : i.host().fileRead(arg(a, 0));
         unsigned int crc = 0xFFFFFFFFu;
         for (const unsigned char ch : data) {
             crc ^= ch;
@@ -1461,7 +1477,7 @@ void registerBuiltins(Interpreter& in) {
         }
         crc ^= 0xFFFFFFFFu;
         char buf[9];
-        std::snprintf(buf, sizeof(buf), "%08x", crc);
+        std::snprintf(buf, sizeof(buf), "%08X", crc);  // mIRC emits uppercase hex
         return std::string(buf);
     });
     in.registerIdent("base", [](Interpreter&, S&, const A& a, const std::string&) {
