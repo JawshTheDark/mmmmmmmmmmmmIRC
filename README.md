@@ -16,7 +16,8 @@ WebSocket/REST APIs. See [docs/PLAN.md](docs/PLAN.md) for the phased plan and
 networks at once: snapshot, history, read state, uploads path) and its **IRC bouncer** (raw IRCv3,
 SASL, cert pinning, reconnect/resume). Multi-network treebar, MDI channel/query windows, nicklists,
 topic bars, history-on-open, unread badges with cross-device mark-read, highlight styling, clickable
-links, nick/command tab-completion, input history. A clean-room **mIRC-style icon toolbar** (Connect,
+links, nick/command tab-completion, input history. Over Lurker, IRCv3 **reactions** and **replies**
+render inline and **typing indicators** show who's composing. A clean-room **mIRC-style icon toolbar** (Connect,
 Join, Channels list, Favourites, Options, Colors, Script Editor, DCC, Logs, About) and a full
 **tree-based Options dialog** (Connect/IRC/DCC/Display/Colors/Sound/Mouse/Logging/Other) mirror
 mIRC's layout; every setting persists.
@@ -27,9 +28,11 @@ mIRC's layout; every setting persists.
   N-pass evaluation, custom identifiers (`$myalias(...).prop`).
 - Control flow: `if`/`elseif`/`else` (braced, braceless, one-line and `|`-separated), `while` with
   `/break` & `/continue`, `/tokenize`, aliases (recursion-guarded), `/return` `/halt`.
-- ~100 identifiers and ~50 commands: text/token/number/time, `$calc`, `$gettok` ranges (`N-M`),
-  `$wildtok`/`$reptok`, case-insensitive `==`/`!=`, regex (`$regex`/`$regml`/`$regsub`), hash tables
-  (`/hadd`/`$hget`), file & INI I/O, `$mask`, `$duration`, `$base`, …
+- ~170 identifiers and ~110 commands: text/token/number/time/math, `$calc`, `$gettok` ranges
+  (`N-M`), `$wildtok`/`$matchtok`/`$reptok` (+ case-sensitive `cs` variants), number theory
+  (`$gcd`/`$lcm`/`$powmod`/`$modinv`), checksums (`$crc`/`$md5`/`$sha256`), case-insensitive
+  `==`/`!=`, regex (`$regex`/`$regml`/`$regsub`/`$regsubex`), hash tables (`/hadd`/`$hget`/`/hsave`),
+  file & INI I/O and binary variables (`/bset`/`/bcopy`/`/breplace`), `$mask`, `$duration`, `$base`, …
 - Events / remotes: `on TEXT/ACTION/JOIN/PART/KICK/DIALOG/...` loaded from `.mrc` files and fired
   live, with `$nick`/`$chan`/`$target` context.
 - **Dialogs**: `dialog` tables render as real Qt dialogs (`/dialog`, `/did`, `$did`, `on DIALOG`).
@@ -39,13 +42,21 @@ mIRC's layout; every setting persists.
 Validated against real scripts — [NeonScript](https://github.com/jawshthedark/neonscript) (35 files,
 17k lines, 1024 aliases + 457 handlers) loads fully, plus Anope/abaexp/ppfserv test scripts.
 
+**Verified against real mIRC.** Beyond unit tests, a differential **oracle** (`tools/oracle`) runs
+each case through both this engine and the owner's licensed **mIRC 7.85** under Wine and requires the
+outputs to match exactly — the current suite of 172 evaluation/identifier cases agrees byte-for-byte,
+and the matrix (`docs/PARITY.md`) tracks what's done per feature.
+
 **Theming (Phase 3).** Seven shipped skins (View ▸ Theme): Default, Dark, OLED, **Solarized Dark**,
 **Matrix**, **Amber**, and a **BeOS** skin — each themes the whole window, MDI backdrop included.
 Configurable chat **font & size** apply live; the editable **16-colour mIRC palette** drives message
 colour codes; **nicknames are colour-coded**; chat windows take a **background colour or image**; and
-whole themes **import/export** to a file (Options ▸ Display). Right-click **context menus** on the
-nicklist (query/whois/op/kick/ban/CTCP) and the networks tree (part/close/disconnect), plus
-channel/query **logging** to disk. Per-channel overrides are planned.
+whole themes **import/export** to a file (Options ▸ Display). **mIRC MTS themes** (`.mts`, with their
+companion scripts) load from View ▸ Theme — palette, message templates, and nicklist decoration
+included — and a selectable **classic 2000s glossy icon set** (Options ▸ Display) recreates the
+early-mIRC toolbar look. Right-click **context menus** on the nicklist (query/whois/op/kick/ban/CTCP)
+and the networks tree (part/close/disconnect), plus channel/query **logging** to disk. Per-channel
+overrides are planned.
 
 See `docs/screenshots/` for captures of each of the above.
 
