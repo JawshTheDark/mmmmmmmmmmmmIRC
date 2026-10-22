@@ -120,6 +120,11 @@ int main() {
     CHECK_EQ(eval(in, "$chr(65)"), std::string("A"));
     CHECK_EQ(eval(in, "$asc(A)"), std::string("65"));
     CHECK_EQ(eval(in, "$replace(aXbXc,X,-)"), std::string("a-b-c"));
+    CHECK_EQ(eval(in, "$replacex(abcabc,a,x,b,y,c,z)"), std::string("xyzxyz"));
+    CHECK_EQ(eval(in, "$replacex(ab,a,b,b,c)"), std::string("bc"));  // single pass (vs $replace → cc)
+    CHECK_EQ(eval(in, "$replace(ab,a,b,b,c)"), std::string("cc"));   // re-scans, for contrast
+    CHECK_EQ(eval(in, "$intersect(a b c d,b d e,32)"), std::string("b d"));
+    CHECK_EQ(eval(in, "$intersect(a a b,a b,32)"), std::string("a b"));  // deduped
     CHECK_EQ(eval(in, "$remove(hello,l)"), std::string("heo"));
     CHECK_EQ(eval(in, "$pos(hello,ll)"), std::string("3"));
     CHECK_EQ(eval(in, "$pos(banana,a,2)"), std::string("4"));  // Nth occurrence

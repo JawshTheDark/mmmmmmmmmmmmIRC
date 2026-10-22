@@ -180,7 +180,7 @@ $inroundrect	planned		picture_windows.html	0
 $insong	planned		playing_sounds.html	0		
 $instok	done		token_identifiers.html	20	test_msl	
 $int	done		text_number_identifiers.html	36	test_msl	
-$intersect	planned		text_number_identifiers.html	0		
+$intersect	done		text_number_identifiers.html	0	test_msl	
 $inwave	planned		playing_sounds.html	0		
 $ip	planned		other_identifiers.html	8		
 $iptype	planned		sockets.html	0		
@@ -318,7 +318,7 @@ $remote	planned		remote_identifiers.html	0
 $remove	done		text_number_identifiers.html	83	test_msl	
 $remtok	done		token_identifiers.html	49	test_msl	
 $replace	done		text_number_identifiers.html	321	test_msl	
-$replacex	planned		text_number_identifiers.html	0		
+$replacex	done		text_number_identifiers.html	0	test_msl	
 $reptok	done		token_identifiers.html	3	test_msl	
 $result	planned		other_identifiers.html	3		
 $rgb	done		picture_windows.html	58	test_msl	

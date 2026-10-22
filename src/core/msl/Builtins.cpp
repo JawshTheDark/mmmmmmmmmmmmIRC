@@ -690,6 +690,47 @@ void registerBuiltins(Interpreter& in) {
         }
         return s;
     });
+    in.registerIdent("replacex", [](Interpreter&, S&, const A& a, const std::string&) {
+        // Like $replace, but a single left-to-right pass: at each position the first
+        // matching old→new pair wins and the scan skips past the replacement, so a
+        // replacement is never re-examined (the $replace/$replacex distinction).
+        const std::string& src = arg(a, 0);
+        std::string out;
+        std::size_t i = 0;
+        while (i < src.size()) {
+            bool matched = false;
+            for (std::size_t k = 1; k + 1 < a.size(); k += 2) {
+                const std::string& from = a[k];
+                if (!from.empty() && src.compare(i, from.size(), from) == 0) {
+                    out += a[k + 1];
+                    i += from.size();
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) out += src[i++];
+        }
+        return out;
+    });
+    in.registerIdent("intersect", [](Interpreter&, S&, const A& a, const std::string&) {
+        // $intersect(list1, list2, C): unique tokens common to both, in list1 order.
+        const char sep = static_cast<char>(argInt(a, 2, 32));
+        const auto t1 = splitTokens(arg(a, 0), sep);
+        const auto t2 = splitTokens(arg(a, 1), sep);
+        std::vector<std::string> in2, emitted;
+        for (const auto& t : t2) in2.push_back(toLowerAscii(t));
+        std::string out;
+        for (const auto& t : t1) {
+            const std::string lo = toLowerAscii(t);
+            if (std::find(in2.begin(), in2.end(), lo) != in2.end() &&
+                std::find(emitted.begin(), emitted.end(), lo) == emitted.end()) {
+                if (!out.empty()) out += sep;
+                out += t;
+                emitted.push_back(lo);
+            }
+        }
+        return out;
+    });
     in.registerIdent("remove", [](Interpreter&, S&, const A& a, const std::string&) {
         std::string s = arg(a, 0);
         for (std::size_t k = 1; k < a.size(); ++k) {
